@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- 网络权限 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    
+    <!-- 存储权限 -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
+        android:maxSdkVersion="28" />
+    
+    <!-- 相机权限 -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    
+    <!-- 短信权限 -->
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <uses-permission android:name="android.permission.READ_SMS" />
+
+    <application
+        android:name=".app.FinanceApplication"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.FincialSystem.NoActionBar"
+        android:usesCleartextTraffic="true"
+        tools:targetApi="31">
+        
+        <!-- 闪屏页 -->
+        <activity
+            android:name=".ui.activity.SplashActivity"
+            android:exported="true"
+            android:theme="@style/SplashTheme">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        
+        <!-- 登录注册页 -->
+        <activity
+            android:name=".ui.activity.LoginActivity"
+            android:exported="false" />
+        
+        <!-- 注册页 -->
+        <activity
+            android:name=".ui.activity.RegisterActivity"
+            android:exported="false" />
+            
+        <!-- 主页 -->
+        <activity
+            android:name=".ui.activity.MainActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustPan"
+            android:theme="@style/Theme.FincialSystem.NoActionBar" />
+            
+        <!-- 记账页 -->
+        <activity
+            android:name=".ui.activity.AddTransactionActivity"
+            android:exported="false"
+            android:theme="@style/Theme.FincialSystem.NoActionBar" />
+            
+        <!-- 交易记录列表页 -->
+        <activity
+            android:name=".ui.activity.TransactionListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.FincialSystem.NoActionBar" />
+            
+        <!-- 分类管理页 -->
+        <activity
+            android:name=".ui.activity.CategoryManageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.FincialSystem.NoActionBar" />
+            
+        <!-- 预算设置页 -->
+        <activity
+            android:name=".ui.activity.BudgetSettingActivity"
+            android:exported="false" />
+            
+        <!-- 通知设置页 -->
+        <activity
+            android:name=".ui.activity.NotificationSettingActivity"
+            android:exported="false" />
+            
+        <!-- 个人信息页 -->
+        <activity
+            android:name=".ui.activity.UserProfileActivity"
+            android:exported="false" />
+            
+        <!-- 安全设置页 -->
+        <activity
+            android:name=".ui.activity.SecuritySettingActivity"
+            android:exported="false" />
+            
+        <!-- 登录历史页 -->
+        <activity
+            android:name=".ui.activity.LoginHistoryActivity"
+            android:exported="false" />
+            
+        <!-- 报表页 -->
+        <activity
+            android:name=".ui.activity.ReportActivity"
+            android:exported="false"
+            android:theme="@style/Theme.FincialSystem.NoActionBar" />
+            
+        <!-- 文件提供者 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+        
+    </application>
+
+</manifest>
