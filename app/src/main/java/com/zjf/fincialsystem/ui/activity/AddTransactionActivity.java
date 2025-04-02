@@ -115,7 +115,8 @@ public class AddTransactionActivity extends AppCompatActivity {
             // 初始化分类下拉框
             initCategorySpinner();
             
-            // 初始化日期选择
+            // 初始化日期选择 - 默认设置为当天日期
+            selectedDate = new Date(); // 确保selectedDate不为null
             binding.etDate.setText(DateUtils.formatDate(selectedDate));
             binding.etDate.setOnClickListener(v -> showDatePicker());
             
@@ -235,7 +236,7 @@ public class AddTransactionActivity extends AppCompatActivity {
         binding.cardMedical.setOnClickListener(v -> selectCategory(v, "医疗"));
         binding.cardEducation.setOnClickListener(v -> selectCategory(v, "教育"));
         binding.cardEntertainment.setOnClickListener(v -> selectCategory(v, "娱乐"));
-        binding.cardMore.setOnClickListener(v -> showMoreCategories());
+        binding.cardMore.setOnClickListener(v -> selectCategory(v, "其他"));
     }
 
     // 当前选中的分类
@@ -267,14 +268,6 @@ public class AddTransactionActivity extends AppCompatActivity {
             selectedCategoryView = view;
             selectedCategory = categoryName;
         }
-    }
-
-    /**
-     * 显示更多分类选项
-     */
-    private void showMoreCategories() {
-        // 这里可以实现跳转到分类管理页面或显示更多分类的对话框
-        Toast.makeText(this, "显示更多分类功能待实现", Toast.LENGTH_SHORT).show();
     }
 
     /**
@@ -402,21 +395,37 @@ public class AddTransactionActivity extends AppCompatActivity {
      */
     private void saveTransaction() {
         try {
-            // 获取输入
-            String amountStr = binding.etAmount.getText().toString().trim();
-            String description = binding.etDescription.getText().toString().trim();
-            String note = binding.etNote.getText().toString().trim();
+            // 验证交易类型
+            boolean hasTypeSelected = binding.rbIncome.isChecked() || 
+                                      binding.rbExpense.isChecked() || 
+                                      binding.rbTransfer.isChecked();
+            if (!hasTypeSelected) {
+                Toast.makeText(this, "交易类型不能为空，请选择交易类型", Toast.LENGTH_SHORT).show();
+                return;
+            }
             
-            // 验证输入
+            // 验证分类选择
+            if (selectedCategory == null) {
+                Toast.makeText(this, "交易分类不能为空，请选择分类", Toast.LENGTH_SHORT).show();
+                LogUtils.d(TAG, "保存失败：未选择分类");
+                return;
+            }
+            
+            // 验证金额
+            String amountStr = binding.etAmount.getText().toString().trim();
             if (TextUtils.isEmpty(amountStr)) {
-                binding.etAmount.setError("请输入有效金额");
+                binding.etAmount.setError("金额不能为空");
+                binding.etAmount.requestFocus();
                 LogUtils.d(TAG, "保存失败：金额为空");
                 return;
             }
             
-            if (selectedCategory == null) {
-                Toast.makeText(this, "请选择一个分类", Toast.LENGTH_SHORT).show();
-                LogUtils.d(TAG, "保存失败：未选择分类");
+            // 验证日期
+            String dateStr = binding.etDate.getText().toString().trim();
+            if (TextUtils.isEmpty(dateStr)) {
+                binding.etDate.setError("日期不能为空");
+                binding.etDate.requestFocus();
+                LogUtils.d(TAG, "保存失败：日期为空");
                 return;
             }
             
@@ -426,15 +435,28 @@ public class AddTransactionActivity extends AppCompatActivity {
                 amount = Double.parseDouble(amountStr);
             } catch (NumberFormatException e) {
                 binding.etAmount.setError("请输入有效金额");
+                binding.etAmount.requestFocus();
                 LogUtils.d(TAG, "保存失败：金额格式不正确");
                 return;
             }
             
-            // 如果金额为0，提示错误
-            if (amount == 0) {
-                binding.etAmount.setError("金额不能为0");
-                LogUtils.d(TAG, "保存失败：金额不能为0");
+            // 如果金额为0或负数，提示错误
+            if (amount <= 0) {
+                binding.etAmount.setError("金额必须大于0");
+                binding.etAmount.requestFocus();
+                Toast.makeText(this, "交易金额必须大于0元", Toast.LENGTH_SHORT).show();
+                LogUtils.d(TAG, "保存失败：金额必须大于0");
                 return;
+            }
+            
+            // 获取描述和备注
+            String description = binding.etDescription.getText().toString().trim();
+            String note = binding.etNote.getText().toString().trim();
+            
+            // 检查描述是否为空（可选，不强制要求填写，但建议提示用户）
+            if (TextUtils.isEmpty(description)) {
+                // 这里只显示提示信息，不阻止保存
+                Toast.makeText(this, "建议添加交易描述，方便后续查询", Toast.LENGTH_SHORT).show();
             }
             
             // 获取所选的分类ID
@@ -456,6 +478,8 @@ public class AddTransactionActivity extends AppCompatActivity {
                     categoryId = 9;
                 } else if ("娱乐".equals(selectedCategory)) {
                     categoryId = 10;
+                } else if ("其他".equals(selectedCategory)) {
+                    categoryId = 11;
                 }
             }
             

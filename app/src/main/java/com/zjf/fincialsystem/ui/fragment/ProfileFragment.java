@@ -192,7 +192,8 @@ public class ProfileFragment extends Fragment {
         user.setUsername("user_" + userId);
         user.setNickname("测试用户");
         user.setEmail("user" + userId + "@example.com");
-        user.setPhone("138****" + (1000 + userId));
+        // 个人资料页面显示掩码格式的手机号，但确保格式与完整手机号一致
+        user.setPhone("1380013****" + String.format("%04d", userId).substring(2));
         return user;
     }
     

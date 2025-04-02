@@ -462,7 +462,8 @@ public class EditProfileActivity extends AppCompatActivity {
         user.setUsername("user_" + userId);
         user.setNickname("测试用户");
         user.setEmail("user" + userId + "@example.com");
-        user.setPhone("138****" + (1000 + userId));
+        // 编辑页面应该显示完整的11位手机号码
+        user.setPhone("1380013" + String.format("%04d", userId));
         // 设置社交账号信息
         user.setWechat("wxid_" + userId);
         user.setQq("10" + (1000000 + userId));

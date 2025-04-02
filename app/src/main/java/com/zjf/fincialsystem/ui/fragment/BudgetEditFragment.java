@@ -218,10 +218,22 @@ public class BudgetEditFragment extends Fragment {
     private void updateCategorySpinner() {
         if (!isAdded() || getContext() == null) return;
 
+        // 限制预算类别只有餐饮、购物、交通、住房、娱乐五个
+        List<String> restrictedCategories = new ArrayList<>();
+        restrictedCategories.add("餐饮");
+        restrictedCategories.add("购物");
+        restrictedCategories.add("交通");
+        restrictedCategories.add("住房");
+        restrictedCategories.add("娱乐");
+        
+        // 只显示限制列表中的分类
         List<String> categoryNames = new ArrayList<>();
         for (Category category : expenseCategories) {
-            categoryNames.add(category.getName());
+            if (restrictedCategories.contains(category.getName())) {
+                categoryNames.add(category.getName());
+            }
         }
+        
         ArrayAdapter<String> categoryAdapter = new ArrayAdapter<>(getContext(), android.R.layout.simple_dropdown_item_1line, categoryNames);
         binding.spinnerCategory.setAdapter(categoryAdapter);
 

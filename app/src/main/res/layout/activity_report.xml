@@ -174,7 +174,8 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:orientation="vertical">
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
 
                             <TextView
                                 android:layout_width="wrap_content"
@@ -187,7 +188,7 @@
                                 android:id="@+id/tv_income_total"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
+                                android:layout_marginStart="8dp"
                                 android:textColor="@color/income"
                                 android:textSize="18sp"
                                 android:textStyle="bold"
@@ -198,7 +199,8 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:orientation="vertical">
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
 
                             <TextView
                                 android:layout_width="wrap_content"
@@ -211,7 +213,7 @@
                                 android:id="@+id/tv_expense_total"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
+                                android:layout_marginStart="8dp"
                                 android:textColor="@color/expense"
                                 android:textSize="18sp"
                                 android:textStyle="bold"
@@ -222,7 +224,8 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:orientation="vertical">
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
 
                             <TextView
                                 android:layout_width="wrap_content"
@@ -235,7 +238,7 @@
                                 android:id="@+id/tv_balance"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
+                                android:layout_marginStart="8dp"
                                 android:textColor="@color/balance"
                                 android:textSize="18sp"
                                 android:textStyle="bold"
