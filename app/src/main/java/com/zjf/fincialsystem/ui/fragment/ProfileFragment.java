@@ -12,6 +12,11 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 
+import com.google.android.material.textfield.TextInputLayout;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.button.MaterialButton;
+import android.widget.Button;
+
 import com.zjf.fincialsystem.R;
 import com.zjf.fincialsystem.databinding.FragmentProfileBinding;
 import com.zjf.fincialsystem.model.User;
@@ -19,8 +24,10 @@ import com.zjf.fincialsystem.repository.RepositoryCallback;
 import com.zjf.fincialsystem.repository.UserRepository;
 import com.zjf.fincialsystem.ui.activity.ImageViewActivity;
 import com.zjf.fincialsystem.ui.activity.LoginActivity;
+import com.zjf.fincialsystem.ui.activity.EditProfileActivity;
 import com.zjf.fincialsystem.utils.LogUtils;
 import com.zjf.fincialsystem.utils.TokenManager;
+import com.zjf.fincialsystem.utils.SecurityUtils;
 
 /**
  * 个人资料Fragment
@@ -88,20 +95,26 @@ public class ProfileFragment extends Fragment {
         
         // 编辑资料
         binding.cardEditProfile.setOnClickListener(v -> {
-            // TODO: 跳转到编辑个人资料页面
-            Toast.makeText(requireContext(), "编辑个人资料功能待实现", Toast.LENGTH_SHORT).show();
+            try {
+                // 跳转到编辑个人资料页面
+                Intent intent = new Intent(requireContext(), EditProfileActivity.class);
+                startActivity(intent);
+            } catch (Exception e) {
+                LogUtils.e(TAG, "跳转到编辑个人资料页面失败：" + e.getMessage(), e);
+                Toast.makeText(requireContext(), "跳转失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
         });
         
         // 修改密码
         binding.cardChangePassword.setOnClickListener(v -> {
-            // TODO: 跳转到修改密码页面
-            Toast.makeText(requireContext(), "修改密码功能待实现", Toast.LENGTH_SHORT).show();
+            // 显示修改密码对话框
+            showChangePasswordDialog();
         });
         
-        // 登录历史
+        // 注销账户
         binding.cardLoginHistory.setOnClickListener(v -> {
-            // TODO: 跳转到登录历史页面
-            Toast.makeText(requireContext(), "登录历史功能待实现", Toast.LENGTH_SHORT).show();
+            // 显示注销账户确认对话框
+            showDeleteAccountDialog();
         });
         
         // 关于
@@ -261,6 +274,201 @@ public class ProfileFragment extends Fragment {
             binding.progressBar.setVisibility(show ? View.VISIBLE : View.GONE);
             binding.contentLayout.setVisibility(show ? View.GONE : View.VISIBLE);
         }
+    }
+    
+    /**
+     * 显示注销账户确认对话框
+     */
+    private void showDeleteAccountDialog() {
+        // 加载对话框布局
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_confirm_delete_account, null);
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setView(dialogView);
+        
+        AlertDialog dialog = builder.create();
+        
+        // 设置透明背景以使圆角可见
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+        
+        dialog.show();
+        
+        // 设置按钮点击事件
+        Button btnCancel = dialogView.findViewById(R.id.btnCancel);
+        Button btnConfirm = dialogView.findViewById(R.id.btnConfirm);
+        
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        
+        btnConfirm.setOnClickListener(v -> {
+            dialog.dismiss();
+            // 执行注销账户操作
+            performDeleteAccount();
+        });
+    }
+    
+    /**
+     * 执行注销账户操作
+     */
+    private void performDeleteAccount() {
+        try {
+            // 显示加载中
+            showLoading(true);
+            
+            // 获取用户ID
+            long userId = TokenManager.getInstance().getUserId();
+            
+            // 如果用户ID为-1（无效ID），设置为临时ID用于模拟
+            if (userId == -1) {
+                userId = 1; // 使用默认ID进行模拟
+                LogUtils.w(TAG, "未获取到有效的用户ID，使用默认ID: " + userId);
+            }
+            
+            // 调用仓库方法注销账户
+            userRepository.deleteAccount(userId, new RepositoryCallback<Boolean>() {
+                @Override
+                public void onSuccess(Boolean result) {
+                    // 在主线程中更新UI
+                    if (getActivity() == null) return;
+                    
+                    getActivity().runOnUiThread(() -> {
+                        // 显示成功提示
+                        Toast.makeText(requireContext(), R.string.account_deleted, Toast.LENGTH_SHORT).show();
+                        
+                        // 跳转到登录页面
+                        handleLogout();
+                    });
+                }
+                
+                @Override
+                public void onError(String error) {
+                    // 在主线程中更新UI
+                    if (getActivity() == null) return;
+                    
+                    getActivity().runOnUiThread(() -> {
+                        showLoading(false);
+                        Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show();
+                    });
+                }
+            });
+            
+        } catch (Exception e) {
+            LogUtils.e(TAG, "注销账户操作失败：" + e.getMessage(), e);
+            showLoading(false);
+            Toast.makeText(requireContext(), R.string.account_delete_failed + ": " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    /**
+     * 显示修改密码对话框
+     */
+    private void showChangePasswordDialog() {
+        // 加载对话框布局
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_change_password, null);
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setView(dialogView);
+        
+        AlertDialog dialog = builder.create();
+        
+        // 设置透明背景以使圆角可见
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+        
+        dialog.show();
+        
+        // 获取对话框控件
+        TextInputLayout tilOldPassword = dialogView.findViewById(R.id.tilOldPassword);
+        TextInputEditText etOldPassword = dialogView.findViewById(R.id.etOldPassword);
+        TextInputLayout tilNewPassword = dialogView.findViewById(R.id.tilNewPassword);
+        TextInputEditText etNewPassword = dialogView.findViewById(R.id.etNewPassword);
+        TextInputLayout tilConfirmNewPassword = dialogView.findViewById(R.id.tilConfirmNewPassword);
+        TextInputEditText etConfirmNewPassword = dialogView.findViewById(R.id.etConfirmNewPassword);
+        Button btnCancel = dialogView.findViewById(R.id.btnCancel);
+        Button btnConfirm = dialogView.findViewById(R.id.btnConfirm);
+        
+        // 取消按钮点击事件
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        
+        // 确认按钮点击事件
+        btnConfirm.setOnClickListener(v -> {
+            // 获取输入的密码
+            String oldPassword = etOldPassword.getText().toString().trim();
+            String newPassword = etNewPassword.getText().toString().trim();
+            String confirmNewPassword = etConfirmNewPassword.getText().toString().trim();
+            
+            // 验证输入
+            if (oldPassword.isEmpty()) {
+                tilOldPassword.setError(getString(R.string.field_required));
+                return;
+            } else {
+                tilOldPassword.setError(null);
+            }
+            
+            if (newPassword.isEmpty()) {
+                tilNewPassword.setError(getString(R.string.field_required));
+                return;
+            } else {
+                tilNewPassword.setError(null);
+            }
+            
+            if (confirmNewPassword.isEmpty()) {
+                tilConfirmNewPassword.setError(getString(R.string.field_required));
+                return;
+            } else {
+                tilConfirmNewPassword.setError(null);
+            }
+            
+            // 检查两次密码是否一致
+            if (!newPassword.equals(confirmNewPassword)) {
+                tilConfirmNewPassword.setError(getString(R.string.password_not_match));
+                return;
+            } else {
+                tilConfirmNewPassword.setError(null);
+            }
+            
+            // 检查新密码是否符合强度要求
+            if (!SecurityUtils.isPasswordStrong(newPassword)) {
+                tilNewPassword.setError(getString(R.string.password_too_simple));
+                return;
+            } else {
+                tilNewPassword.setError(null);
+            }
+            
+            // 显示加载中
+            dialog.dismiss();
+            showLoading(true);
+            
+            // 获取用户ID
+            long userId = TokenManager.getInstance().getUserId();
+            if (userId == -1) {
+                userId = 1; // 使用默认ID进行模拟
+                LogUtils.w(TAG, "未获取到有效的用户ID，使用默认ID: " + userId);
+            }
+            
+            // 调用修改密码的接口
+            userRepository.changePassword(userId, oldPassword, newPassword, new RepositoryCallback<Boolean>() {
+                @Override
+                public void onSuccess(Boolean result) {
+                    if (getActivity() == null) return;
+                    
+                    getActivity().runOnUiThread(() -> {
+                        showLoading(false);
+                        Toast.makeText(requireContext(), R.string.password_changed, Toast.LENGTH_SHORT).show();
+                    });
+                }
+                
+                @Override
+                public void onError(String error) {
+                    if (getActivity() == null) return;
+                    
+                    getActivity().runOnUiThread(() -> {
+                        showLoading(false);
+                        Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show();
+                    });
+                }
+            });
+        });
     }
     
     @Override

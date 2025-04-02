@@ -23,6 +23,8 @@ public class User implements Serializable {
     private Date lastLoginTime;
     private int failedAttempts;
     private Date lockedUntil;
+    private String wechat;
+    private String qq;
     
     public User() {
         // 默认构造函数
@@ -130,6 +132,22 @@ public class User implements Serializable {
     
     public void setLockedUntil(Date lockedUntil) {
         this.lockedUntil = lockedUntil;
+    }
+    
+    public String getWechat() {
+        return wechat;
+    }
+    
+    public void setWechat(String wechat) {
+        this.wechat = wechat;
+    }
+    
+    public String getQq() {
+        return qq;
+    }
+    
+    public void setQq(String qq) {
+        this.qq = qq;
     }
     
     /**

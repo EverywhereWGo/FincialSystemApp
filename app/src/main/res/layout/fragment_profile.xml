@@ -255,7 +255,7 @@
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:src="@drawable/ic_history"
+                        android:src="@drawable/ic_delete"
                         app:tint="@color/primary" />
 
                     <TextView
@@ -263,7 +263,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="16dp"
                         android:layout_weight="1"
-                        android:text="@string/login_history"
+                        android:text="@string/account_delete"
                         android:textColor="@color/text_primary"
                         android:textSize="16sp" />
 

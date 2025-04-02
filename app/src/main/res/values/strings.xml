@@ -217,6 +217,23 @@
     <string name="password_changed">密码已修改</string>
     <string name="old_password_incorrect">原密码不正确</string>
     <string name="profile_updated">个人资料已更新</string>
+    <string name="account_delete">注销账户</string>
+    <string name="account_delete_confirm">确定要注销此账户吗？此操作将永久删除您的账户数据，且无法恢复。</string>
+    <string name="account_deleted">账户已注销</string>
+    <string name="account_delete_failed">注销账户失败</string>
+    <string name="basic_info">基本信息</string>
+    <string name="social_accounts">社交账号</string>
+    <string name="nickname">昵称</string>
+    <string name="wechat">微信</string>
+    <string name="qq">QQ</string>
+    <string name="tap_to_change_avatar">点击更换头像</string>
+    <string name="select_image_source">选择图片来源</string>
+    <string name="camera">相机</string>
+    <string name="gallery">相册</string>
+    <string name="avatar_updated">头像已更新</string>
+    <string name="nickname_empty">昵称不能为空</string>
+    <string name="email_invalid">邮箱格式不正确</string>
+    <string name="phone_invalid">手机号格式不正确</string>
     
     <!-- 时间 -->
     <string name="today">今天</string>

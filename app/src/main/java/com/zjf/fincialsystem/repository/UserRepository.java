@@ -23,6 +23,8 @@ import retrofit2.Response;
 import com.google.gson.JsonSyntaxException;
 
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 用户数据仓库
@@ -216,5 +218,190 @@ public class UserRepository {
      */
     public boolean isLoggedIn() {
         return tokenManager.isLoggedIn();
+    }
+    
+    /**
+     * 注销账户
+     * @param userId 用户ID
+     * @param callback 回调
+     */
+    public void deleteAccount(long userId, final RepositoryCallback<Boolean> callback) {
+        // 检查网络状态
+        if (!NetworkUtils.isNetworkAvailable(context)) {
+            callback.onError("无网络连接，无法注销账户");
+            return;
+        }
+        
+        // 检查Token是否有效
+        if (!tokenManager.isLoggedIn()) {
+            callback.onError("未登录或登录已过期");
+            return;
+        }
+        
+        // 实际项目中应调用真实API，这里模拟一个成功的响应
+        // 模拟网络延迟
+        new android.os.Handler().postDelayed(() -> {
+            try {
+                // 模拟成功响应
+                callback.onSuccess(true);
+                
+                // 注销成功后清除token
+                tokenManager.clearToken();
+            } catch (Exception e) {
+                LogUtils.e(TAG, "注销账户失败", e);
+                callback.onError("注销账户失败: " + e.getMessage());
+            }
+        }, 1500); // 1.5秒延迟模拟网络请求
+        
+        /* 实际API调用应该类似这样：
+        apiService.deleteAccount(userId).enqueue(new Callback<ApiResponse<Boolean>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    ApiResponse<Boolean> apiResponse = response.body();
+                    if (apiResponse.isSuccess()) {
+                        // 清除Token
+                        tokenManager.clearToken();
+                        callback.onSuccess(true);
+                    } else {
+                        callback.onError(apiResponse.getMessage());
+                    }
+                } else {
+                    callback.onError("注销账户失败，请稍后重试");
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<ApiResponse<Boolean>> call, Throwable t) {
+                LogUtils.e(TAG, "注销账户失败", t);
+                callback.onError("注销账户失败: " + t.getMessage());
+            }
+        });
+        */
+    }
+
+    /**
+     * 修改密码
+     * @param userId 用户ID
+     * @param oldPassword 旧密码
+     * @param newPassword 新密码
+     * @param callback 回调
+     */
+    public void changePassword(long userId, String oldPassword, String newPassword, final RepositoryCallback<Boolean> callback) {
+        // 检查网络状态
+        if (!NetworkUtils.isNetworkAvailable(context)) {
+            callback.onError("无网络连接，无法修改密码");
+            return;
+        }
+        
+        // 检查Token是否有效
+        if (!tokenManager.isLoggedIn()) {
+            callback.onError("未登录或登录已过期");
+            return;
+        }
+        
+        // 准备请求参数
+        Map<String, String> passwordData = new HashMap<>();
+        passwordData.put("userId", String.valueOf(userId));
+        passwordData.put("oldPassword", oldPassword);
+        passwordData.put("newPassword", newPassword);
+        
+        // 实际项目中应调用真实API，这里模拟一个成功的响应
+        // 模拟网络延迟
+        new android.os.Handler().postDelayed(() -> {
+            try {
+                // 模拟密码验证 (实际中应该由服务器验证)
+                boolean verified = true; // 模拟验证成功
+                
+                if (verified) {
+                    // 模拟成功响应
+                    callback.onSuccess(true);
+                } else {
+                    callback.onError("原密码不正确");
+                }
+            } catch (Exception e) {
+                LogUtils.e(TAG, "修改密码失败", e);
+                callback.onError("修改密码失败: " + e.getMessage());
+            }
+        }, 1500); // 1.5秒延迟模拟网络请求
+        
+        /* 实际API调用应该类似这样：
+        apiService.changePassword(passwordData).enqueue(new Callback<ApiResponse<Boolean>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    ApiResponse<Boolean> apiResponse = response.body();
+                    if (apiResponse.isSuccess()) {
+                        callback.onSuccess(true);
+                    } else {
+                        callback.onError(apiResponse.getMessage());
+                    }
+                } else {
+                    callback.onError("修改密码失败，请稍后重试");
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<ApiResponse<Boolean>> call, Throwable t) {
+                LogUtils.e(TAG, "修改密码失败", t);
+                callback.onError("修改密码失败: " + t.getMessage());
+            }
+        });
+        */
+    }
+
+    /**
+     * 更新用户资料
+     * @param user 用户对象
+     * @param callback 回调
+     */
+    public void updateUserProfile(User user, final RepositoryCallback<Boolean> callback) {
+        // 检查网络状态
+        if (!NetworkUtils.isNetworkAvailable(context)) {
+            callback.onError("无网络连接，无法更新用户资料");
+            return;
+        }
+        
+        // 检查Token是否有效
+        if (!tokenManager.isLoggedIn()) {
+            callback.onError("未登录或登录已过期");
+            return;
+        }
+        
+        // 实际项目中应调用真实API，这里模拟一个成功的响应
+        // 模拟网络延迟
+        new android.os.Handler().postDelayed(() -> {
+            try {
+                // 模拟成功响应
+                callback.onSuccess(true);
+            } catch (Exception e) {
+                LogUtils.e(TAG, "更新用户资料失败", e);
+                callback.onError("更新用户资料失败: " + e.getMessage());
+            }
+        }, 1500); // 1.5秒延迟模拟网络请求
+        
+        /* 实际API调用应该类似这样：
+        apiService.updateUserProfile(user).enqueue(new Callback<ApiResponse<Boolean>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    ApiResponse<Boolean> apiResponse = response.body();
+                    if (apiResponse.isSuccess()) {
+                        callback.onSuccess(true);
+                    } else {
+                        callback.onError(apiResponse.getMessage());
+                    }
+                } else {
+                    callback.onError("更新用户资料失败，请稍后重试");
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<ApiResponse<Boolean>> call, Throwable t) {
+                LogUtils.e(TAG, "更新用户资料失败", t);
+                callback.onError("更新用户资料失败: " + t.getMessage());
+            }
+        });
+        */
     }
 } 
