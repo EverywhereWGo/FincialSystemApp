@@ -295,4 +295,23 @@ public class DateUtils {
         
         return (int) days;
     }
+    
+    /**
+     * 将yyyy-MM-dd格式的日期字符串转换为M/d格式
+     * @param dateStr 日期字符串，格式为yyyy-MM-dd
+     * @return M/d格式的日期字符串
+     */
+    public static String formatShortDate(String dateStr) {
+        if (dateStr == null || dateStr.isEmpty()) {
+            return "";
+        }
+        try {
+            Date date = DATE_FORMAT.parse(dateStr);
+            SimpleDateFormat shortFormat = new SimpleDateFormat("M/d", Locale.getDefault());
+            return shortFormat.format(date);
+        } catch (ParseException e) {
+            LogUtils.e("解析日期失败：" + e.getMessage());
+            return dateStr;
+        }
+    }
 } 

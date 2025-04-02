@@ -3,6 +3,7 @@
     <!-- 通用尺寸 -->
     <dimen name="toolbar_height">56dp</dimen>
     <dimen name="fab_margin">16dp</dimen>
+    <dimen name="fab_offset">28dp</dimen>
     <dimen name="card_margin">8dp</dimen>
     <dimen name="text_margin">16dp</dimen>
     <dimen name="activity_horizontal_margin">16dp</dimen>

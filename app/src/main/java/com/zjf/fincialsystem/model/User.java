@@ -13,31 +13,19 @@ public class User implements Serializable {
     private long id;
     private String username;
     private String password;
+    private String nickname;
     private String name;
     private String email;
     private String phone;
-    private String avatar;
-    private String role; // 用户角色: admin, user
+    private String role;
     private long createdAt;
     private long updatedAt;
-    private Date lastLoginTime; // 最后登录时间
-    private int failedAttempts; // 登录失败次数
-    private Date lockedUntil; // 账号锁定截止时间
+    private Date lastLoginTime;
+    private int failedAttempts;
+    private Date lockedUntil;
     
     public User() {
-    }
-    
-    public User(long id, String username, String password, String name, String email, String phone, String avatar) {
-        this.id = id;
-        this.username = username;
-        this.password = password;
-        this.name = name;
-        this.email = email;
-        this.phone = phone;
-        this.avatar = avatar;
-        this.createdAt = System.currentTimeMillis();
-        this.updatedAt = System.currentTimeMillis();
-        this.failedAttempts = 0;
+        // 默认构造函数
     }
     
     public long getId() {
@@ -64,6 +52,14 @@ public class User implements Serializable {
         this.password = password;
     }
     
+    public String getNickname() {
+        return nickname;
+    }
+    
+    public void setNickname(String nickname) {
+        this.nickname = nickname;
+    }
+    
     public String getName() {
         return name;
     }
@@ -86,14 +82,6 @@ public class User implements Serializable {
     
     public void setPhone(String phone) {
         this.phone = phone;
-    }
-    
-    public String getAvatar() {
-        return avatar;
-    }
-    
-    public void setAvatar(String avatar) {
-        this.avatar = avatar;
     }
     
     public String getRole() {
@@ -172,10 +160,12 @@ public class User implements Serializable {
         return "User{" +
                 "id=" + id +
                 ", username='" + username + '\'' +
+                ", nickname='" + nickname + '\'' +
                 ", name='" + name + '\'' +
                 ", email='" + email + '\'' +
                 ", phone='" + phone + '\'' +
                 ", role='" + role + '\'' +
+                ", lastLoginTime=" + lastLoginTime +
                 '}';
     }
 } 

@@ -564,12 +564,122 @@ public class MockInterceptor implements Interceptor {
      */
     private Response createTransactionsResponse(Request request) {
         try {
+            String path = request.url().encodedPath();
+            
+            // 检查是否是获取单个交易记录的请求
+            if (path.matches(".*/api/transactions/\\d+")) {
+                // 从URL中提取交易ID
+                String[] pathSegments = path.split("/");
+                String transactionIdStr = pathSegments[pathSegments.length - 1];
+                long transactionId = Long.parseLong(transactionIdStr);
+                
+                LogUtils.d(TAG, "获取单个交易记录，ID: " + transactionId);
+                
+                // 创建单个交易
+                Transaction transaction = null;
+                
+                // 根据ID查找对应的交易记录
+                if (transactionId == 1) {
+                    transaction = createTransaction(1, 1, 1, Transaction.TYPE_EXPENSE, 35.5, "午餐", new Date());
+                    
+                    // 设置额外信息
+                    transaction.setNote("公司午餐");
+                    transaction.setPaymentMethod("支付宝");
+                    
+                    // 设置分类信息
+                    Category category = new Category();
+                    category.setId(1);
+                    category.setName("餐饮");
+                    category.setType(Category.TYPE_EXPENSE);
+                    category.setIcon("ic_food");
+                    category.setColor("#FF5722");
+                    transaction.setCategory(category);
+                } else if (transactionId == 2) {
+                    transaction = createTransaction(2, 1, 2, Transaction.TYPE_EXPENSE, 128.0, "超市购物", new Date(System.currentTimeMillis() - 24 * 60 * 60 * 1000));
+                    
+                    // 设置额外信息
+                    transaction.setNote("家庭日常用品");
+                    transaction.setPaymentMethod("微信支付");
+                    
+                    // 设置图片路径
+                    transaction.setImagePath("https://img.freepik.com/free-photo/shopping-cart-with-grocery-items_23-2148949710.jpg");
+                    
+                    // 设置分类信息
+                    Category category = new Category();
+                    category.setId(2);
+                    category.setName("购物");
+                    category.setType(Category.TYPE_EXPENSE);
+                    category.setIcon("ic_shopping");
+                    category.setColor("#4CAF50");
+                    transaction.setCategory(category);
+                } else if (transactionId == 3) {
+                    transaction = createTransaction(3, 1, 6, Transaction.TYPE_INCOME, 12500.0, "工资", new Date(System.currentTimeMillis() - 5 * 24 * 60 * 60 * 1000));
+                    
+                    // 设置额外信息
+                    transaction.setNote("11月工资");
+                    transaction.setPaymentMethod("银行转账");
+                    
+                    // 设置分类信息
+                    Category category = new Category();
+                    category.setId(6);
+                    category.setName("工资");
+                    category.setType(Category.TYPE_INCOME);
+                    category.setIcon("ic_salary");
+                    category.setColor("#3F51B5");
+                    transaction.setCategory(category);
+                } else if (transactionId == 4) {
+                    transaction = createTransaction(4, 1, 4, Transaction.TYPE_EXPENSE, 2500.0, "房租", new Date(System.currentTimeMillis() - 3 * 24 * 60 * 60 * 1000));
+                    
+                    // 设置额外信息
+                    transaction.setPaymentMethod("银行转账");
+                    transaction.setNote("11月房租");
+                    transaction.setImagePath("content://com.zjf.fincialsystem.fileprovider/external_files/Pictures/JPEG_20231115_123045.jpg");
+                    
+                    // 设置分类信息
+                    Category category = new Category();
+                    category.setId(4);
+                    category.setName("住房");
+                    category.setType(Category.TYPE_EXPENSE);
+                    category.setIcon("ic_home");
+                    category.setColor("#9C27B0");
+                    transaction.setCategory(category);
+                }
+                
+                if (transaction != null) {
+                    ApiResponse<Transaction> response = ApiResponse.success(transaction);
+                    String jsonResponse = gson.toJson(response);
+                    
+                    return new Response.Builder()
+                            .request(request)
+                            .protocol(Protocol.HTTP_1_1)
+                            .code(200)
+                            .message("OK")
+                            .body(ResponseBody.create(JSON, jsonResponse))
+                            .build();
+                } else {
+                    return createErrorResponse(request, 404, "找不到对应的交易记录");
+                }
+            }
+            
+            // 获取交易记录列表
             List<Transaction> transactions = new ArrayList<>();
             
             // 添加一些模拟交易数据
             transactions.add(createTransaction(1, 1, 1, Transaction.TYPE_EXPENSE, 35.5, "午餐", new Date()));
-            transactions.add(createTransaction(2, 1, 2, Transaction.TYPE_EXPENSE, 128.0, "超市购物", new Date(System.currentTimeMillis() - 24 * 60 * 60 * 1000)));
+            
+            // 创建超市购物记录并设置图片路径
+            Transaction shoppingTransaction = createTransaction(2, 1, 2, Transaction.TYPE_EXPENSE, 128.0, "超市购物", new Date(System.currentTimeMillis() - 24 * 60 * 60 * 1000));
+            shoppingTransaction.setImagePath("https://img.freepik.com/free-photo/shopping-cart-with-grocery-items_23-2148949710.jpg");
+            transactions.add(shoppingTransaction);
+            
             transactions.add(createTransaction(3, 1, 6, Transaction.TYPE_INCOME, 12500.0, "工资", new Date(System.currentTimeMillis() - 5 * 24 * 60 * 60 * 1000)));
+            
+            // 创建一条带有本地图片路径的住房交易记录
+            Transaction housingTransaction = createTransaction(4, 1, 4, Transaction.TYPE_EXPENSE, 2500.0, "房租", new Date(System.currentTimeMillis() - 3 * 24 * 60 * 60 * 1000));
+            housingTransaction.setPaymentMethod("银行转账");
+            housingTransaction.setNote("11月房租");
+            housingTransaction.setImagePath("content://com.zjf.fincialsystem.fileprovider/external_files/Pictures/JPEG_20231115_123045.jpg");
+            transactions.add(housingTransaction);
             
             // 为交易记录设置分类信息
             for (Transaction transaction : transactions) {
@@ -585,11 +695,36 @@ public class MockInterceptor implements Interceptor {
                     category.setType(Category.TYPE_EXPENSE);
                     category.setIcon("ic_shopping");
                     category.setColor("#4CAF50");
+                } else if (transaction.getCategoryId() == 3) {
+                    category.setName("交通");
+                    category.setType(Category.TYPE_EXPENSE);
+                    category.setIcon("ic_transport");
+                    category.setColor("#2196F3");
+                } else if (transaction.getCategoryId() == 4) {
+                    category.setName("住房");
+                    category.setType(Category.TYPE_EXPENSE);
+                    category.setIcon("ic_home");
+                    category.setColor("#9C27B0");
+                } else if (transaction.getCategoryId() == 5) {
+                    category.setName("娱乐");
+                    category.setType(Category.TYPE_EXPENSE);
+                    category.setIcon("ic_entertainment");
+                    category.setColor("#FFC107");
                 } else if (transaction.getCategoryId() == 6) {
                     category.setName("工资");
                     category.setType(Category.TYPE_INCOME);
                     category.setIcon("ic_salary");
                     category.setColor("#3F51B5");
+                } else if (transaction.getCategoryId() == 7) {
+                    category.setName("奖金");
+                    category.setType(Category.TYPE_INCOME);
+                    category.setIcon("ic_bonus");
+                    category.setColor("#E91E63");
+                } else if (transaction.getCategoryId() == 8) {
+                    category.setName("理财");
+                    category.setType(Category.TYPE_INCOME);
+                    category.setIcon("ic_investment");
+                    category.setColor("#009688");
                 }
                 transaction.setCategory(category);
             }
@@ -908,6 +1043,21 @@ public class MockInterceptor implements Interceptor {
             category.setType(Category.TYPE_EXPENSE);
             category.setIcon("ic_entertainment");
             category.setColor("#FFC107");
+        } else if (categoryId == 6) {
+            category.setName("工资");
+            category.setType(Category.TYPE_INCOME);
+            category.setIcon("ic_salary");
+            category.setColor("#3F51B5");
+        } else if (categoryId == 7) {
+            category.setName("奖金");
+            category.setType(Category.TYPE_INCOME);
+            category.setIcon("ic_bonus");
+            category.setColor("#E91E63");
+        } else if (categoryId == 8) {
+            category.setName("理财");
+            category.setType(Category.TYPE_INCOME);
+            category.setIcon("ic_investment");
+            category.setColor("#009688");
         }
         
         return category;

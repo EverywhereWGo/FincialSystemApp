@@ -7,6 +7,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
+import android.widget.NumberPicker;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -29,6 +30,7 @@ import com.zjf.fincialsystem.repository.RepositoryCallback;
 import com.zjf.fincialsystem.ui.adapter.BudgetAdapter;
 import com.zjf.fincialsystem.utils.DateUtils;
 import com.zjf.fincialsystem.utils.LogUtils;
+import com.zjf.fincialsystem.utils.StatusBarUtils;
 import com.zjf.fincialsystem.utils.TokenManager;
 
 import java.util.ArrayList;
@@ -60,6 +62,9 @@ public class BudgetFragment extends Fragment implements BudgetAdapter.OnBudgetCl
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         
+        // 设置状态栏
+        setupStatusBar();
+        
         // 初始化仓库
         initRepositories();
         
@@ -71,6 +76,21 @@ public class BudgetFragment extends Fragment implements BudgetAdapter.OnBudgetCl
         
         // 加载预算数据
         loadBudgetData();
+    }
+    
+    /**
+     * 设置状态栏
+     */
+    private void setupStatusBar() {
+        try {
+            if (getActivity() != null) {
+                // 使用StatusBarUtils统一处理状态栏，确保与编辑界面一致
+                StatusBarUtils.setImmersiveStatusBar(getActivity(), true);
+                LogUtils.d(TAG, "状态栏设置完成");
+            }
+        } catch (Exception e) {
+            LogUtils.e(TAG, "设置状态栏失败：" + e.getMessage(), e);
+        }
     }
     
     /**
@@ -100,14 +120,19 @@ public class BudgetFragment extends Fragment implements BudgetAdapter.OnBudgetCl
             binding.btnPrevious.setOnClickListener(v -> {
                 currentDate.add(Calendar.MONTH, -1);
                 updatePeriodText();
-                loadBudgetData();
+                loadBudgetDataWithoutClear();
             });
             
             // 设置下个月点击事件
             binding.btnNext.setOnClickListener(v -> {
                 currentDate.add(Calendar.MONTH, 1);
                 updatePeriodText();
-                loadBudgetData();
+                loadBudgetDataWithoutClear();
+            });
+            
+            // 设置日期文本点击事件，弹出日期选择对话框
+            binding.tvPeriod.setOnClickListener(v -> {
+                showMonthYearPicker();
             });
             
             // 设置添加预算按钮
@@ -214,6 +239,59 @@ public class BudgetFragment extends Fragment implements BudgetAdapter.OnBudgetCl
     }
     
     /**
+     * 加载预算数据 - 切换日期时使用，不清空当前数据避免闪烁
+     */
+    private void loadBudgetDataWithoutClear() {
+        try {
+            if (budgetRepository == null) {
+                LogUtils.e(TAG, "预算仓库为空，无法加载预算数据");
+                return;
+            }
+            
+            // 不显示加载中状态，保持当前数据显示
+            // 只有在当前没有显示内容（如首次加载或显示错误）时才显示加载状态
+            if (binding.recyclerView.getVisibility() != View.VISIBLE) {
+                showLoading();
+            }
+            
+            // 获取月度预算数据
+            budgetRepository.getBudgets(Budget.PERIOD_MONTHLY, new RepositoryCallback<List<Budget>>() {
+                @Override
+                public void onSuccess(List<Budget> data) {
+                    if (getActivity() == null || !isAdded()) {
+                        return;
+                    }
+                    
+                    getActivity().runOnUiThread(() -> {
+                        if (data != null && !data.isEmpty()) {
+                            // 平滑更新数据，不会闪烁
+                            adapter.updateDataSmoothly(data);
+                            showContent();
+                        } else {
+                            showEmpty();
+                        }
+                    });
+                }
+                
+                @Override
+                public void onError(String error) {
+                    if (getActivity() == null || !isAdded()) {
+                        return;
+                    }
+                    
+                    LogUtils.e(TAG, "加载预算数据失败：" + error);
+                    getActivity().runOnUiThread(() -> {
+                        showError();
+                    });
+                }
+            });
+        } catch (Exception e) {
+            LogUtils.e(TAG, "加载预算数据失败：" + e.getMessage(), e);
+            showError();
+        }
+    }
+    
+    /**
      * 显示预算设置对话框
      * @param budget 要编辑的预算，为null表示新增
      */
@@ -225,7 +303,11 @@ public class BudgetFragment extends Fragment implements BudgetAdapter.OnBudgetCl
                 getParentFragmentManager().beginTransaction()
                     .replace(R.id.fragment_container, fragment)
                     .addToBackStack(null)
-                    .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
+                    .setCustomAnimations(
+                            R.anim.slide_in_right,
+                            R.anim.slide_out_left,
+                            R.anim.slide_in_left,
+                            R.anim.slide_out_right)
                     .commit();
             }
         } catch (Exception e) {
@@ -327,6 +409,64 @@ public class BudgetFragment extends Fragment implements BudgetAdapter.OnBudgetCl
             binding.errorLayout.setVisibility(View.GONE);
             binding.emptyLayout.setVisibility(View.VISIBLE);
         }
+    }
+    
+    /**
+     * 显示年月选择器
+     */
+    private void showMonthYearPicker() {
+        if (getContext() == null) {
+            return;
+        }
+        
+        // 创建一个对话框
+        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_month_year_picker, null);
+        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        builder.setView(dialogView);
+        
+        // 获取对话框中的年份和月份选择器
+        NumberPicker monthPicker = dialogView.findViewById(R.id.month_picker);
+        NumberPicker yearPicker = dialogView.findViewById(R.id.year_picker);
+        
+        // 配置月份选择器
+        String[] months = new String[]{"1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"};
+        monthPicker.setMinValue(1);
+        monthPicker.setMaxValue(12);
+        monthPicker.setDisplayedValues(months);
+        
+        // 配置年份选择器
+        int currentYear = Calendar.getInstance().get(Calendar.YEAR);
+        yearPicker.setMinValue(currentYear - 5); // 允许选择从5年前到5年后的年份
+        yearPicker.setMaxValue(currentYear + 5);
+        
+        // 设置初始选中的年份和月份
+        yearPicker.setValue(currentDate.get(Calendar.YEAR));
+        monthPicker.setValue(currentDate.get(Calendar.MONTH) + 1); // 月份是从0开始的，所以+1
+        
+        // 创建并显示对话框
+        AlertDialog dialog = builder.create();
+        
+        // 设置确定按钮
+        dialogView.findViewById(R.id.btn_ok).setOnClickListener(v -> {
+            // 更新日期
+            currentDate.set(Calendar.YEAR, yearPicker.getValue());
+            currentDate.set(Calendar.MONTH, monthPicker.getValue() - 1); // 月份是从0开始的，所以-1
+            currentDate.set(Calendar.DAY_OF_MONTH, 1); // 设置为当月第一天
+            
+            // 更新UI
+            updatePeriodText();
+            loadBudgetDataWithoutClear();
+            
+            // 关闭对话框
+            dialog.dismiss();
+        });
+        
+        // 设置取消按钮
+        dialogView.findViewById(R.id.btn_cancel).setOnClickListener(v -> {
+            dialog.dismiss();
+        });
+        
+        dialog.show();
     }
     
     @Override

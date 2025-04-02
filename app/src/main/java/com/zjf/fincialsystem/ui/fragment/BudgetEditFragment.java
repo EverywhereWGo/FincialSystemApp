@@ -25,6 +25,7 @@ import com.zjf.fincialsystem.repository.CategoryRepository;
 import com.zjf.fincialsystem.repository.RepositoryCallback;
 import com.zjf.fincialsystem.utils.LogUtils;
 import com.zjf.fincialsystem.utils.TokenManager;
+import com.zjf.fincialsystem.utils.StatusBarUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -99,6 +100,9 @@ public class BudgetEditFragment extends Fragment {
 
         // 设置沉浸式状态栏
         setupStatusBar();
+        
+        // 设置标题栏顶部内边距，避免与状态栏重叠
+        adjustLayoutToolbarPadding();
 
         // 初始化仓库
         initRepositories();
@@ -128,12 +132,18 @@ public class BudgetEditFragment extends Fragment {
      * 设置沉浸式状态栏
      */
     private void setupStatusBar() {
-        if (getActivity() != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            getActivity().getWindow().getDecorView().setSystemUiVisibility(
-                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                            | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                            | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
-            getActivity().getWindow().setStatusBarColor(Color.TRANSPARENT);
+        try {
+            if (getActivity() != null) {
+                // 使用StatusBarUtils类统一处理状态栏，避免不同处理方式导致的闪烁
+                StatusBarUtils.setImmersiveStatusBar(getActivity(), true);
+                
+                // 注意：这里不要修改Window的透明度和系统UI可见性，
+                // 以避免与主界面设置不同导致的切换闪烁
+                
+                LogUtils.d(TAG, "状态栏设置完成");
+            }
+        } catch (Exception e) {
+            LogUtils.e(TAG, "设置状态栏失败：" + e.getMessage(), e);
         }
     }
 
@@ -433,6 +443,25 @@ public class BudgetEditFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
         binding = null;
+    }
+
+    /**
+     * 调整标题栏的顶部内边距，避免与状态栏重叠
+     */
+    private void adjustLayoutToolbarPadding() {
+        try {
+            if (getContext() == null || binding == null || binding.layoutToolbar == null) return;
+            
+            // 使用StatusBarUtils统一处理工具栏调整，确保一致性
+            StatusBarUtils.adjustToolbarForStatusBar(binding.layoutToolbar, getContext());
+            
+            // 由于没有直接的binding.scrollView，我们不再尝试调整滚动视图
+            // 直接处理工具栏就足够避免闪烁问题
+            
+            LogUtils.d(TAG, "已调整标题栏布局");
+        } catch (Exception e) {
+            LogUtils.e(TAG, "调整标题栏内边距时出错: " + e.getMessage());
+        }
     }
 
     /**

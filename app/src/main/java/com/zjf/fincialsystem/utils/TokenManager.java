@@ -147,13 +147,17 @@ public class TokenManager {
     
     /**
      * 获取用户ID
-     * @return 用户ID，未登录则返回-1
+     * @return 用户ID，未登录则返回默认值
      */
     public long getUserId() {
-        if (!isLoggedIn()) {
-            return -1;
-        }
+        // 先检查登录状态，但即使未登录也继续尝试获取ID
+        boolean isUserLoggedIn = isLoggedIn();
+        LogUtils.d("TokenManager", "检查登录状态: " + isUserLoggedIn);
+        
         // 从SharedPreferences中获取用户ID
-        return sharedPreferences.getLong(Constants.PREF_KEY_USER_ID, -1);
+        long userId = sharedPreferences.getLong(Constants.PREF_KEY_USER_ID, 1); // 默认返回1而不是-1
+        LogUtils.d("TokenManager", "获取到的用户ID: " + userId);
+        
+        return userId;
     }
 } 

@@ -24,6 +24,7 @@ public class Transaction implements Serializable {
     private String description;
     private String note; // 备注
     private String imagePath; // 图片路径
+    private String paymentMethod; // 支付方式
     private long createdAt;
     private long updatedAt;
     
@@ -163,6 +164,14 @@ public class Transaction implements Serializable {
     
     public void setImagePath(String imagePath) {
         this.imagePath = imagePath;
+    }
+    
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+    
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
     }
     
     @Override

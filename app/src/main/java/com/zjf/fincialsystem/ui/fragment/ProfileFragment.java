@@ -1,17 +1,26 @@
 package com.zjf.fincialsystem.ui.fragment;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 
 import com.zjf.fincialsystem.R;
 import com.zjf.fincialsystem.databinding.FragmentProfileBinding;
+import com.zjf.fincialsystem.model.User;
+import com.zjf.fincialsystem.repository.RepositoryCallback;
+import com.zjf.fincialsystem.repository.UserRepository;
+import com.zjf.fincialsystem.ui.activity.ImageViewActivity;
+import com.zjf.fincialsystem.ui.activity.LoginActivity;
 import com.zjf.fincialsystem.utils.LogUtils;
+import com.zjf.fincialsystem.utils.TokenManager;
 
 /**
  * 个人资料Fragment
@@ -20,6 +29,7 @@ public class ProfileFragment extends Fragment {
     
     private static final String TAG = "ProfileFragment";
     private FragmentProfileBinding binding;
+    private UserRepository userRepository;
     
     @Nullable
     @Override
@@ -31,6 +41,9 @@ public class ProfileFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        
+        // 初始化仓库
+        userRepository = new UserRepository(requireContext());
         
         // 初始化视图
         initViews();
@@ -47,7 +60,8 @@ public class ProfileFragment extends Fragment {
             // 设置标题
             binding.tvTitle.setText(R.string.profile);
             
-            // TODO: 初始化其他视图
+            // 设置点击事件
+            setupClickListeners();
             
         } catch (Exception e) {
             LogUtils.e(TAG, "初始化视图失败：" + e.getMessage(), e);
@@ -55,14 +69,197 @@ public class ProfileFragment extends Fragment {
     }
     
     /**
+     * 设置各种点击事件
+     */
+    private void setupClickListeners() {
+        // 头像点击事件
+        binding.ivAvatar.setOnClickListener(v -> {
+            try {
+                // 跳转到图片查看页面
+                Intent intent = new Intent(requireContext(), ImageViewActivity.class);
+                // 传递图像资源ID
+                intent.putExtra(ImageViewActivity.EXTRA_IMAGE_RES_ID, R.drawable.ic_person);
+                startActivity(intent);
+            } catch (Exception e) {
+                LogUtils.e(TAG, "打开头像查看失败：" + e.getMessage(), e);
+                Toast.makeText(requireContext(), "打开头像查看失败", Toast.LENGTH_SHORT).show();
+            }
+        });
+        
+        // 编辑资料
+        binding.cardEditProfile.setOnClickListener(v -> {
+            // TODO: 跳转到编辑个人资料页面
+            Toast.makeText(requireContext(), "编辑个人资料功能待实现", Toast.LENGTH_SHORT).show();
+        });
+        
+        // 修改密码
+        binding.cardChangePassword.setOnClickListener(v -> {
+            // TODO: 跳转到修改密码页面
+            Toast.makeText(requireContext(), "修改密码功能待实现", Toast.LENGTH_SHORT).show();
+        });
+        
+        // 登录历史
+        binding.cardLoginHistory.setOnClickListener(v -> {
+            // TODO: 跳转到登录历史页面
+            Toast.makeText(requireContext(), "登录历史功能待实现", Toast.LENGTH_SHORT).show();
+        });
+        
+        // 关于
+        binding.cardAbout.setOnClickListener(v -> {
+            // TODO: 跳转到关于页面
+            Toast.makeText(requireContext(), "关于页面待实现", Toast.LENGTH_SHORT).show();
+        });
+        
+        // 退出登录
+        binding.btnLogout.setOnClickListener(v -> logout());
+    }
+    
+    /**
      * 加载数据
      */
     private void loadData() {
         try {
-            // TODO: 加载用户资料数据
+            // 显示加载中
+            showLoading(true);
+            
+            // 获取用户ID
+            long userId = TokenManager.getInstance().getUserId();
+            
+            // 如果用户ID为-1，表示未获取到ID，但不一定是未登录状态
+            if (userId == -1) {
+                LogUtils.e(TAG, "未获取到用户ID，使用默认值");
+                userId = 1; // 使用默认ID而不是直接退出登录
+                
+                // 检查是否真的未登录
+                if (!TokenManager.getInstance().isLoggedIn()) {
+                    LogUtils.e(TAG, "用户确实未登录");
+                    // 显示提示而不是立即退出
+                    Toast.makeText(requireContext(), "用户未登录，请重新登录", Toast.LENGTH_SHORT).show();
+                    // 延迟执行退出操作，给用户一定反应时间
+                    binding.getRoot().postDelayed(this::logout, 1500);
+                    return;
+                }
+            }
+            
+            // 从服务器获取用户信息（模拟）
+            fetchUserData(userId);
             
         } catch (Exception e) {
             LogUtils.e(TAG, "加载数据失败：" + e.getMessage(), e);
+            showLoading(false);
+        }
+    }
+    
+    /**
+     * 获取用户数据（模拟）
+     */
+    private void fetchUserData(long userId) {
+        // 这里模拟从服务器获取用户数据
+        // 在真实项目中，应该调用API获取用户数据
+        
+        // 模拟网络延迟
+        binding.getRoot().postDelayed(() -> {
+            // 模拟用户数据
+            User mockUser = createMockUser(userId);
+            
+            // 更新UI
+            updateUI(mockUser);
+            
+            // 隐藏加载中
+            showLoading(false);
+        }, 1000); // 模拟1秒的网络延迟
+    }
+    
+    /**
+     * 创建模拟用户数据
+     */
+    private User createMockUser(long userId) {
+        User user = new User();
+        user.setId(userId);
+        user.setUsername("user_" + userId);
+        user.setNickname("测试用户");
+        user.setEmail("user" + userId + "@example.com");
+        user.setPhone("138****" + (1000 + userId));
+        return user;
+    }
+    
+    /**
+     * 更新UI
+     */
+    private void updateUI(User user) {
+        if (binding == null) return;
+        
+        // 设置用户名
+        binding.tvUsername.setText(user.getNickname());
+        
+        // 设置邮箱
+        binding.tvEmail.setText(user.getEmail());
+        
+        // 设置手机号
+        binding.tvPhone.setText(user.getPhone());
+    }
+    
+    /**
+     * 退出登录
+     */
+    private void logout() {
+        new AlertDialog.Builder(requireContext())
+            .setTitle(R.string.logout)
+            .setMessage(R.string.logout_confirm)
+            .setPositiveButton(R.string.confirm, (dialog, which) -> {
+                // 执行退出登录操作
+                performLogout();
+            })
+            .setNegativeButton(R.string.cancel, null)
+            .show();
+    }
+    
+    /**
+     * 执行退出登录操作
+     */
+    private void performLogout() {
+        try {
+            // 显示加载中
+            showLoading(true);
+            
+            // 调用UserRepository的logout方法
+            userRepository.logout();
+            
+            // 延迟一下，显示退出登录的效果
+            binding.getRoot().postDelayed(this::handleLogout, 800);
+            
+        } catch (Exception e) {
+            LogUtils.e(TAG, "退出登录失败：" + e.getMessage(), e);
+            showLoading(false);
+            Toast.makeText(requireContext(), "退出登录失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    /**
+     * 处理退出登录后的操作
+     */
+    private void handleLogout() {
+        try {
+            if (getActivity() != null) {
+                // 跳转到登录页面
+                Intent intent = new Intent(getActivity(), LoginActivity.class);
+                // 清除堆栈中的其他活动
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                startActivity(intent);
+                getActivity().finish();
+            }
+        } catch (Exception e) {
+            LogUtils.e(TAG, "处理退出登录后的操作失败：" + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 显示/隐藏加载中
+     */
+    private void showLoading(boolean show) {
+        if (binding != null) {
+            binding.progressBar.setVisibility(show ? View.VISIBLE : View.GONE);
+            binding.contentLayout.setVisibility(show ? View.GONE : View.VISIBLE);
         }
     }
     

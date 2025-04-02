@@ -15,8 +15,8 @@ import com.zjf.fincialsystem.R;
 import com.zjf.fincialsystem.databinding.ActivityMainBinding;
 import com.zjf.fincialsystem.ui.fragment.BudgetFragment;
 import com.zjf.fincialsystem.ui.fragment.DashboardFragment;
+import com.zjf.fincialsystem.ui.fragment.NotificationFragment;
 import com.zjf.fincialsystem.ui.fragment.ProfileFragment;
-import com.zjf.fincialsystem.ui.fragment.TransactionFragment;
 import com.zjf.fincialsystem.utils.LogUtils;
 import com.zjf.fincialsystem.network.NetworkManager;
 import com.zjf.fincialsystem.utils.SharedPreferencesUtils;
@@ -105,6 +105,18 @@ public class MainActivity extends AppCompatActivity {
                         // 重新设置token
                         TokenManager.getInstance().setToken(token);
                         TokenManager.getInstance().setExpiryTime(expiryTime);
+
+                        // 确保用户ID被设置
+                        long userId = SharedPreferencesUtils.getLongPreference(this,
+                                Constants.PREF_NAME, Constants.PREF_KEY_USER_ID, 1);
+                        // 如果没有找到用户ID，设置默认值1，避免-1导致的自动退出登录
+                        if (userId <= 0) {
+                            userId = 1;
+                            // 保存这个默认值
+                            SharedPreferencesUtils.setLongPreference(this,
+                                Constants.PREF_NAME, Constants.PREF_KEY_USER_ID, userId);
+                        }
+                        LogUtils.d("MainActivity", "用户ID: " + userId);
                         
                         LogUtils.d("MainActivity", "Token已恢复，状态: " + TokenManager.getInstance().isLoggedIn());
                     } else {
@@ -131,8 +143,8 @@ public class MainActivity extends AppCompatActivity {
             if (itemId == R.id.nav_home) {
                 switchFragment(new DashboardFragment());
                 return true;
-            } else if (itemId == R.id.nav_transaction) {
-                switchFragment(new TransactionFragment());
+            } else if (itemId == R.id.nav_notification) {
+                switchFragment(new NotificationFragment());
                 return true;
             } else if (itemId == R.id.nav_budget) {
                 switchFragment(new BudgetFragment());
@@ -149,6 +161,11 @@ public class MainActivity extends AppCompatActivity {
             // 跳转到记账页面
             startActivity(new Intent(this, AddTransactionActivity.class));
         });
+        
+        // 修正FAB位置（如果使用ConstraintLayout）
+        if (binding.bottomAppBar != null) {
+            binding.fab.setTranslationY(-getResources().getDimensionPixelSize(R.dimen.fab_offset));
+        }
     }
     
     /**

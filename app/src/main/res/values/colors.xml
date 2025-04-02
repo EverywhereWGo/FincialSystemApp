@@ -29,6 +29,8 @@
     <color name="balance">#2196F3</color>
     <color name="success">#4CAF50</color>
     <color name="warning">#FFC107</color>
+    <color name="colorExpense">#F44336</color>
+    <color name="colorIncome">#4CAF50</color>
     
     <!-- Material 默认颜色 -->
     <color name="purple_200">#BB86FC</color>

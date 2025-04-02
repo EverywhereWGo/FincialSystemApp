@@ -33,6 +33,7 @@ import com.zjf.fincialsystem.ui.adapter.CategoryAdapter;
 import com.zjf.fincialsystem.utils.ColorUtil;
 import com.zjf.fincialsystem.utils.IconUtil;
 import com.zjf.fincialsystem.utils.LogUtils;
+import com.zjf.fincialsystem.utils.StatusBarUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -81,18 +82,17 @@ public class CategoryManageActivity extends AppCompatActivity {
      * 设置沉浸式状态栏
      */
     private void setupStatusBar() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            getWindow().getDecorView().setSystemUiVisibility(
-                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                    | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
-        }
+        // 使用StatusBarUtils工具类设置沉浸式状态栏
+        StatusBarUtils.setImmersiveStatusBar(this, true);
     }
     
     /**
      * 初始化视图
      */
     private void initViews() {
+        // 设置工具栏与状态栏的距离
+        adjustToolbarPadding();
+        
         // 设置工具栏
         setSupportActionBar(binding.toolbar);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
@@ -147,6 +147,43 @@ public class CategoryManageActivity extends AppCompatActivity {
         
         // 设置添加按钮点击事件
         binding.fabAddCategory.setOnClickListener(v -> showAddCategoryDialog());
+    }
+    
+    /**
+     * 调整工具栏与状态栏的距离
+     */
+    private void adjustToolbarPadding() {
+        try {
+            // 获取状态栏高度
+            int statusBarHeight = StatusBarUtils.getStatusBarHeight(this);
+            
+            // 设置AppBarLayout的顶部内边距
+            if (binding.toolbar != null && binding.toolbar.getParent() instanceof View) {
+                View appBarLayout = (View) binding.toolbar.getParent();
+                
+                appBarLayout.setPadding(
+                        appBarLayout.getPaddingLeft(),
+                        statusBarHeight, // 添加状态栏高度的顶部内边距
+                        appBarLayout.getPaddingRight(),
+                        appBarLayout.getPaddingBottom()
+                );
+                
+                LogUtils.d(TAG, "已调整工具栏内边距，状态栏高度: " + statusBarHeight + "px");
+            } else {
+                // 备用方法：直接调整工具栏
+                if (binding.toolbar != null) {
+                    binding.toolbar.setPadding(
+                            binding.toolbar.getPaddingLeft(),
+                            statusBarHeight + binding.toolbar.getPaddingTop(),
+                            binding.toolbar.getPaddingRight(),
+                            binding.toolbar.getPaddingBottom()
+                    );
+                    LogUtils.d(TAG, "使用备用方法调整工具栏内边距");
+                }
+            }
+        } catch (Exception e) {
+            LogUtils.e(TAG, "调整工具栏内边距时出错: " + e.getMessage());
+        }
     }
     
     /**

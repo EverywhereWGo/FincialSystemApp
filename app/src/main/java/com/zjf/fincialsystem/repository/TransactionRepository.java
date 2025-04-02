@@ -319,4 +319,83 @@ public class TransactionRepository {
             }
         });
     }
+    
+    /**
+     * 获取单个交易记录详情
+     * @param transactionId 交易记录ID
+     * @param callback 回调
+     */
+    public void getTransaction(long transactionId, final RepositoryCallback<Transaction> callback) {
+        // 检查网络状态
+        if (NetworkUtils.isNetworkAvailable(context)) {
+            // 有网络连接，从网络获取数据
+            apiService.getTransaction(transactionId).enqueue(new Callback<ApiResponse<Transaction>>() {
+                @Override
+                public void onResponse(Call<ApiResponse<Transaction>> call, Response<ApiResponse<Transaction>> response) {
+                    if (response.isSuccessful() && response.body() != null) {
+                        ApiResponse<Transaction> apiResponse = response.body();
+                        if (apiResponse.isSuccess()) {
+                            Transaction transaction = apiResponse.getData();
+                            
+                            // 返回数据
+                            callback.onSuccess(transaction);
+                        } else {
+                            callback.onError(apiResponse.getMessage());
+                        }
+                    } else {
+                        callback.onError("网络请求失败");
+                    }
+                }
+
+                @Override
+                public void onFailure(Call<ApiResponse<Transaction>> call, Throwable t) {
+                    LogUtils.e(TAG, "获取交易记录详情失败", t);
+                    
+                    // 网络请求失败，尝试从缓存获取
+                    if (cacheManager.isCacheValid("transactions")) {
+                        List<Transaction> cachedTransactions = cacheManager.getTransactions();
+                        if (cachedTransactions != null && !cachedTransactions.isEmpty()) {
+                            // 查找指定ID的交易记录
+                            for (Transaction transaction : cachedTransactions) {
+                                if (transaction.getId() == transactionId) {
+                                    callback.onSuccess(transaction);
+                                    
+                                    // 标记为从缓存获取
+                                    callback.isCacheData(true);
+                                    return;
+                                }
+                            }
+                            callback.onError("找不到指定的交易记录");
+                        } else {
+                            callback.onError("获取交易记录详情失败: " + t.getMessage());
+                        }
+                    } else {
+                        callback.onError("获取交易记录详情失败: " + t.getMessage());
+                    }
+                }
+            });
+        } else {
+            // 无网络连接，从缓存获取数据
+            if (cacheManager.isCacheValid("transactions")) {
+                List<Transaction> cachedTransactions = cacheManager.getTransactions();
+                if (cachedTransactions != null && !cachedTransactions.isEmpty()) {
+                    // 查找指定ID的交易记录
+                    for (Transaction transaction : cachedTransactions) {
+                        if (transaction.getId() == transactionId) {
+                            callback.onSuccess(transaction);
+                            
+                            // 标记为从缓存获取
+                            callback.isCacheData(true);
+                            return;
+                        }
+                    }
+                    callback.onError("找不到指定的交易记录");
+                } else {
+                    callback.onError("无网络连接且无缓存数据");
+                }
+            } else {
+                callback.onError("无网络连接且无缓存数据");
+            }
+        }
+    }
 } 

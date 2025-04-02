@@ -134,6 +134,19 @@ public class Category implements Serializable {
         return type == TYPE_EXPENSE;
     }
     
+    /**
+     * 获取图标名称
+     * 用于在界面中显示对应的drawable资源
+     * @return 图标资源名称
+     */
+    public String getIconName() {
+        if (icon == null || icon.isEmpty()) {
+            // 返回默认图标名称
+            return type == TYPE_INCOME ? "ic_income" : "ic_expense";
+        }
+        return icon;
+    }
+    
     @Override
     public String toString() {
         return "Category{" +

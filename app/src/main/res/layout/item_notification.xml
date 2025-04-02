@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="4dp"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="2dp">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="12dp">
+
+        <!-- 通知图标 -->
+        <ImageView
+            android:id="@+id/iv_icon"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:contentDescription="@string/notification"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="@color/colorPrimary"
+            tools:src="@drawable/ic_budget" />
+
+        <!-- 未读标记 -->
+        <View
+            android:id="@+id/view_unread"
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:background="@drawable/bg_circle_primary"
+            app:layout_constraintEnd_toEndOf="@id/iv_icon"
+            app:layout_constraintTop_toTopOf="@id/iv_icon" />
+
+        <!-- 通知标题 -->
+        <TextView
+            android:id="@+id/tv_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toStartOf="@id/tv_time"
+            app:layout_constraintStart_toEndOf="@id/iv_icon"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="预算超支提醒" />
+
+        <!-- 通知时间 -->
+        <TextView
+            android:id="@+id/tv_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="10分钟前" />
+
+        <!-- 通知内容 -->
+        <TextView
+            android:id="@+id/tv_content"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/iv_icon"
+            app:layout_constraintTop_toBottomOf="@id/tv_title"
+            tools:text="您的餐饮预算已超支20%，请注意合理消费。" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</androidx.cardview.widget.CardView> 

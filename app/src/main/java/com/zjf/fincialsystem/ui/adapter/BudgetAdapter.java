@@ -41,6 +41,37 @@ public class BudgetAdapter extends RecyclerView.Adapter<BudgetAdapter.BudgetView
         notifyDataSetChanged();
     }
 
+    /**
+     * 平滑更新数据，避免闪烁
+     * @param newBudgetList 新的预算列表
+     */
+    public void updateDataSmoothly(List<Budget> newBudgetList) {
+        if (newBudgetList == null) {
+            return;
+        }
+        
+        // 如果当前列表为空，直接设置数据
+        if (budgetList.isEmpty()) {
+            setData(newBudgetList);
+            return;
+        }
+        
+        // 保留原始大小供后续比较
+        int originalSize = budgetList.size();
+        
+        // 清空原始数据但不通知UI更新
+        budgetList.clear();
+        budgetList.addAll(newBudgetList);
+        
+        // 如果数据条数相同，使用notifyItemRangeChanged避免全局刷新
+        if (originalSize == newBudgetList.size()) {
+            notifyItemRangeChanged(0, newBudgetList.size());
+        } else {
+            // 数据条数不同，使用notifyDataSetChanged
+            notifyDataSetChanged();
+        }
+    }
+
     public void addBudget(Budget budget) {
         this.budgetList.add(budget);
         notifyItemInserted(budgetList.size() - 1);

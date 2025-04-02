@@ -19,16 +19,21 @@ public class IconUtil {
     private static final List<IconItem> ICON_LIST = new ArrayList<>();
     
     static {
-        // 初始化图标映射
-        ICON_MAP.put("ic_food", R.drawable.ic_note); // 替换为实际图标
-        ICON_MAP.put("ic_shopping", R.drawable.ic_description);
-        ICON_MAP.put("ic_transport", R.drawable.ic_history);
-        ICON_MAP.put("ic_home", R.drawable.ic_home);
-        ICON_MAP.put("ic_entertainment", R.drawable.ic_edit);
-        ICON_MAP.put("ic_salary", R.drawable.ic_money);
-        ICON_MAP.put("ic_bonus", R.drawable.ic_description);
-        ICON_MAP.put("ic_investment", R.drawable.ic_money);
-        ICON_MAP.put("ic_parttime", R.drawable.ic_badge);
+        // 初始化图标映射 - 使用已有资源
+        ICON_MAP.put("ic_food", R.drawable.ic_food); // 餐饮图标
+        ICON_MAP.put("ic_shopping", R.drawable.ic_shopping); // 购物图标
+        ICON_MAP.put("ic_transport", R.drawable.ic_transport); // 交通图标
+        ICON_MAP.put("ic_home", R.drawable.ic_home); // 住房图标
+        ICON_MAP.put("ic_entertainment", R.drawable.ic_edit); // 娱乐图标
+        ICON_MAP.put("ic_salary", R.drawable.ic_money); // 工资图标
+        ICON_MAP.put("ic_bonus", R.drawable.ic_notification); // 奖金图标
+        ICON_MAP.put("ic_investment", R.drawable.ic_money); // 理财图标
+        ICON_MAP.put("ic_parttime", R.drawable.ic_badge); // 兼职图标
+        
+        // 添加默认图标映射
+        ICON_MAP.put("ic_income", R.drawable.ic_income); // 默认收入图标
+        ICON_MAP.put("ic_expense", R.drawable.ic_expense); // 默认支出图标
+        ICON_MAP.put("ic_category_default", R.drawable.ic_category); // 默认类别图标
         
         // 初始化图标列表
         for (Map.Entry<String, Integer> entry : ICON_MAP.entrySet()) {

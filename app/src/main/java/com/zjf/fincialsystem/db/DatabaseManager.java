@@ -29,6 +29,7 @@ public class DatabaseManager {
     private CategoryDao categoryDao;
     private TransactionDao transactionDao;
     private LoginHistoryDao loginHistoryDao;
+    private NotificationDao notificationDao;
     
     /**
      * 获取单例实例
@@ -87,6 +88,7 @@ public class DatabaseManager {
             categoryDao = new CategoryDao(database);
             transactionDao = new TransactionDao(database);
             loginHistoryDao = new LoginHistoryDao(database);
+            notificationDao = new NotificationDao(database);
             
             // 创建测试用户
             createTestUsers();
@@ -154,6 +156,16 @@ public class DatabaseManager {
     }
     
     /**
+     * 获取通知 DAO
+     */
+    public NotificationDao getNotificationDao() {
+        if (notificationDao == null) {
+            notificationDao = new NotificationDao(database);
+        }
+        return notificationDao;
+    }
+    
+    /**
      * 检查数据库状态
      * @return 数据库状态信息
      */
@@ -184,6 +196,7 @@ public class DatabaseManager {
             status.append("UserDao: ").append(userDao != null ? "已创建" : "未创建").append("\n");
             status.append("CategoryDao: ").append(categoryDao != null ? "已创建" : "未创建").append("\n");
             status.append("TransactionDao: ").append(transactionDao != null ? "已创建" : "未创建").append("\n");
+            status.append("NotificationDao: ").append(notificationDao != null ? "已创建" : "未创建").append("\n");
             
         } catch (Exception e) {
             status.append("检查状态时出错: ").append(e.getMessage());

@@ -68,6 +68,12 @@ public interface TransactionApiService {
     Call<ApiResponse<Boolean>> deleteTransaction(@Path("transactionId") long transactionId);
     
     /**
+     * 获取单个交易记录详情
+     */
+    @GET("api/transactions/{transactionId}")
+    Call<ApiResponse<Transaction>> getTransaction(@Path("transactionId") long transactionId);
+    
+    /**
      * 获取收入/支出统计
      */
     @GET("api/transactions/statistics")

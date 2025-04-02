@@ -67,6 +67,7 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-livedata:2.3.1'
     implementation 'androidx.navigation:navigation-fragment:2.3.5'
     implementation 'androidx.navigation:navigation-ui:2.3.5'
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
     
     // 网络请求
     implementation 'com.squareup.okhttp3:okhttp:4.11.0'

@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -15,7 +16,9 @@ import com.zjf.fincialsystem.model.Transaction;
 import com.zjf.fincialsystem.repository.RepositoryCallback;
 import com.zjf.fincialsystem.repository.TransactionRepository;
 import com.zjf.fincialsystem.ui.adapter.TransactionAdapter;
+import com.zjf.fincialsystem.ui.activity.TransactionDetailActivity;
 import com.zjf.fincialsystem.utils.LogUtils;
+import com.zjf.fincialsystem.utils.StatusBarUtils;
 
 import java.util.List;
 
@@ -52,18 +55,22 @@ public class TransactionListActivity extends AppCompatActivity {
      * 设置沉浸式状态栏
      */
     private void setupStatusBar() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            getWindow().getDecorView().setSystemUiVisibility(
-                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                    | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
-        }
+        // 使用StatusBarUtils工具类设置沉浸式状态栏
+        StatusBarUtils.setImmersiveStatusBar(this, true);
     }
     
     /**
      * 初始化视图
      */
     private void initViews() {
+        // 设置状态栏占位视图高度
+        View statusBarPlaceholder = binding.statusBarPlaceholder;
+        if (statusBarPlaceholder != null) {
+            ViewGroup.LayoutParams layoutParams = statusBarPlaceholder.getLayoutParams();
+            layoutParams.height = StatusBarUtils.getStatusBarHeight(this);
+            statusBarPlaceholder.setLayoutParams(layoutParams);
+        }
+        
         // 设置标题栏（修改实现，避免与应用主题ActionBar冲突）
         toolbar = binding.toolbar;
         toolbar.setTitle(R.string.transactions);
@@ -77,9 +84,14 @@ public class TransactionListActivity extends AppCompatActivity {
         
         // 设置点击事件
         adapter.setOnItemClickListener(transaction -> {
-            // 点击交易记录详情
-            Toast.makeText(this, transaction.getDescription(), Toast.LENGTH_SHORT).show();
-            // 这里可以添加跳转到交易详情页的逻辑
+            try {
+                // 跳转到交易详情页
+                Intent intent = TransactionDetailActivity.createIntent(this, transaction.getId());
+                startActivity(intent);
+            } catch (Exception e) {
+                LogUtils.e(TAG, "跳转到交易详情页失败：" + e.getMessage(), e);
+                Toast.makeText(this, R.string.operation_failed, Toast.LENGTH_SHORT).show();
+            }
         });
         
         // 设置添加按钮点击事件

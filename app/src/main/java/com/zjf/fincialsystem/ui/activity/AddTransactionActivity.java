@@ -1,6 +1,7 @@
 package com.zjf.fincialsystem.ui.activity;
 
 import android.app.DatePickerDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -27,6 +28,7 @@ import com.zjf.fincialsystem.model.Category;
 import com.zjf.fincialsystem.model.Transaction;
 import com.zjf.fincialsystem.utils.DateUtils;
 import com.zjf.fincialsystem.utils.LogUtils;
+import com.zjf.fincialsystem.utils.StatusBarUtils;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -34,6 +36,8 @@ import java.util.Date;
 import java.util.List;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+
+import com.bumptech.glide.Glide;
 
 /**
  * 添加交易记录Activity
@@ -43,9 +47,19 @@ public class AddTransactionActivity extends AppCompatActivity {
     private static final String TAG = "AddTransactionActivity";
     private static final int REQUEST_IMAGE_CAPTURE = 1;
     private static final int REQUEST_PICK_IMAGE = 2;
+    private static final String EXTRA_TRANSACTION = "extra_transaction";
     private ActivityAddTransactionBinding binding;
     private List<Category> categories = new ArrayList<>();
     private Date selectedDate = new Date();
+    
+    /**
+     * 创建启动此活动的意图（用于编辑现有交易）
+     */
+    public static Intent createIntent(Context context, Transaction transaction) {
+        Intent intent = new Intent(context, AddTransactionActivity.class);
+        intent.putExtra(EXTRA_TRANSACTION, transaction);
+        return intent;
+    }
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,21 +71,31 @@ public class AddTransactionActivity extends AppCompatActivity {
         binding = ActivityAddTransactionBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         
+        // 检查是否是编辑模式
+        Transaction existingTransaction = null;
+        if (getIntent().hasExtra(EXTRA_TRANSACTION)) {
+            existingTransaction = (Transaction) getIntent().getSerializableExtra(EXTRA_TRANSACTION);
+            if (existingTransaction != null) {
+                // 设置标题为"编辑交易"
+                binding.tvTitle.setText(R.string.edit_transaction);
+            }
+        }
+        
         // 初始化视图
         initViews();
+        
+        // 如果是编辑模式，填充现有数据
+        if (existingTransaction != null) {
+            fillExistingTransactionData(existingTransaction);
+        }
     }
     
     /**
      * 设置沉浸式状态栏
      */
     private void setupStatusBar() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            getWindow().getDecorView().setSystemUiVisibility(
-                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                    | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
-            getWindow().setStatusBarColor(Color.TRANSPARENT);
-        }
+        // 使用StatusBarUtils工具类设置沉浸式状态栏
+        com.zjf.fincialsystem.utils.StatusBarUtils.setImmersiveStatusBar(this, true);
     }
     
     /**
@@ -79,6 +103,9 @@ public class AddTransactionActivity extends AppCompatActivity {
      */
     private void initViews() {
         try {
+            // 设置状态栏高度，确保顶部导航栏不会被状态栏遮挡
+            adjustTopLayoutPadding();
+            
             // 设置返回按钮点击事件
             binding.btnBack.setOnClickListener(v -> onBackPressed());
             
@@ -129,6 +156,54 @@ public class AddTransactionActivity extends AppCompatActivity {
             
         } catch (Exception e) {
             LogUtils.e(TAG, "初始化视图失败：" + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 调整顶部布局的内边距，确保不被状态栏遮挡
+     */
+    private void adjustTopLayoutPadding() {
+        try {
+            // 获取状态栏高度
+            int statusBarHeight = com.zjf.fincialsystem.utils.StatusBarUtils.getStatusBarHeight(this);
+            
+            // 直接获取滚动视图
+            View statusBarGradient = binding.getRoot().findViewById(R.id.status_bar_gradient);
+            if (statusBarGradient != null && statusBarGradient.getParent() instanceof View) {
+                View scrollView = (View) statusBarGradient.getParent();
+                
+                if (scrollView instanceof androidx.core.widget.NestedScrollView) {
+                    View contentLayout = ((androidx.core.widget.NestedScrollView) scrollView).getChildAt(0);
+                    if (contentLayout != null) {
+                        contentLayout.setPadding(
+                                contentLayout.getPaddingLeft(),
+                                statusBarHeight + contentLayout.getPaddingTop(), // 添加状态栏高度
+                                contentLayout.getPaddingRight(),
+                                contentLayout.getPaddingBottom()
+                        );
+                    }
+                }
+            } else {
+                // 备用方法：直接为Activity根布局设置内边距
+                View rootView = binding.getRoot();
+                if (rootView != null) {
+                    View contentView = rootView.findViewById(android.R.id.content);
+                    if (contentView == null) contentView = rootView;
+                    
+                    contentView.setPadding(
+                            contentView.getPaddingLeft(),
+                            statusBarHeight + contentView.getPaddingTop(),
+                            contentView.getPaddingRight(),
+                            contentView.getPaddingBottom()
+                    );
+                }
+                
+                LogUtils.d(TAG, "使用备用方法调整顶部布局内边距");
+            }
+            
+            LogUtils.d(TAG, "已调整顶部布局内边距，状态栏高度: " + statusBarHeight + "px");
+        } catch (Exception e) {
+            LogUtils.e(TAG, "调整顶部布局内边距时出错: " + e.getMessage());
         }
     }
     
@@ -470,6 +545,55 @@ public class AddTransactionActivity extends AppCompatActivity {
         binding.ivImage.setVisibility(View.GONE);
         binding.btnClearImage.setVisibility(View.GONE);
         Toast.makeText(this, "图片已清除", Toast.LENGTH_SHORT).show();
+    }
+    
+    /**
+     * 填充现有交易数据
+     */
+    private void fillExistingTransactionData(Transaction transaction) {
+        try {
+            // 设置交易类型
+            if (transaction.getType() == Transaction.TYPE_INCOME) {
+                binding.rbIncome.setChecked(true);
+            } else {
+                binding.rbExpense.setChecked(true);
+            }
+            
+            // 设置金额
+            binding.etAmount.setText(String.valueOf(transaction.getAmount()));
+            
+            // 设置日期
+            selectedDate = transaction.getDate();
+            binding.etDate.setText(DateUtils.formatDate(selectedDate));
+            
+            // 设置备注
+            if (transaction.getNote() != null) {
+                binding.etNote.setText(transaction.getNote());
+            }
+            
+            // 设置分类（需要在分类加载完成后选择）
+            if (transaction.getCategory() != null) {
+                // 保存分类ID，在分类加载完成后选中
+                selectedCategory = transaction.getCategory().getName();
+                // TODO: 在分类加载完成后选中对应的分类卡片
+            }
+            
+            // 设置图片（如果有）
+            String imagePath = transaction.getImagePath();
+            if (imagePath != null && !imagePath.isEmpty()) {
+                binding.ivImage.setVisibility(View.VISIBLE);
+                binding.btnClearImage.setVisibility(View.VISIBLE);
+                
+                // 加载图片
+                Glide.with(this)
+                        .load(imagePath)
+                        .into(binding.ivImage);
+            }
+            
+            LogUtils.d(TAG, "已填充现有交易数据：" + transaction.toString());
+        } catch (Exception e) {
+            LogUtils.e(TAG, "填充现有交易数据失败：" + e.getMessage(), e);
+        }
     }
     
     @Override

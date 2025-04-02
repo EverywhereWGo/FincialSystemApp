@@ -91,6 +91,13 @@
                 android:textColor="@color/text_primary"
                 android:textSize="16sp"
                 android:textStyle="bold"
+                android:padding="8dp"
+                android:background="@drawable/bg_clickable_date"
+                android:foreground="?attr/selectableItemBackground"
+                android:drawableEnd="@drawable/ic_calendar"
+                android:drawablePadding="8dp"
+                android:clickable="true"
+                android:focusable="true"
                 tools:text="2023年10月" />
 
             <Button

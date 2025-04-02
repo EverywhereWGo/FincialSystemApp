@@ -12,6 +12,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
 import com.github.mikephil.charting.animation.Easing;
+import com.github.mikephil.charting.charts.BarChart;
+import com.github.mikephil.charting.charts.PieChart;
 import com.github.mikephil.charting.components.Legend;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.components.YAxis;
@@ -165,35 +167,47 @@ public class ReportActivity extends AppCompatActivity {
      * 初始化柱状图
      */
     private void setupBarChart() {
-        binding.barChart.getDescription().setEnabled(false);
-        binding.barChart.setPinchZoom(false);
-        binding.barChart.setDrawBarShadow(false);
-        binding.barChart.setDrawGridBackground(false);
+        BarChart chart = binding.barChart;
         
-        XAxis xAxis = binding.barChart.getXAxis();
+        // 设置图表样式
+        chart.getDescription().setEnabled(false);
+        chart.setTouchEnabled(true);
+        chart.setDragEnabled(true);
+        chart.setScaleEnabled(true);
+        chart.setPinchZoom(true);
+        chart.setDrawGridBackground(false);
+        chart.setDrawBorders(false);
+        chart.setHighlightPerTapEnabled(true);
+        chart.getLegend().setEnabled(false);
+        
+        // 设置数值显示在柱状图上方
+        chart.setDrawValueAboveBar(true);
+        
+        // 增加底部边距，确保X轴标签完整显示
+        chart.setExtraBottomOffset(20f);
+        
+        // 设置X轴
+        XAxis xAxis = chart.getXAxis();
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
         xAxis.setDrawGridLines(false);
         xAxis.setGranularity(1f);
-        xAxis.setLabelCount(7);
+        xAxis.setTextColor(getResources().getColor(R.color.text_secondary));
+        // 设置X轴标签数量上限，防止标签重叠
+        xAxis.setLabelCount(7, true);
+        // 在标签过多时使标签倾斜
+        xAxis.setLabelRotationAngle(45f);
         
-        YAxis leftAxis = binding.barChart.getAxisLeft();
-        leftAxis.setLabelCount(8, false);
-        leftAxis.setPosition(YAxis.YAxisLabelPosition.OUTSIDE_CHART);
-        leftAxis.setSpaceTop(15f);
+        // 设置左Y轴
+        YAxis leftAxis = chart.getAxisLeft();
+        leftAxis.setDrawGridLines(true);
         leftAxis.setAxisMinimum(0f);
+        leftAxis.setTextColor(getResources().getColor(R.color.text_secondary));
         
-        YAxis rightAxis = binding.barChart.getAxisRight();
-        rightAxis.setEnabled(false);
+        // 禁用右Y轴
+        chart.getAxisRight().setEnabled(false);
         
-        Legend l = binding.barChart.getLegend();
-        l.setVerticalAlignment(Legend.LegendVerticalAlignment.BOTTOM);
-        l.setHorizontalAlignment(Legend.LegendHorizontalAlignment.CENTER);
-        l.setOrientation(Legend.LegendOrientation.HORIZONTAL);
-        l.setDrawInside(false);
-        l.setForm(Legend.LegendForm.SQUARE);
-        l.setFormSize(9f);
-        l.setTextSize(11f);
-        l.setXEntrySpace(4f);
+        // 设置无数据文本
+        chart.setNoDataText(getString(R.string.no_data));
     }
     
     /**
@@ -426,7 +440,8 @@ public class ReportActivity extends AppCompatActivity {
                                 double amount = statisticsRepository.getDoubleValue(item, "amount", 0.0);
                                 
                                 entries.add(new BarEntry(i, (float) amount));
-                                xLabels.add(date);
+                                // 将日期格式转换为"月/日"的简短形式
+                                xLabels.add(DateUtils.formatShortDate(date));
                             }
                             
                             // 设置柱状图数据

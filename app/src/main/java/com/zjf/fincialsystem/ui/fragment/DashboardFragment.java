@@ -13,6 +13,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.core.content.ContextCompat;
+import androidx.core.widget.NestedScrollView;
 
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.XAxis;
@@ -39,6 +40,7 @@ import com.zjf.fincialsystem.utils.NumberUtils;
 import com.zjf.fincialsystem.network.NetworkManager;
 import com.zjf.fincialsystem.utils.TokenManager;
 import com.zjf.fincialsystem.ui.activity.MainActivity;
+import com.zjf.fincialsystem.ui.activity.TransactionDetailActivity;
 
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
@@ -63,6 +65,9 @@ public class DashboardFragment extends Fragment {
     private StatisticsRepository statisticsRepository;
     private UserRepository userRepository;
     private boolean isDataFromCache = false;
+    private boolean isDataLoaded = false;
+    private int scrollX = 0;
+    private int scrollY = 0;
     
     @Nullable
     @Override
@@ -81,8 +86,16 @@ public class DashboardFragment extends Fragment {
         // 初始化视图
         initViews();
         
+        // 添加滚动监听
+        setupScrollListener();
+        
         // 加载数据
-        loadData();
+        if (!isDataLoaded) {
+            loadData();
+        } else {
+            // 数据已加载，恢复滚动位置
+            restoreScrollPosition();
+        }
     }
     
     /**
@@ -106,15 +119,6 @@ public class DashboardFragment extends Fragment {
         // 输出用户登录状态日志
         LogUtils.d(TAG, "用户登录状态: " + TokenManager.getInstance().isLoggedIn());
         LogUtils.d(TAG, "统计仓库初始化成功");
-    }
-    
-    @Override
-    public void onResume() {
-        super.onResume();
-        LogUtils.d(TAG, "DashboardFragment恢复，刷新数据");
-        
-        // 延迟加载数据，确保TokenManager完全初始化
-        new Handler().postDelayed(this::loadData, 500);
     }
     
     /**
@@ -167,8 +171,14 @@ public class DashboardFragment extends Fragment {
         
         // 设置交易记录点击事件
         transactionAdapter.setOnItemClickListener(transaction -> {
-            Toast.makeText(requireContext(), transaction.getDescription(), Toast.LENGTH_SHORT).show();
-            // TODO: 跳转到交易详情页
+            try {
+                // 跳转到交易详情页
+                Intent intent = TransactionDetailActivity.createIntent(requireContext(), transaction.getId());
+                startActivity(intent);
+            } catch (Exception e) {
+                LogUtils.e(TAG, "跳转到交易详情页失败：" + e.getMessage(), e);
+                Toast.makeText(requireContext(), R.string.operation_failed, Toast.LENGTH_SHORT).show();
+            }
         });
         
         // 设置重试按钮点击事件
@@ -190,14 +200,20 @@ public class DashboardFragment extends Fragment {
         
         // 设置图表样式
         chart.getDescription().setEnabled(false);
+        
+        // 恢复图表的触摸功能
         chart.setTouchEnabled(true);
         chart.setDragEnabled(true);
         chart.setScaleEnabled(true);
         chart.setPinchZoom(true);
+        
         chart.setDrawGridBackground(false);
         chart.setDrawBorders(false);
         chart.setHighlightPerTapEnabled(true);
         chart.getLegend().setEnabled(false);
+        
+        // 增加底部边距，确保X轴标签完整显示
+        chart.setExtraBottomOffset(20f);
         
         // 设置X轴
         XAxis xAxis = chart.getXAxis();
@@ -205,6 +221,10 @@ public class DashboardFragment extends Fragment {
         xAxis.setDrawGridLines(false);
         xAxis.setGranularity(1f);
         xAxis.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary));
+        // 设置X轴标签数量上限，防止标签重叠
+        xAxis.setLabelCount(7, true);
+        // 在标签过多时使标签倾斜
+        xAxis.setLabelRotationAngle(45f);
         
         // 设置左Y轴
         YAxis leftAxis = chart.getAxisLeft();
@@ -214,6 +234,91 @@ public class DashboardFragment extends Fragment {
         
         // 禁用右Y轴
         chart.getAxisRight().setEnabled(false);
+        
+        // 添加自定义触摸监听器，处理滑动冲突
+        chart.setOnTouchListener((v, event) -> {
+            // 当用户按下或移动时，阻止父视图拦截触摸事件
+            if (event.getAction() == android.view.MotionEvent.ACTION_DOWN ||
+                    event.getAction() == android.view.MotionEvent.ACTION_MOVE) {
+                // 告诉父视图不要拦截触摸事件
+                v.getParent().requestDisallowInterceptTouchEvent(true);
+            }
+            // 当用户抬起或取消触摸时，恢复父视图拦截权限
+            else if (event.getAction() == android.view.MotionEvent.ACTION_UP ||
+                    event.getAction() == android.view.MotionEvent.ACTION_CANCEL) {
+                v.getParent().requestDisallowInterceptTouchEvent(false);
+            }
+            
+            // 返回false让图表处理事件
+            return false;
+        });
+    }
+    
+    /**
+     * 设置滚动监听
+     */
+    private void setupScrollListener() {
+        if (binding != null) {
+            try {
+                // 为NestedScrollView添加滚动监听器
+                NestedScrollView scrollView = (NestedScrollView) binding.getRoot();
+                scrollView.setOnScrollChangeListener(new NestedScrollView.OnScrollChangeListener() {
+                    @Override
+                    public void onScrollChange(NestedScrollView v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
+                        // 保存当前滚动位置
+                        if (Math.abs(DashboardFragment.this.scrollY - scrollY) > 50) {
+                            // 只在滚动变化明显时记录日志，减少日志量
+                            LogUtils.d(TAG, "滚动位置发生变化: 从 " + oldScrollY + " 到 " + scrollY);
+                        }
+                        DashboardFragment.this.scrollX = scrollX;
+                        DashboardFragment.this.scrollY = scrollY;
+                    }
+                });
+                LogUtils.d(TAG, "滚动监听器设置成功");
+            } catch (Exception e) {
+                LogUtils.e(TAG, "设置滚动监听器失败: " + e.getMessage(), e);
+            }
+        } else {
+            LogUtils.e(TAG, "binding为null，无法设置滚动监听器");
+        }
+    }
+    
+    /**
+     * 恢复滚动位置
+     */
+    private void restoreScrollPosition() {
+        if (binding != null) {
+            // 只有当滚动位置不为0时才恢复，即从其他页面返回
+            if (scrollY > 0) {
+                LogUtils.d(TAG, "恢复滚动位置: scrollX=" + scrollX + ", scrollY=" + scrollY);
+                // 使用post方法确保在下一个UI循环中执行滚动操作，此时视图已完全绘制
+                new Handler().postDelayed(() -> {
+                    if (binding != null) {
+                        NestedScrollView scrollView = (NestedScrollView) binding.getRoot();
+                        scrollView.scrollTo(scrollX, scrollY);
+                        LogUtils.d(TAG, "滚动位置已恢复: scrollY=" + scrollY);
+                    }
+                }, 200); // 延迟200毫秒，确保视图已完全绘制
+            } else {
+                LogUtils.d(TAG, "滚动位置为顶部，无需恢复");
+            }
+        }
+    }
+    
+    @Override
+    public void onResume() {
+        super.onResume();
+        LogUtils.d(TAG, "DashboardFragment恢复，刷新数据");
+        
+        if (!isDataLoaded) {
+            // 首次加载数据
+            // 延迟加载数据，确保TokenManager完全初始化
+            new Handler().postDelayed(this::loadData, 500);
+        } else {
+            // 数据已加载，从其他页面返回时只恢复滚动位置
+            LogUtils.d(TAG, "数据已加载，仅恢复滚动位置");
+            restoreScrollPosition();
+        }
     }
     
     /**
@@ -254,6 +359,9 @@ public class DashboardFragment extends Fragment {
         loadConsumptionTrendData();
         // 加载最近交易
         loadRecentTransactions();
+        
+        // 标记数据已加载
+        isDataLoaded = true;
     }
     
     /**
@@ -318,8 +426,12 @@ public class DashboardFragment extends Fragment {
                             if (income > 0) {
                                 int progress = (int) (expense * 100 / income);
                                 binding.progressBarExpense.setProgress(progress);
+                                // 设置支出占收入比例文本
+                                binding.tvExpensePercentage.setText(getString(R.string.expense_percentage, progress));
                             } else {
                                 binding.progressBarExpense.setProgress(0);
+                                // 收入为0时显示0%
+                                binding.tvExpensePercentage.setText(getString(R.string.expense_percentage, 0));
                             }
                             
                             showLoading(false);
@@ -327,6 +439,15 @@ public class DashboardFragment extends Fragment {
                             // 显示缓存数据提示
                             if (isDataFromCache) {
                                 Toast.makeText(requireContext(), "显示缓存数据 - 网络不可用", Toast.LENGTH_SHORT).show();
+                            }
+                            
+                            // 数据加载完成，如果所有数据都已加载，则恢复滚动位置
+                            if (isDataLoaded && getActivity() != null && isAdded()) {
+                                new Handler().postDelayed(() -> {
+                                    if (binding != null) {
+                                        restoreScrollPosition();
+                                    }
+                                }, 300); // 等待300毫秒，确保所有UI元素都已渲染完成
                             }
                         } catch (Exception e) {
                             LogUtils.e(TAG, "设置收支概览数据失败", e);
@@ -386,7 +507,8 @@ public class DashboardFragment extends Fragment {
                                     double amount = NumberUtils.toDouble(item.get("amount"), 0.0);
                                     
                                     entries.add(new Entry(i, (float) amount));
-                                    xAxisLabels.add(date);
+                                    // 将日期格式转换为"月/日"的简短形式
+                                    xAxisLabels.add(DateUtils.formatShortDate(date));
                                 }
                             }
                         }
@@ -413,6 +535,10 @@ public class DashboardFragment extends Fragment {
                             // 设置数据
                             LineData lineData = new LineData(dataSet);
                             chart.setData(lineData);
+                            
+                            // 使用简短的动画，避免过长的动画影响用户体验
+                            chart.animateX(300); // 使用300毫秒的短动画
+                            chart.setVisibleXRangeMaximum(entries.size());
                             
                             // 刷新图表
                             chart.invalidate();
@@ -498,8 +624,42 @@ public class DashboardFragment extends Fragment {
     }
     
     @Override
+    public void onPause() {
+        super.onPause();
+        // 页面暂停时记录滚动位置
+        if (binding != null) {
+            NestedScrollView scrollView = (NestedScrollView) binding.getRoot();
+            scrollX = scrollView.getScrollX();
+            scrollY = scrollView.getScrollY();
+            LogUtils.d(TAG, "页面暂停，记录滚动位置: scrollX=" + scrollX + ", scrollY=" + scrollY);
+        }
+    }
+    
+    @Override
     public void onDestroyView() {
         super.onDestroyView();
         binding = null;
+    }
+    
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        // 保存滚动位置和数据加载状态
+        outState.putInt("scrollX", scrollX);
+        outState.putInt("scrollY", scrollY);
+        outState.putBoolean("isDataLoaded", isDataLoaded);
+        LogUtils.d(TAG, "保存实例状态: scrollY=" + scrollY + ", isDataLoaded=" + isDataLoaded);
+    }
+    
+    @Override
+    public void onViewStateRestored(@Nullable Bundle savedInstanceState) {
+        super.onViewStateRestored(savedInstanceState);
+        // 恢复滚动位置和数据加载状态
+        if (savedInstanceState != null) {
+            scrollX = savedInstanceState.getInt("scrollX", 0);
+            scrollY = savedInstanceState.getInt("scrollY", 0);
+            isDataLoaded = savedInstanceState.getBoolean("isDataLoaded", false);
+            LogUtils.d(TAG, "恢复实例状态: scrollY=" + scrollY + ", isDataLoaded=" + isDataLoaded);
+        }
     }
 } 
