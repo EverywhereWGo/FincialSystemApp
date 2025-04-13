@@ -462,7 +462,31 @@ public class DashboardFragment extends Fragment {
                     
                     requireActivity().runOnUiThread(() -> {
                         LogUtils.e(TAG, "获取收支概览失败: " + error);
-                        showError(true);
+                        // 检查是否是服务器返回空数据的错误信息
+                        if (error != null && error.contains("服务器返回空数据")) {
+                            // 这种情况视为正常，只是没有数据，显示0值
+                            try {
+                                // 设置数据为0
+                                binding.tvIncome.setText(NumberUtils.formatAmountWithCurrency(0.0));
+                                binding.tvExpense.setText(NumberUtils.formatAmountWithCurrency(0.0));
+                                binding.tvBalance.setText(NumberUtils.formatAmountWithCurrency(0.0));
+                                
+                                // 设置进度条为0
+                                binding.progressBarExpense.setProgress(0);
+                                binding.tvExpensePercentage.setText(getString(R.string.expense_percentage, 0));
+                                
+                                // 隐藏加载中
+                                showLoading(false);
+                                // 隐藏错误
+                                showError(false);
+                            } catch (Exception e) {
+                                LogUtils.e(TAG, "设置零值失败", e);
+                                showError(true);
+                            }
+                        } else {
+                            // 真正的错误情况
+                            showError(true);
+                        }
                     });
                 }
                 

@@ -120,4 +120,22 @@ public class SharedPreferencesUtils {
     public static boolean containsKey(Context context, String prefsName, String key) {
         return getSharedPreferences(context, prefsName).contains(key);
     }
+    
+    /**
+     * 保存用户ID到SharedPreferences
+     * @param context 上下文
+     * @param userId 用户ID
+     */
+    public static void saveUserId(Context context, long userId) {
+        setLongPreference(context, Constants.PREF_NAME, Constants.PREF_KEY_USER_ID, userId);
+    }
+    
+    /**
+     * 获取用户ID
+     * @param context 上下文
+     * @return 用户ID，默认返回-1
+     */
+    public static long getUserId(Context context) {
+        return getLongPreference(context, Constants.PREF_NAME, Constants.PREF_KEY_USER_ID, -1);
+    }
 } 

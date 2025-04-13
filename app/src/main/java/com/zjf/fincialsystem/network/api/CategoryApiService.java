@@ -22,33 +22,40 @@ public interface CategoryApiService {
     
     /**
      * 获取分类列表
-     * @param type 分类类型（收入/支出/全部）
      */
-    @GET("api/categories")
-    Call<ApiResponse<List<Category>>> getCategories(@Query("type") int type);
+    @GET("finance/category/list")
+    Call<ApiResponse<List<Category>>> getCategories(@Query("pageNum") Integer pageNum, 
+                                                   @Query("pageSize") Integer pageSize,
+                                                   @Query("name") String name,
+                                                   @Query("type") Integer type);
     
     /**
-     * 获取分类列表（按类型）
-     * @param type 分类类型（收入/支出/全部）
+     * 获取分类详情
      */
-    @GET("api/categories/by-type")
-    Call<ApiResponse<List<Category>>> getCategoriesByType(@Query("type") Integer type);
+    @GET("finance/category/{id}")
+    Call<ApiResponse<Category>> getCategoryById(@Path("id") long id);
+    
+    /**
+     * 获取指定类型的分类
+     */
+    @GET("finance/category/type/{type}")
+    Call<ApiResponse<List<Category>>> getCategoriesByType(@Path("type") Integer type);
     
     /**
      * 添加分类
      */
-    @POST("api/categories")
-    Call<ApiResponse<Category>> addCategory(@Body AddCategoryRequest request);
+    @POST("finance/category")
+    Call<ApiResponse<String>> addCategory(@Body AddCategoryRequest request);
     
     /**
      * 更新分类
      */
-    @PUT("api/categories/{categoryId}")
-    Call<ApiResponse<Category>> updateCategory(@Path("categoryId") long categoryId, @Body Category category);
+    @PUT("finance/category")
+    Call<ApiResponse<String>> updateCategory(@Body Category category);
     
     /**
      * 删除分类
      */
-    @DELETE("api/categories/{categoryId}")
-    Call<ApiResponse<Boolean>> deleteCategory(@Path("categoryId") long categoryId);
+    @DELETE("finance/category/{ids}")
+    Call<ApiResponse<String>> deleteCategory(@Path("ids") String ids);
 } 

@@ -6,10 +6,17 @@ package com.zjf.fincialsystem.network.model;
 public class RegisterRequest {
     private String username;
     private String password;
-    private String name;
+    private String nickname;
     private String email;
     private String phone;
-    private String verificationCode;
+    
+    public RegisterRequest(String username, String password, String nickname, String email, String phone) {
+        this.username = username;
+        this.password = password;
+        this.nickname = nickname;
+        this.email = email;
+        this.phone = phone;
+    }
     
     public String getUsername() {
         return username;
@@ -27,12 +34,12 @@ public class RegisterRequest {
         this.password = password;
     }
     
-    public String getName() {
-        return name;
+    public String getNickname() {
+        return nickname;
     }
     
-    public void setName(String name) {
-        this.name = name;
+    public void setNickname(String nickname) {
+        this.nickname = nickname;
     }
     
     public String getEmail() {
@@ -49,13 +56,5 @@ public class RegisterRequest {
     
     public void setPhone(String phone) {
         this.phone = phone;
-    }
-    
-    public String getVerificationCode() {
-        return verificationCode;
-    }
-    
-    public void setVerificationCode(String verificationCode) {
-        this.verificationCode = verificationCode;
     }
 } 

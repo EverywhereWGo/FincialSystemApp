@@ -49,6 +49,8 @@ public class TransactionDao extends BaseDao {
                 return -1;
             }
             
+            LogUtils.w(TAG, "注意：当前使用的是本地数据库存储，而不是调用API！应当改为调用API接口");
+            
             ContentValues values = new ContentValues();
             values.put("user_id", transaction.getUserId());
             values.put("amount", transaction.getAmount());

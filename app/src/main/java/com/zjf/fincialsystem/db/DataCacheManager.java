@@ -2,6 +2,7 @@ package com.zjf.fincialsystem.db;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Log;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -27,6 +28,7 @@ public class DataCacheManager {
     private static final String KEY_TRANSACTIONS = "transactions";
     private static final String KEY_BUDGETS = "budgets";
     private static final String KEY_STATISTICS = "statistics";
+    private static final String KEY_NOTIFICATIONS = "notifications";
     private static final String KEY_TIMESTAMP_PREFIX = "timestamp_";
     
     private static DataCacheManager instance;
@@ -102,6 +104,9 @@ public class DataCacheManager {
         } else if (key.equals(KEY_BUDGETS) || key.startsWith("budgets_")) {
             // 预算数据缓存时间较长
             return 12 * 60 * 60 * 1000; // 12小时
+        } else if (key.equals(KEY_NOTIFICATIONS) || key.startsWith("notifications_")) {
+            // 通知数据缓存时间适中
+            return 4 * 60 * 60 * 1000; // 4小时
         } else {
             // 默认缓存时间
             return 60 * 60 * 1000; // 1小时
@@ -190,6 +195,23 @@ public class DataCacheManager {
     public List<Budget> getBudgets() {
         Type type = new TypeToken<List<Budget>>(){}.getType();
         return getCache(KEY_BUDGETS, type, new ArrayList<>());
+    }
+    
+    /**
+     * 保存通知列表缓存
+     * @param notifications 通知列表
+     */
+    public void saveNotifications(List<com.zjf.fincialsystem.model.Notification> notifications) {
+        saveCache(KEY_NOTIFICATIONS, notifications);
+    }
+    
+    /**
+     * 获取通知列表缓存
+     * @return 通知列表，如无缓存则返回空列表
+     */
+    public List<com.zjf.fincialsystem.model.Notification> getNotifications() {
+        Type type = new TypeToken<List<com.zjf.fincialsystem.model.Notification>>(){}.getType();
+        return getCache(KEY_NOTIFICATIONS, type, new ArrayList<>());
     }
     
     /**
@@ -317,5 +339,64 @@ public class DataCacheManager {
         }
         
         return defaultValue;
+    }
+
+    /**
+     * 保存交易分类到缓存
+     * @param type 分类类型：0-支出分类，1-收入分类
+     * @param categories 交易分类列表
+     */
+    public void saveCategories(int type, List<Category> categories) {
+        if (categories == null || categories.isEmpty()) {
+            return;
+        }
+        
+        // 将分类列表转换为JSON
+        String json = gson.toJson(categories);
+        
+        // 确定缓存键名
+        String cacheKey = type == 0 ? "expense_categories" : "income_categories";
+        
+        // 保存到SharedPreferences
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putString(cacheKey, json);
+        editor.putLong(cacheKey + "_timestamp", System.currentTimeMillis());
+        editor.apply();
+        
+        LogUtils.d(TAG, "交易分类已缓存：" + cacheKey + "，共" + categories.size() + "条记录");
+    }
+
+    /**
+     * 从缓存获取交易分类
+     * @param type 分类类型：0-支出分类，1-收入分类
+     * @return 交易分类列表，如果没有缓存或缓存无效则返回null
+     */
+    public List<Category> getCategories(int type) {
+        // 确定缓存键名
+        String cacheKey = type == 0 ? "expense_categories" : "income_categories";
+        
+        // 判断缓存是否有效
+        if (!isCacheValid(cacheKey)) {
+            return null;
+        }
+        
+        try {
+            // 从SharedPreferences获取JSON
+            String json = sharedPreferences.getString(cacheKey, null);
+            if (json == null) {
+                return null;
+            }
+            
+            // 将JSON转换为分类列表
+            Type listType = new TypeToken<List<Category>>(){}.getType();
+            List<Category> categories = gson.fromJson(json, listType);
+            
+            LogUtils.d(TAG, "从缓存获取交易分类：" + cacheKey + "，共" + (categories != null ? categories.size() : 0) + "条记录");
+            
+            return categories;
+        } catch (Exception e) {
+            LogUtils.e(TAG, "从缓存获取交易分类失败：" + e.getMessage());
+            return null;
+        }
     }
 } 

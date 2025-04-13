@@ -2,6 +2,7 @@ package com.zjf.fincialsystem.model;
 
 import java.io.Serializable;
 import java.util.Date;
+import java.text.SimpleDateFormat;
 
 /**
  * 用户实体类
@@ -20,9 +21,9 @@ public class User implements Serializable {
     private String role;
     private long createdAt;
     private long updatedAt;
-    private Date lastLoginTime;
+    private String lastLoginTime;
     private int failedAttempts;
-    private Date lockedUntil;
+    private String lockedUntil;
     private String wechat;
     private String qq;
     
@@ -110,12 +111,33 @@ public class User implements Serializable {
         this.updatedAt = updatedAt;
     }
     
-    public Date getLastLoginTime() {
+    public String getLastLoginTime() {
         return lastLoginTime;
     }
     
-    public void setLastLoginTime(Date lastLoginTime) {
+    public void setLastLoginTime(String lastLoginTime) {
         this.lastLoginTime = lastLoginTime;
+    }
+    
+    public Date getLastLoginTimeAsDate() {
+        if (lastLoginTime == null) {
+            return null;
+        }
+        try {
+            SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            return format.parse(lastLoginTime);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+    
+    public void setLastLoginTime(Date lastLoginTime) {
+        if (lastLoginTime != null) {
+            SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            this.lastLoginTime = format.format(lastLoginTime);
+        } else {
+            this.lastLoginTime = null;
+        }
     }
     
     public int getFailedAttempts() {
@@ -126,12 +148,33 @@ public class User implements Serializable {
         this.failedAttempts = failedAttempts;
     }
     
-    public Date getLockedUntil() {
+    public String getLockedUntil() {
         return lockedUntil;
     }
     
-    public void setLockedUntil(Date lockedUntil) {
+    public void setLockedUntil(String lockedUntil) {
         this.lockedUntil = lockedUntil;
+    }
+    
+    public Date getLockedUntilAsDate() {
+        if (lockedUntil == null) {
+            return null;
+        }
+        try {
+            SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            return format.parse(lockedUntil);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+    
+    public void setLockedUntil(Date lockedUntil) {
+        if (lockedUntil != null) {
+            SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            this.lockedUntil = format.format(lockedUntil);
+        } else {
+            this.lockedUntil = null;
+        }
     }
     
     public String getWechat() {
@@ -170,7 +213,16 @@ public class User implements Serializable {
      * @return 是否锁定
      */
     public boolean isLocked() {
-        return lockedUntil != null && lockedUntil.after(new Date());
+        try {
+            if (lockedUntil == null) {
+                return false;
+            }
+            SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            Date lockDate = format.parse(lockedUntil);
+            return lockDate != null && lockDate.after(new Date());
+        } catch (Exception e) {
+            return false;
+        }
     }
     
     @Override

@@ -11,6 +11,7 @@ import retrofit2.http.Body;
 import retrofit2.http.GET;
 import retrofit2.http.POST;
 import retrofit2.http.Path;
+import retrofit2.http.PUT;
 
 import java.util.Map;
 
@@ -20,32 +21,38 @@ import java.util.Map;
 public interface UserApiService {
     
     /**
-     * 用户登录
+     * 财务系统用户登录
      */
-    @POST("api/login")
+    @POST("finance/auth/login")
     Call<ApiResponse<LoginResponse>> login(@Body LoginRequest request);
     
     /**
-     * 用户注册
+     * 财务系统用户注册
      */
-    @POST("api/register")
+    @POST("finance/auth/register")
     Call<ApiResponse<String>> register(@Body RegisterRequest request);
     
     /**
-     * 获取用户信息
+     * 获取财务系统用户信息
      */
-    @GET("api/user/{userId}")
-    Call<ApiResponse<Object>> getUserInfo(@Path("userId") long userId);
+    @GET("finance/user/{id}")
+    Call<ApiResponse<User>> getUserInfo(@Path("id") long userId);
     
     /**
      * 修改密码
      */
-    @POST("api/user/change-password")
-    Call<ApiResponse<Boolean>> changePassword(@Body Map<String, String> passwordData);
+    @PUT("finance/user/resetPwd")
+    Call<ApiResponse<Boolean>> changePassword(@Body Map<String, Object> passwordData);
 
     /**
      * 更新用户资料
      */
-    @POST("api/user/update-profile")
+    @PUT("system/user/profile")
     Call<ApiResponse<Boolean>> updateUserProfile(@Body User user);
+    
+    /**
+     * 财务系统退出登录
+     */
+    @POST("finance/auth/logout")
+    Call<ApiResponse<String>> logout(@Body Map<String, Object> logoutRequest);
 } 

@@ -13,6 +13,12 @@ public class LoginRequest {
         this.password = password;
     }
     
+    public LoginRequest(String username, String password, String deviceInfo) {
+        this.username = username;
+        this.password = password;
+        this.deviceInfo = deviceInfo;
+    }
+    
     public String getUsername() {
         return username;
     }

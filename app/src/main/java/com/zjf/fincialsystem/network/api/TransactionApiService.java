@@ -3,9 +3,10 @@ package com.zjf.fincialsystem.network.api;
 import com.zjf.fincialsystem.model.Transaction;
 import com.zjf.fincialsystem.network.ApiResponse;
 import com.zjf.fincialsystem.network.model.AddTransactionRequest;
+import com.zjf.fincialsystem.model.Category;
 
-import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import retrofit2.Call;
 import retrofit2.http.Body;
@@ -24,60 +25,81 @@ public interface TransactionApiService {
     /**
      * 获取交易记录列表
      */
-    @GET("api/transactions")
-    Call<ApiResponse<List<Transaction>>> getTransactions();
+    @GET("finance/transaction/list")
+    Call<ApiResponse<List<Transaction>>> getTransactions(
+            @Query("pageNum") Integer pageNum,
+            @Query("pageSize") Integer pageSize,
+            @Query("type") Integer type,
+            @Query("categoryId") Long categoryId,
+            @Query("transactionTime") Long transactionTime,
+            @Query("note") String note);
     
     /**
-     * 按类型获取交易记录列表
+     * 获取交易记录详情
      */
-    @GET("api/transactions")
-    Call<ApiResponse<List<Transaction>>> getTransactionsByType(@Query("type") int type);
+    @GET("finance/transaction/{id}")
+    Call<ApiResponse<Transaction>> getTransactionDetail(@Path("id") long id);
     
     /**
-     * 按日期范围获取交易记录
+     * 按月获取交易记录
      */
-    @GET("api/transactions/date")
-    Call<ApiResponse<List<Transaction>>> getTransactionsByDateRange(
-            @Query("startDate") long startDateMillis,
-            @Query("endDate") long endDateMillis);
+    @GET("finance/transaction/month")
+    Call<ApiResponse<List<Transaction>>> getTransactionsByMonth(
+            @Query("userId") Long userId,
+            @Query("startTime") Long startTime,
+            @Query("endTime") Long endTime,
+            @Query("type") Integer type);
     
     /**
-     * 获取最近交易记录
+     * 获取年度交易统计
      */
-    @GET("api/transactions/recent")
-    Call<ApiResponse<List<Transaction>>> getRecentTransactions(@Query("limit") int limit);
+    @GET("finance/transaction/stat/year")
+    Call<ApiResponse<List<Map<String, Object>>>> getYearlyStats(
+            @Query("userId") Long userId,
+            @Query("year") Integer year);
+    
+    /**
+     * 获取月度交易统计
+     */
+    @GET("finance/transaction/stat/month")
+    Call<ApiResponse<List<Map<String, Object>>>> getMonthlyStats(
+            @Query("userId") Long userId,
+            @Query("startTime") Long startTime,
+            @Query("endTime") Long endTime,
+            @Query("type") Integer type);
+    
+    /**
+     * 获取月度收支总额
+     */
+    @GET("finance/transaction/stat/amount")
+    Call<ApiResponse<Map<String, Object>>> getMonthAmount(
+            @Query("userId") Long userId,
+            @Query("startTime") Long startTime,
+            @Query("endTime") Long endTime);
     
     /**
      * 添加交易记录
      */
-    @POST("api/transactions")
-    Call<ApiResponse<Transaction>> addTransaction(@Body AddTransactionRequest request);
+    @POST("finance/transaction")
+    Call<ApiResponse<String>> addTransaction(@Body AddTransactionRequest request);
     
     /**
      * 更新交易记录
      */
-    @PUT("api/transactions/{transactionId}")
-    Call<ApiResponse<Transaction>> updateTransaction(
-            @Path("transactionId") long transactionId,
-            @Body Transaction transaction);
+    @PUT("finance/transaction")
+    Call<ApiResponse<String>> updateTransaction(@Body Transaction transaction);
     
     /**
      * 删除交易记录
      */
-    @DELETE("api/transactions/{transactionId}")
-    Call<ApiResponse<Boolean>> deleteTransaction(@Path("transactionId") long transactionId);
-    
+    @DELETE("finance/transaction/{ids}")
+    Call<ApiResponse<String>> deleteTransaction(@Path("ids") String ids);
+
     /**
-     * 获取单个交易记录详情
+     * 获取交易分类
+     * @param type 分类类型：0-支出分类，1-收入分类
+     * @return API响应
      */
-    @GET("api/transactions/{transactionId}")
-    Call<ApiResponse<Transaction>> getTransaction(@Path("transactionId") long transactionId);
-    
-    /**
-     * 获取收入/支出统计
-     */
-    @GET("api/transactions/statistics")
-    Call<ApiResponse<Object>> getStatistics(
-            @Query("startDate") long startDateMillis,
-            @Query("endDate") long endDateMillis);
+    @GET("finance/category/list")
+    Call<ApiResponse<List<Category>>> getCategories(@Query("type") Integer type);
 } 

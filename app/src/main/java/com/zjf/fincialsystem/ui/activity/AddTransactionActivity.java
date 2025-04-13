@@ -19,13 +19,14 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.zjf.fincialsystem.R;
 import com.zjf.fincialsystem.databinding.ActivityAddTransactionBinding;
-import com.zjf.fincialsystem.db.DatabaseManager;
-import com.zjf.fincialsystem.db.dao.TransactionDao;
 import com.zjf.fincialsystem.model.Category;
 import com.zjf.fincialsystem.model.Transaction;
+import com.zjf.fincialsystem.repository.TransactionRepository;
+import com.zjf.fincialsystem.ui.viewmodel.AddTransactionViewModel;
 import com.zjf.fincialsystem.utils.DateUtils;
 import com.zjf.fincialsystem.utils.LogUtils;
 import com.zjf.fincialsystem.utils.StatusBarUtils;
@@ -49,8 +50,14 @@ public class AddTransactionActivity extends AppCompatActivity {
     private static final int REQUEST_PICK_IMAGE = 2;
     private static final String EXTRA_TRANSACTION = "extra_transaction";
     private ActivityAddTransactionBinding binding;
+    private AddTransactionViewModel viewModel;
     private List<Category> categories = new ArrayList<>();
     private Date selectedDate = new Date();
+    
+    // 当前选中的分类
+    private String selectedCategory = null;
+    private View selectedCategoryView = null;
+    private long selectedCategoryId = -1;
     
     /**
      * 创建启动此活动的意图（用于编辑现有交易）
@@ -64,12 +71,17 @@ public class AddTransactionActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        LogUtils.d(TAG, "AddTransactionActivity onCreate 开始执行");
         
         // 设置沉浸式状态栏
         setupStatusBar();
         
         binding = ActivityAddTransactionBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        
+        // 初始化ViewModel
+        TransactionRepository repository = new TransactionRepository(this);
+        viewModel = new AddTransactionViewModel(repository);
         
         // 检查是否是编辑模式
         Transaction existingTransaction = null;
@@ -84,10 +96,15 @@ public class AddTransactionActivity extends AppCompatActivity {
         // 初始化视图
         initViews();
         
+        // 设置ViewModel的观察者
+        setupViewModelObservers();
+        
         // 如果是编辑模式，填充现有数据
         if (existingTransaction != null) {
             fillExistingTransactionData(existingTransaction);
         }
+        
+        LogUtils.d(TAG, "AddTransactionActivity onCreate 执行完成");
     }
     
     /**
@@ -112,7 +129,7 @@ public class AddTransactionActivity extends AppCompatActivity {
             // 设置保存按钮点击事件
             binding.btnSave.setOnClickListener(v -> saveTransaction());
             
-            // 初始化分类下拉框
+            // 初始化分类卡片
             initCategorySpinner();
             
             // 初始化日期选择 - 默认设置为当天日期
@@ -158,6 +175,41 @@ public class AddTransactionActivity extends AppCompatActivity {
         } catch (Exception e) {
             LogUtils.e(TAG, "初始化视图失败：" + e.getMessage(), e);
         }
+    }
+    
+    /**
+     * 设置ViewModel的观察者
+     */
+    private void setupViewModelObservers() {
+        // 观察支出分类数据
+        viewModel.getExpenseCategories().observe(this, expenseCategories -> {
+            if (expenseCategories != null && !expenseCategories.isEmpty()) {
+                LogUtils.d(TAG, "观察到支出分类数据更新，数量: " + expenseCategories.size());
+                // 可以使用这些分类数据来更新UI
+                if (binding.rbExpense.isChecked()) {
+                    // 如果当前显示的是支出界面，则更新分类
+                    categories = expenseCategories;
+                    // 更新UI显示这些分类
+                }
+            } else {
+                LogUtils.w(TAG, "观察到的支出分类数据为空");
+            }
+        });
+        
+        // 观察收入分类数据
+        viewModel.getIncomeCategories().observe(this, incomeCategories -> {
+            if (incomeCategories != null && !incomeCategories.isEmpty()) {
+                LogUtils.d(TAG, "观察到收入分类数据更新，数量: " + incomeCategories.size());
+                // 可以使用这些分类数据来更新UI
+                if (binding.rbIncome.isChecked()) {
+                    // 如果当前显示的是收入界面，则更新分类
+                    categories = incomeCategories;
+                    // 更新UI显示这些分类
+                }
+            } else {
+                LogUtils.w(TAG, "观察到的收入分类数据为空");
+            }
+        });
     }
     
     /**
@@ -229,24 +281,69 @@ public class AddTransactionActivity extends AppCompatActivity {
      */
     private void setupCategoryCardClickListeners() {
         // 设置所有分类卡片的点击事件
-        binding.cardFood.setOnClickListener(v -> selectCategory(v, "餐饮"));
-        binding.cardShopping.setOnClickListener(v -> selectCategory(v, "购物"));
-        binding.cardHousing.setOnClickListener(v -> selectCategory(v, "住房"));
-        binding.cardTransport.setOnClickListener(v -> selectCategory(v, "交通"));
-        binding.cardMedical.setOnClickListener(v -> selectCategory(v, "医疗"));
-        binding.cardEducation.setOnClickListener(v -> selectCategory(v, "教育"));
-        binding.cardEntertainment.setOnClickListener(v -> selectCategory(v, "娱乐"));
-        binding.cardMore.setOnClickListener(v -> selectCategory(v, "其他"));
+        binding.cardFood.setOnClickListener(v -> {
+            // 根据当前类型设置不同ID
+            if (binding.rbIncome.isChecked()) {
+                selectCategory(v, "工资", 6); // 收入-工资
+            } else {
+                selectCategory(v, "餐饮", 4); // 支出-餐饮
+            }
+        });
+        binding.cardShopping.setOnClickListener(v -> {
+            // 根据当前类型设置不同ID
+            if (binding.rbIncome.isChecked()) {
+                selectCategory(v, "奖金", 7); // 收入-奖金
+            } else {
+                selectCategory(v, "购物", 5); // 支出-购物
+            }
+        });
+        binding.cardHousing.setOnClickListener(v -> {
+            // 根据当前类型设置不同ID
+            if (binding.rbIncome.isChecked()) {
+                selectCategory(v, "投资收益", 8); // 收入-投资收益
+            } else {
+                selectCategory(v, "住房", 7); // 支出-住房
+            }
+        });
+        binding.cardTransport.setOnClickListener(v -> {
+            // 根据当前类型设置不同ID
+            if (binding.rbIncome.isChecked()) {
+                selectCategory(v, "兼职", 9); // 收入-兼职
+            } else {
+                selectCategory(v, "交通", 6); // 支出-交通
+            }
+        });
+        binding.cardMedical.setOnClickListener(v -> {
+            // 根据当前类型设置不同ID
+            if (binding.rbIncome.isChecked()) {
+                selectCategory(v, "退款", 10); // 收入-退款
+            } else {
+                selectCategory(v, "医疗", 8); // 支出-医疗
+            }
+        });
+        binding.cardEducation.setOnClickListener(v -> {
+            // 根据当前类型设置不同ID
+            if (binding.rbIncome.isChecked()) {
+                selectCategory(v, "红包", 11); // 收入-红包
+            } else {
+                selectCategory(v, "教育", 9); // 支出-教育
+            }
+        });
+        binding.cardEntertainment.setOnClickListener(v -> {
+            // 根据当前类型设置不同ID
+            if (binding.rbIncome.isChecked()) {
+                selectCategory(v, "其他收入", 12); // 收入-其他收入
+            } else {
+                selectCategory(v, "娱乐", 10); // 支出-娱乐
+            }
+        });
+        binding.cardMore.setOnClickListener(v -> selectCategory(v, "其他", 11)); // 支出-其他
     }
-
-    // 当前选中的分类
-    private String selectedCategory = null;
-    private View selectedCategoryView = null;
 
     /**
      * 选择分类
      */
-    private void selectCategory(View view, String categoryName) {
+    private void selectCategory(View view, String categoryName, long categoryId) {
         if (view instanceof androidx.cardview.widget.CardView) {
             androidx.cardview.widget.CardView cardView = (androidx.cardview.widget.CardView) view;
             
@@ -255,6 +352,7 @@ public class AddTransactionActivity extends AppCompatActivity {
                 cardView.setCardBackgroundColor(Color.WHITE);
                 selectedCategoryView = null;
                 selectedCategory = null;
+                selectedCategoryId = -1;
                 return;
             }
             
@@ -267,6 +365,9 @@ public class AddTransactionActivity extends AppCompatActivity {
             cardView.setCardBackgroundColor(getResources().getColor(R.color.colorPrimary));
             selectedCategoryView = view;
             selectedCategory = categoryName;
+            selectedCategoryId = categoryId;
+            
+            LogUtils.d(TAG, "选择了分类: " + categoryName + ", ID: " + categoryId);
         }
     }
 
@@ -274,36 +375,120 @@ public class AddTransactionActivity extends AppCompatActivity {
      * 加载分类
      */
     private void loadCategories(int type) {
-        // 重置选中状态
-        if (selectedCategoryView instanceof androidx.cardview.widget.CardView) {
-            ((androidx.cardview.widget.CardView) selectedCategoryView).setCardBackgroundColor(Color.WHITE);
-        }
-        selectedCategory = null;
-        selectedCategoryView = null;
-        
-        // 根据类型显示/隐藏不同的分类卡片
-        if (type == Transaction.TYPE_INCOME) {
-            // 收入类别的卡片可见性设置
-            binding.cardFood.setVisibility(View.GONE);
-            binding.cardShopping.setVisibility(View.GONE);
-            binding.cardHousing.setVisibility(View.GONE);
-            binding.cardTransport.setVisibility(View.GONE);
-            binding.cardMedical.setVisibility(View.GONE);
-            binding.cardEducation.setVisibility(View.GONE);
-            binding.cardEntertainment.setVisibility(View.GONE);
+        try {
+            // 重置选中状态
+            if (selectedCategoryView instanceof androidx.cardview.widget.CardView) {
+                ((androidx.cardview.widget.CardView) selectedCategoryView).setCardBackgroundColor(Color.WHITE);
+            }
+            selectedCategory = null;
+            selectedCategoryView = null;
+            selectedCategoryId = -1;
             
-            // TODO: 在这里设置收入类别的卡片可见性
-            // 例如：工资、奖金等
-            Toast.makeText(this, "收入分类选项待实现", Toast.LENGTH_SHORT).show();
-        } else {
-            // 支出类别的卡片可见性设置
-            binding.cardFood.setVisibility(View.VISIBLE);
-            binding.cardShopping.setVisibility(View.VISIBLE);
-            binding.cardHousing.setVisibility(View.VISIBLE);
-            binding.cardTransport.setVisibility(View.VISIBLE);
-            binding.cardMedical.setVisibility(View.VISIBLE);
-            binding.cardEducation.setVisibility(View.VISIBLE);
-            binding.cardEntertainment.setVisibility(View.VISIBLE);
+            // 根据类型显示/隐藏不同的分类卡片
+            if (type == Transaction.TYPE_INCOME) {
+                // 收入类别的卡片可见性设置
+                if (binding.cardFood != null) binding.cardFood.setVisibility(View.VISIBLE);
+                if (binding.cardShopping != null) binding.cardShopping.setVisibility(View.VISIBLE);
+                if (binding.cardHousing != null) binding.cardHousing.setVisibility(View.VISIBLE);
+                if (binding.cardTransport != null) binding.cardTransport.setVisibility(View.VISIBLE);
+                if (binding.cardMedical != null) binding.cardMedical.setVisibility(View.VISIBLE);
+                if (binding.cardEducation != null) binding.cardEducation.setVisibility(View.VISIBLE);
+                if (binding.cardEntertainment != null) binding.cardEntertainment.setVisibility(View.VISIBLE);
+                
+                // 设置收入类别的文本
+                try {
+                    // 工资
+                    if (binding.cardFood != null) {
+                        View tvName = binding.cardFood.findViewById(R.id.tv_category_name);
+                        View ivIcon = binding.cardFood.findViewById(R.id.iv_category_icon);
+                        if (tvName != null) tvName.setVisibility(View.VISIBLE);
+                        if (ivIcon != null) ivIcon.setVisibility(View.VISIBLE);
+                        if (tvName instanceof android.widget.TextView) {
+                            ((android.widget.TextView) tvName).setText("工资");
+                        }
+                    }
+                    
+                    // 奖金
+                    if (binding.cardShopping != null) {
+                        View tvName = binding.cardShopping.findViewById(R.id.tv_category_name);
+                        View ivIcon = binding.cardShopping.findViewById(R.id.iv_category_icon);
+                        if (tvName != null) tvName.setVisibility(View.VISIBLE);
+                        if (ivIcon != null) ivIcon.setVisibility(View.VISIBLE);
+                        if (tvName instanceof android.widget.TextView) {
+                            ((android.widget.TextView) tvName).setText("奖金");
+                        }
+                    }
+                    
+                    // 投资收益
+                    if (binding.cardHousing != null) {
+                        View tvName = binding.cardHousing.findViewById(R.id.tv_category_name);
+                        View ivIcon = binding.cardHousing.findViewById(R.id.iv_category_icon);
+                        if (tvName != null) tvName.setVisibility(View.VISIBLE);
+                        if (ivIcon != null) ivIcon.setVisibility(View.VISIBLE);
+                        if (tvName instanceof android.widget.TextView) {
+                            ((android.widget.TextView) tvName).setText("投资收益");
+                        }
+                    }
+                    
+                    // 兼职
+                    if (binding.cardTransport != null) {
+                        View tvName = binding.cardTransport.findViewById(R.id.tv_category_name);
+                        View ivIcon = binding.cardTransport.findViewById(R.id.iv_category_icon);
+                        if (tvName != null) tvName.setVisibility(View.VISIBLE);
+                        if (ivIcon != null) ivIcon.setVisibility(View.VISIBLE);
+                        if (tvName instanceof android.widget.TextView) {
+                            ((android.widget.TextView) tvName).setText("兼职");
+                        }
+                    }
+                    
+                    // 退款
+                    if (binding.cardMedical != null) {
+                        View tvName = binding.cardMedical.findViewById(R.id.tv_category_name);
+                        View ivIcon = binding.cardMedical.findViewById(R.id.iv_category_icon);
+                        if (tvName != null) tvName.setVisibility(View.VISIBLE);
+                        if (ivIcon != null) ivIcon.setVisibility(View.VISIBLE);
+                        if (tvName instanceof android.widget.TextView) {
+                            ((android.widget.TextView) tvName).setText("退款");
+                        }
+                    }
+                    
+                    // 红包
+                    if (binding.cardEducation != null) {
+                        View tvName = binding.cardEducation.findViewById(R.id.tv_category_name);
+                        View ivIcon = binding.cardEducation.findViewById(R.id.iv_category_icon);
+                        if (tvName != null) tvName.setVisibility(View.VISIBLE);
+                        if (ivIcon != null) ivIcon.setVisibility(View.VISIBLE);
+                        if (tvName instanceof android.widget.TextView) {
+                            ((android.widget.TextView) tvName).setText("红包");
+                        }
+                    }
+                    
+                    // 其他收入
+                    if (binding.cardEntertainment != null) {
+                        View tvName = binding.cardEntertainment.findViewById(R.id.tv_category_name);
+                        View ivIcon = binding.cardEntertainment.findViewById(R.id.iv_category_icon);
+                        if (tvName != null) tvName.setVisibility(View.VISIBLE);
+                        if (ivIcon != null) ivIcon.setVisibility(View.VISIBLE);
+                        if (tvName instanceof android.widget.TextView) {
+                            ((android.widget.TextView) tvName).setText("其他收入");
+                        }
+                    }
+                } catch (Exception e) {
+                    LogUtils.e(TAG, "设置收入类别文本出错: " + e.getMessage(), e);
+                }
+            } else {
+                // 支出类别的卡片可见性设置
+                if (binding.cardFood != null) binding.cardFood.setVisibility(View.VISIBLE);
+                if (binding.cardShopping != null) binding.cardShopping.setVisibility(View.VISIBLE);
+                if (binding.cardHousing != null) binding.cardHousing.setVisibility(View.VISIBLE);
+                if (binding.cardTransport != null) binding.cardTransport.setVisibility(View.VISIBLE);
+                if (binding.cardMedical != null) binding.cardMedical.setVisibility(View.VISIBLE);
+                if (binding.cardEducation != null) binding.cardEducation.setVisibility(View.VISIBLE);
+                if (binding.cardEntertainment != null) binding.cardEntertainment.setVisibility(View.VISIBLE);
+            }
+        } catch (Exception e) {
+            LogUtils.e(TAG, "加载分类时出错: " + e.getMessage(), e);
+            Toast.makeText(this, "加载分类失败", Toast.LENGTH_SHORT).show();
         }
     }
     
@@ -395,6 +580,8 @@ public class AddTransactionActivity extends AppCompatActivity {
      */
     private void saveTransaction() {
         try {
+            LogUtils.d(TAG, "开始执行saveTransaction方法");
+            
             // 验证交易类型
             boolean hasTypeSelected = binding.rbIncome.isChecked() || 
                                       binding.rbExpense.isChecked() || 
@@ -405,7 +592,7 @@ public class AddTransactionActivity extends AppCompatActivity {
             }
             
             // 验证分类选择
-            if (selectedCategory == null) {
+            if (selectedCategoryId == -1) {
                 Toast.makeText(this, "交易分类不能为空，请选择分类", Toast.LENGTH_SHORT).show();
                 LogUtils.d(TAG, "保存失败：未选择分类");
                 return;
@@ -453,104 +640,19 @@ public class AddTransactionActivity extends AppCompatActivity {
             String description = binding.etDescription.getText().toString().trim();
             String note = binding.etNote.getText().toString().trim();
             
-            // 检查描述是否为空（可选，不强制要求填写，但建议提示用户）
-            if (TextUtils.isEmpty(description)) {
-                // 这里只显示提示信息，不阻止保存
-                Toast.makeText(this, "建议添加交易描述，方便后续查询", Toast.LENGTH_SHORT).show();
-            }
-            
-            // 获取所选的分类ID
-            long categoryId = 1; // 默认分类ID
-            
-            // 根据选中的分类名称找到对应的分类ID
-            if (selectedCategory != null) {
-                if ("餐饮".equals(selectedCategory)) {
-                    categoryId = 4;
-                } else if ("购物".equals(selectedCategory)) {
-                    categoryId = 5;
-                } else if ("交通".equals(selectedCategory)) {
-                    categoryId = 6;
-                } else if ("住房".equals(selectedCategory)) {
-                    categoryId = 7;
-                } else if ("医疗".equals(selectedCategory)) {
-                    categoryId = 8;
-                } else if ("教育".equals(selectedCategory)) {
-                    categoryId = 9;
-                } else if ("娱乐".equals(selectedCategory)) {
-                    categoryId = 10;
-                } else if ("其他".equals(selectedCategory)) {
-                    categoryId = 11;
-                }
-            }
-            
-            // 检查DatabaseManager实例
-            if (DatabaseManager.getInstance() == null) {
-                LogUtils.e(TAG, "DatabaseManager实例为空");
-                Toast.makeText(this, "数据库未初始化", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            
-            // 检查数据库状态
-            String dbStatus = DatabaseManager.getInstance().checkDatabaseStatus();
-            LogUtils.d(TAG, "数据库状态检查:\n" + dbStatus);
-            
             // 获取交易类型
             int type = binding.rbIncome.isChecked() ? Transaction.TYPE_INCOME : 
                       (binding.rbExpense.isChecked() ? Transaction.TYPE_EXPENSE : Transaction.TYPE_TRANSFER);
             
-            LogUtils.d(TAG, "准备创建交易对象 - 类型: " + type + ", 金额: " + amount + ", 分类ID: " + categoryId);
+            LogUtils.d(TAG, "用户输入数据检查通过，开始创建交易记录 - 类型: " + type + ", 金额: " + amount + ", 分类ID: " + selectedCategoryId + ", 描述: " + description);
             
-            // 创建交易对象
-            Transaction transaction = new Transaction();
-            transaction.setUserId(1); // 这里应该使用当前登录用户的ID
-            transaction.setCategoryId(categoryId);
-            transaction.setType(type);
-            transaction.setAmount(amount);
-            transaction.setDate(selectedDate);
+            // 显示进度提示
+            Toast.makeText(this, "正在保存...", Toast.LENGTH_SHORT).show();
             
-            LogUtils.d(TAG, "设置交易描述: " + description + ", 备注: " + note);
+            // 使用ViewModel添加交易记录
+            viewModel.addTransaction(type, amount, selectedCategoryId, description, selectedDate)
+                    .observe(this, this::handleAddResult);
             
-            transaction.setDescription(description);
-            transaction.setNote(note);
-            
-            // 如果有图片，保存图片路径（这里简化处理）
-            if (binding.ivImage.getVisibility() == View.VISIBLE && binding.ivImage.getDrawable() != null) {
-                // 在实际应用中，这里应该保存图片到文件系统并记录路径
-                transaction.setImagePath("image_path_placeholder");
-                LogUtils.d(TAG, "设置图片路径");
-            }
-            
-            // 设置创建和更新时间
-            long currentTime = System.currentTimeMillis();
-            transaction.setCreatedAt(currentTime);
-            transaction.setUpdatedAt(currentTime);
-            
-            // 保存到数据库
-            try {
-                LogUtils.d(TAG, "开始将交易数据保存到数据库");
-                TransactionDao transactionDao = DatabaseManager.getInstance().getTransactionDao();
-                
-                if (transactionDao == null) {
-                    LogUtils.e(TAG, "TransactionDao为空");
-                    Toast.makeText(this, "数据访问对象未初始化", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                
-                long id = transactionDao.insert(transaction);
-                LogUtils.d(TAG, "insert方法返回的ID: " + id);
-                
-                if (id > 0) {
-                    LogUtils.d(TAG, "交易记录保存成功，ID：" + id);
-                    Toast.makeText(this, R.string.success, Toast.LENGTH_SHORT).show();
-                    finish();
-                } else {
-                    LogUtils.e(TAG, "交易保存失败，insert方法返回ID <= 0");
-                    Toast.makeText(this, "保存失败，请重试", Toast.LENGTH_SHORT).show();
-                }
-            } catch (Exception e) {
-                LogUtils.e(TAG, "数据库操作异常: " + e.getClass().getName() + ": " + e.getMessage());
-                Toast.makeText(this, "数据库操作失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-            }
         } catch (Exception e) {
             LogUtils.e(TAG, "保存交易记录失败：" + e.getClass().getName() + ": " + e.getMessage(), e);
             
@@ -560,6 +662,24 @@ public class AddTransactionActivity extends AppCompatActivity {
             LogUtils.e(TAG, "异常堆栈: " + sw.toString());
             
             Toast.makeText(this, R.string.operation_failed, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * 处理添加交易记录的结果
+     */
+    private void handleAddResult(Transaction transaction) {
+        LogUtils.d(TAG, "收到添加交易记录的结果: " + (transaction != null ? "成功" : "失败"));
+        if (transaction != null) {
+            // 添加成功
+            Toast.makeText(this, "添加交易记录成功", Toast.LENGTH_SHORT).show();
+            LogUtils.i(TAG, "交易记录添加成功，正在关闭页面");
+            // 关闭页面
+            finish();
+        } else {
+            // 添加失败
+            Toast.makeText(this, "添加交易记录失败，请重试", Toast.LENGTH_LONG).show();
+            LogUtils.e(TAG, "交易记录添加失败");
         }
     }
     
@@ -595,10 +715,16 @@ public class AddTransactionActivity extends AppCompatActivity {
                 binding.etNote.setText(transaction.getNote());
             }
             
+            // 设置描述
+            if (transaction.getDescription() != null) {
+                binding.etDescription.setText(transaction.getDescription());
+            }
+            
             // 设置分类（需要在分类加载完成后选择）
             if (transaction.getCategory() != null) {
                 // 保存分类ID，在分类加载完成后选中
                 selectedCategory = transaction.getCategory().getName();
+                selectedCategoryId = transaction.getCategory().getId();
                 // TODO: 在分类加载完成后选中对应的分类卡片
             }
             

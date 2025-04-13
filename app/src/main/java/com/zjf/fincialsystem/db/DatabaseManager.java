@@ -47,6 +47,23 @@ public class DatabaseManager {
     }
     
     /**
+     * 获取单例实例并初始化（如果需要）
+     * @param context 上下文
+     * @return 数据库管理器实例
+     */
+    public static DatabaseManager getInstance(Context context) {
+        if (instance == null) {
+            synchronized (DatabaseManager.class) {
+                if (instance == null) {
+                    instance = new DatabaseManager();
+                    instance.init(context);
+                }
+            }
+        }
+        return instance;
+    }
+    
+    /**
      * 初始化数据库
      * @param context 上下文
      */

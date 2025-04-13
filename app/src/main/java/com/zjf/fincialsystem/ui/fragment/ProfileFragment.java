@@ -167,20 +167,41 @@ public class ProfileFragment extends Fragment {
      * 获取用户数据（模拟）
      */
     private void fetchUserData(long userId) {
-        // 这里模拟从服务器获取用户数据
-        // 在真实项目中，应该调用API获取用户数据
+        // 显示加载中
+        showLoading(true);
         
-        // 模拟网络延迟
-        binding.getRoot().postDelayed(() -> {
-            // 模拟用户数据
-            User mockUser = createMockUser(userId);
+        // 从服务器获取用户数据
+        userRepository.getUserInfo(userId, new RepositoryCallback<User>() {
+            @Override
+            public void onSuccess(User user) {
+                // 更新UI
+                updateUI(user);
+                
+                // 隐藏加载中
+                showLoading(false);
+            }
             
-            // 更新UI
-            updateUI(mockUser);
+            @Override
+            public void onError(String errorMsg) {
+                LogUtils.e(TAG, "获取用户信息失败：" + errorMsg);
+                Toast.makeText(requireContext(), "获取用户信息失败：" + errorMsg, Toast.LENGTH_SHORT).show();
+                
+                // 使用本地模拟数据作为后备
+                User mockUser = createMockUser(userId);
+                updateUI(mockUser);
+                
+                // 隐藏加载中
+                showLoading(false);
+            }
             
-            // 隐藏加载中
-            showLoading(false);
-        }, 1000); // 模拟1秒的网络延迟
+            @Override
+            public void isCacheData(boolean isCache) {
+                if (isCache) {
+                    LogUtils.d(TAG, "显示的是缓存用户数据");
+                    // 可以在UI上显示缓存标记
+                }
+            }
+        });
     }
     
     /**

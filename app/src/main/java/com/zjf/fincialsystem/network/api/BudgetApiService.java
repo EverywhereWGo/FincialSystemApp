@@ -5,6 +5,7 @@ import com.zjf.fincialsystem.network.ApiResponse;
 import com.zjf.fincialsystem.network.model.AddBudgetRequest;
 
 import java.util.List;
+import java.util.Map;
 
 import retrofit2.Call;
 import retrofit2.http.Body;
@@ -22,32 +23,51 @@ public interface BudgetApiService {
     
     /**
      * 获取预算列表
-     * @param period 预算周期（月度/年度）
      */
-    @GET("api/budgets")
-    Call<ApiResponse<List<Budget>>> getBudgets(@Query("period") String period);
+    @GET("finance/budget/list")
+    Call<ApiResponse<List<Budget>>> getBudgets(
+            @Query("pageNum") Integer pageNum,
+            @Query("pageSize") Integer pageSize,
+            @Query("categoryId") Long categoryId,
+            @Query("month") Integer month);
     
     /**
-     * 获取当前预算
+     * 获取预算详情
      */
-    @GET("api/budgets/current")
-    Call<ApiResponse<List<Budget>>> getCurrentBudgets();
+    @GET("finance/budget/{id}")
+    Call<ApiResponse<Budget>> getBudgetDetail(@Path("id") long id);
+    
+    /**
+     * 获取某月的预算
+     */
+    @GET("finance/budget/month")
+    Call<ApiResponse<List<Map<String, Object>>>> getMonthBudgets(
+            @Query("userId") Long userId,
+            @Query("month") String month);
+    
+    /**
+     * 获取预算警告
+     */
+    @GET("finance/budget/warning")
+    Call<ApiResponse<List<Map<String, Object>>>> getWarningBudgets(
+            @Query("userId") Long userId,
+            @Query("month") String month);
     
     /**
      * 添加预算
      */
-    @POST("api/budgets")
-    Call<ApiResponse<Budget>> addBudget(@Body AddBudgetRequest request);
+    @POST("finance/budget")
+    Call<ApiResponse<String>> addBudget(@Body AddBudgetRequest request);
     
     /**
      * 更新预算
      */
-    @PUT("api/budgets/{budgetId}")
-    Call<ApiResponse<Budget>> updateBudget(@Path("budgetId") long budgetId, @Body Budget budget);
+    @PUT("finance/budget")
+    Call<ApiResponse<String>> updateBudget(@Body Budget budget);
     
     /**
      * 删除预算
      */
-    @DELETE("api/budgets/{budgetId}")
-    Call<ApiResponse<Boolean>> deleteBudget(@Path("budgetId") long budgetId);
+    @DELETE("finance/budget/{ids}")
+    Call<ApiResponse<String>> deleteBudget(@Path("ids") String ids);
 } 

@@ -12,6 +12,7 @@ import com.zjf.fincialsystem.utils.LogUtils;
 import com.zjf.fincialsystem.utils.NetworkUtils;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 
 import retrofit2.Call;
@@ -44,13 +45,25 @@ public class BudgetRepository {
         // 检查网络状态
         if (NetworkUtils.isNetworkAvailable(context)) {
             // 有网络连接，从网络获取数据
-            apiService.getBudgets(period).enqueue(new Callback<ApiResponse<List<Budget>>>() {
+            // 获取当前月份作为整数参数 (如果是monthly，使用当前月份数字，否则传null)
+            Integer monthParam = null;
+            if (Budget.PERIOD_MONTHLY.equals(period)) {
+                // 获取当前月份(1-12)
+                monthParam = Calendar.getInstance().get(Calendar.MONTH) + 1;
+            }
+            apiService.getBudgets(1, 100, null, monthParam).enqueue(new Callback<ApiResponse<List<Budget>>>() {
                 @Override
                 public void onResponse(Call<ApiResponse<List<Budget>>> call, Response<ApiResponse<List<Budget>>> response) {
                     if (response.isSuccessful() && response.body() != null) {
                         ApiResponse<List<Budget>> apiResponse = response.body();
                         if (apiResponse.isSuccess()) {
+                            // 首先尝试从data获取数据
                             List<Budget> budgets = apiResponse.getData();
+                            
+                            // 如果data为空，从rows获取数据（适配后端返回的TableDataInfo格式）
+                            if (budgets == null || budgets.isEmpty()) {
+                                budgets = apiResponse.convertRows(Budget.class);
+                            }
                             
                             // 保存到缓存
                             cacheManager.saveBudgets(budgets);
@@ -58,7 +71,7 @@ public class BudgetRepository {
                             // 返回数据
                             callback.onSuccess(budgets);
                         } else {
-                            callback.onError(apiResponse.getMessage());
+                            callback.onError(apiResponse.getMsg());
                         }
                     } else {
                         callback.onError("网络请求失败");
@@ -133,18 +146,26 @@ public class BudgetRepository {
         // 检查网络状态
         if (NetworkUtils.isNetworkAvailable(context)) {
             // 有网络连接，从网络获取数据
-            apiService.getCurrentBudgets().enqueue(new Callback<ApiResponse<List<Budget>>>() {
+            // 获取当前月份数字
+            int currentMonth = Calendar.getInstance().get(Calendar.MONTH) + 1;
+            apiService.getBudgets(1, 100, null, currentMonth).enqueue(new Callback<ApiResponse<List<Budget>>>() {
                 @Override
                 public void onResponse(Call<ApiResponse<List<Budget>>> call, Response<ApiResponse<List<Budget>>> response) {
                     if (response.isSuccessful() && response.body() != null) {
                         ApiResponse<List<Budget>> apiResponse = response.body();
                         if (apiResponse.isSuccess()) {
+                            // 首先尝试从data获取数据
                             List<Budget> budgets = apiResponse.getData();
+                            
+                            // 如果data为空，从rows获取数据（适配后端返回的TableDataInfo格式）
+                            if (budgets == null || budgets.isEmpty()) {
+                                budgets = apiResponse.convertRows(Budget.class);
+                            }
                             
                             // 返回数据
                             callback.onSuccess(budgets);
                         } else {
-                            callback.onError(apiResponse.getMessage());
+                            callback.onError(apiResponse.getMsg());
                         }
                     } else {
                         callback.onError("网络请求失败");
@@ -225,13 +246,17 @@ public class BudgetRepository {
             return;
         }
         
-        apiService.addBudget(request).enqueue(new Callback<ApiResponse<Budget>>() {
+        apiService.addBudget(request).enqueue(new Callback<ApiResponse<String>>() {
             @Override
-            public void onResponse(Call<ApiResponse<Budget>> call, Response<ApiResponse<Budget>> response) {
+            public void onResponse(Call<ApiResponse<String>> call, Response<ApiResponse<String>> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    ApiResponse<Budget> apiResponse = response.body();
+                    ApiResponse<String> apiResponse = response.body();
                     if (apiResponse.isSuccess()) {
-                        Budget budget = apiResponse.getData();
+                        // 模拟创建一个Budget对象返回
+                        Budget budget = new Budget();
+                        budget.setCategoryId(request.getCategoryId());
+                        budget.setAmount(request.getAmount());
+                        budget.setPeriod(request.getPeriod());
                         
                         // 更新缓存
                         List<Budget> cachedBudgets = cacheManager.getBudgets();
@@ -241,7 +266,7 @@ public class BudgetRepository {
                         // 返回数据
                         callback.onSuccess(budget);
                     } else {
-                        callback.onError(apiResponse.getMessage());
+                        callback.onError(apiResponse.getMsg());
                     }
                 } else {
                     callback.onError("网络请求失败");
@@ -249,7 +274,7 @@ public class BudgetRepository {
             }
 
             @Override
-            public void onFailure(Call<ApiResponse<Budget>> call, Throwable t) {
+            public void onFailure(Call<ApiResponse<String>> call, Throwable t) {
                 LogUtils.e(TAG, "添加预算失败", t);
                 callback.onError("添加预算失败: " + t.getMessage());
             }
@@ -269,28 +294,26 @@ public class BudgetRepository {
             return;
         }
         
-        apiService.updateBudget(budgetId, budget).enqueue(new Callback<ApiResponse<Budget>>() {
+        apiService.updateBudget(budget).enqueue(new Callback<ApiResponse<String>>() {
             @Override
-            public void onResponse(Call<ApiResponse<Budget>> call, Response<ApiResponse<Budget>> response) {
+            public void onResponse(Call<ApiResponse<String>> call, Response<ApiResponse<String>> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    ApiResponse<Budget> apiResponse = response.body();
+                    ApiResponse<String> apiResponse = response.body();
                     if (apiResponse.isSuccess()) {
-                        Budget updatedBudget = apiResponse.getData();
-                        
                         // 更新缓存
                         List<Budget> cachedBudgets = cacheManager.getBudgets();
                         for (int i = 0; i < cachedBudgets.size(); i++) {
-                            if (cachedBudgets.get(i).getId() == updatedBudget.getId()) {
-                                cachedBudgets.set(i, updatedBudget);
+                            if (cachedBudgets.get(i).getId() == budgetId) {
+                                cachedBudgets.set(i, budget);
                                 break;
                             }
                         }
                         cacheManager.saveBudgets(cachedBudgets);
                         
                         // 返回数据
-                        callback.onSuccess(updatedBudget);
+                        callback.onSuccess(budget);
                     } else {
-                        callback.onError(apiResponse.getMessage());
+                        callback.onError(apiResponse.getMsg());
                     }
                 } else {
                     callback.onError("网络请求失败");
@@ -298,7 +321,7 @@ public class BudgetRepository {
             }
 
             @Override
-            public void onFailure(Call<ApiResponse<Budget>> call, Throwable t) {
+            public void onFailure(Call<ApiResponse<String>> call, Throwable t) {
                 LogUtils.e(TAG, "更新预算失败", t);
                 callback.onError("更新预算失败: " + t.getMessage());
             }
@@ -317,12 +340,12 @@ public class BudgetRepository {
             return;
         }
         
-        apiService.deleteBudget(budgetId).enqueue(new Callback<ApiResponse<Boolean>>() {
+        apiService.deleteBudget(String.valueOf(budgetId)).enqueue(new Callback<ApiResponse<String>>() {
             @Override
-            public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
+            public void onResponse(Call<ApiResponse<String>> call, Response<ApiResponse<String>> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    ApiResponse<Boolean> apiResponse = response.body();
-                    if (apiResponse.isSuccess() && apiResponse.getData()) {
+                    ApiResponse<String> apiResponse = response.body();
+                    if (apiResponse.isSuccess()) {
                         // 更新缓存
                         List<Budget> cachedBudgets = cacheManager.getBudgets();
                         for (int i = 0; i < cachedBudgets.size(); i++) {
@@ -336,7 +359,7 @@ public class BudgetRepository {
                         // 返回数据
                         callback.onSuccess(true);
                     } else {
-                        callback.onError(apiResponse.getMessage());
+                        callback.onError(apiResponse.getMsg());
                     }
                 } else {
                     callback.onError("网络请求失败");
@@ -344,7 +367,7 @@ public class BudgetRepository {
             }
 
             @Override
-            public void onFailure(Call<ApiResponse<Boolean>> call, Throwable t) {
+            public void onFailure(Call<ApiResponse<String>> call, Throwable t) {
                 LogUtils.e(TAG, "删除预算失败", t);
                 callback.onError("删除预算失败: " + t.getMessage());
             }

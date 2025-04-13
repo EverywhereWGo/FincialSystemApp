@@ -2,6 +2,7 @@ package com.zjf.fincialsystem.utils;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.text.TextUtils;
 
 import com.zjf.fincialsystem.app.FinanceApplication;
 import com.zjf.fincialsystem.utils.Constants;
@@ -13,18 +14,32 @@ import java.util.Date;
  * 使用单例模式
  */
 public class TokenManager {
-    
-    private static final String KEY_TOKEN = Constants.PREF_KEY_TOKEN;
-    private static final String KEY_TOKEN_EXPIRY = Constants.PREF_KEY_TOKEN_EXPIRY;
-    
+    private static final String TAG = "TokenManager";
     private static volatile TokenManager instance;
     private final SharedPreferences sharedPreferences;
     
     private TokenManager() {
-        // 使用Constants中定义的PREF_NAME
         sharedPreferences = FinanceApplication.getAppContext()
                 .getSharedPreferences(Constants.PREF_NAME, Context.MODE_PRIVATE);
-        LogUtils.d("TokenManager", "初始化TokenManager, 使用SharedPreferences: " + Constants.PREF_NAME);
+        LogUtils.d(TAG, "TokenManager初始化，使用SharedPreferences: " + Constants.PREF_NAME);
+        
+        // 初始化时尝试恢复token
+        String token = sharedPreferences.getString(Constants.PREF_KEY_TOKEN, null);
+        long expiryTime = sharedPreferences.getLong(Constants.PREF_KEY_TOKEN_EXPIRY, 0);
+        
+        if (token != null) {
+            LogUtils.d(TAG, "找到已保存的token: " + token.substring(0, Math.min(10, token.length())) + "...");
+            LogUtils.d(TAG, "Token过期时间: " + new Date(expiryTime));
+            
+            if (expiryTime > System.currentTimeMillis()) {
+                LogUtils.d(TAG, "Token有效，将自动使用");
+            } else {
+                LogUtils.w(TAG, "已保存的Token已过期，将被清除");
+                clearToken();
+            }
+        } else {
+            LogUtils.d(TAG, "未找到已保存的token");
+        }
     }
     
     /**
@@ -42,15 +57,31 @@ public class TokenManager {
     }
     
     /**
-     * 保存Token
+     * 保存Token和过期时间
      * @param token JWT Token
      * @param expiryTimeInMillis Token过期时间（毫秒）
      */
     public void saveToken(String token, long expiryTimeInMillis) {
+        if (TextUtils.isEmpty(token)) {
+            LogUtils.e(TAG, "尝试保存空token，操作被拒绝");
+            return;
+        }
+        
+        if (expiryTimeInMillis <= System.currentTimeMillis()) {
+            LogUtils.e(TAG, "尝试保存已过期的token，操作被拒绝");
+            return;
+        }
+        
         SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.putString(KEY_TOKEN, token);
-        editor.putLong(KEY_TOKEN_EXPIRY, expiryTimeInMillis);
-        editor.apply();
+        editor.putString(Constants.PREF_KEY_TOKEN, token);
+        editor.putLong(Constants.PREF_KEY_TOKEN_EXPIRY, expiryTimeInMillis);
+        boolean success = editor.commit(); // 使用commit()而不是apply()以确保立即写入
+        
+        if (success) {
+            LogUtils.d(TAG, "Token保存成功，过期时间: " + new Date(expiryTimeInMillis));
+        } else {
+            LogUtils.e(TAG, "Token保存失败");
+        }
     }
     
     /**
@@ -58,9 +89,20 @@ public class TokenManager {
      * @param token JWT Token
      */
     public void setToken(String token) {
+        if (TextUtils.isEmpty(token)) {
+            LogUtils.e(TAG, "尝试设置空token，操作被拒绝");
+            return;
+        }
+        
         SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.putString(KEY_TOKEN, token);
-        editor.apply();
+        editor.putString(Constants.PREF_KEY_TOKEN, token);
+        boolean success = editor.commit();
+        
+        if (success) {
+            LogUtils.d(TAG, "Token设置成功");
+        } else {
+            LogUtils.e(TAG, "Token设置失败");
+        }
     }
     
     /**
@@ -68,9 +110,20 @@ public class TokenManager {
      * @param expiryTimeInMillis Token过期时间（毫秒）
      */
     public void setExpiryTime(long expiryTimeInMillis) {
+        if (expiryTimeInMillis <= System.currentTimeMillis()) {
+            LogUtils.e(TAG, "尝试设置已过期的时间，操作被拒绝");
+            return;
+        }
+        
         SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.putLong(KEY_TOKEN_EXPIRY, expiryTimeInMillis);
-        editor.apply();
+        editor.putLong(Constants.PREF_KEY_TOKEN_EXPIRY, expiryTimeInMillis);
+        boolean success = editor.commit();
+        
+        if (success) {
+            LogUtils.d(TAG, "Token过期时间设置成功: " + new Date(expiryTimeInMillis));
+        } else {
+            LogUtils.e(TAG, "Token过期时间设置失败");
+        }
     }
     
     /**
@@ -78,27 +131,22 @@ public class TokenManager {
      * @return 如果Token有效则返回Token，否则返回null
      */
     public String getToken() {
-        String token = sharedPreferences.getString(KEY_TOKEN, null);
-        long expiryTime = sharedPreferences.getLong(KEY_TOKEN_EXPIRY, 0);
+        String token = sharedPreferences.getString(Constants.PREF_KEY_TOKEN, null);
+        long expiryTime = sharedPreferences.getLong(Constants.PREF_KEY_TOKEN_EXPIRY, 0);
         
-        // 检查Token是否过期
-        if (token != null && expiryTime > System.currentTimeMillis()) {
-            return token;
+        if (token != null) {
+            if (expiryTime > System.currentTimeMillis()) {
+                LogUtils.d(TAG, "获取到有效token: " + token.substring(0, Math.min(10, token.length())) + "...");
+                return token;
+            } else {
+                LogUtils.w(TAG, "Token已过期，清除token");
+                clearToken();
+            }
         } else {
-            // Token已过期，清除
-            clearToken();
-            return null;
+            LogUtils.d(TAG, "未找到token");
         }
-    }
-    
-    /**
-     * 清除Token
-     */
-    public void clearToken() {
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.remove(KEY_TOKEN);
-        editor.remove(KEY_TOKEN_EXPIRY);
-        editor.apply();
+        
+        return null;
     }
     
     /**
@@ -109,31 +157,29 @@ public class TokenManager {
         String token = getToken();
         boolean isLoggedIn = token != null;
         
-        // 输出调试信息
         if (isLoggedIn) {
-            LogUtils.d("TokenManager", "用户已登录，Token: " + token);
-            LogUtils.d("TokenManager", "Token过期时间: " + getTokenExpiryDate());
+            LogUtils.d(TAG, "用户已登录，Token有效");
         } else {
-            LogUtils.d("TokenManager", "用户未登录，尝试从SharedPreferences直接获取");
-            
-            // 再次尝试从SharedPreferences获取
-            String tokenFromPrefs = sharedPreferences.getString(KEY_TOKEN, null);
-            if (tokenFromPrefs != null) {
-                long expiryTime = sharedPreferences.getLong(KEY_TOKEN_EXPIRY, 0);
-                if (expiryTime > System.currentTimeMillis()) {
-                    LogUtils.d("TokenManager", "从SharedPreferences找到有效Token");
-                    // 保存到TokenManager实例中
-                    saveToken(tokenFromPrefs, expiryTime);
-                    return true;
-                } else {
-                    LogUtils.d("TokenManager", "SharedPreferences中的Token已过期");
-                }
-            } else {
-                LogUtils.d("TokenManager", "SharedPreferences中未找到Token");
-            }
+            LogUtils.d(TAG, "用户未登录或Token已过期");
         }
         
         return isLoggedIn;
+    }
+    
+    /**
+     * 清除Token
+     */
+    public void clearToken() {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.remove(Constants.PREF_KEY_TOKEN);
+        editor.remove(Constants.PREF_KEY_TOKEN_EXPIRY);
+        boolean success = editor.commit();
+        
+        if (success) {
+            LogUtils.d(TAG, "Token清除成功");
+        } else {
+            LogUtils.e(TAG, "Token清除失败");
+        }
     }
     
     /**
@@ -141,7 +187,7 @@ public class TokenManager {
      * @return Token过期时间
      */
     public Date getTokenExpiryDate() {
-        long expiryTime = sharedPreferences.getLong(KEY_TOKEN_EXPIRY, 0);
+        long expiryTime = sharedPreferences.getLong(Constants.PREF_KEY_TOKEN_EXPIRY, 0);
         return new Date(expiryTime);
     }
     

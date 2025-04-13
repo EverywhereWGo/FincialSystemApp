@@ -190,14 +190,15 @@ public class CategoryManageActivity extends AppCompatActivity {
      * 加载分类数据
      */
     private void loadCategories() {
-        showLoading(true);
+        binding.progressBar.setVisibility(View.VISIBLE);
+        binding.recyclerView.setVisibility(View.GONE);
         
-        // 调用API获取分类列表
-        apiService.getCategories(currentType).enqueue(new Callback<ApiResponse<List<Category>>>() {
+        apiService.getCategories(1, 20, null, currentType).enqueue(new Callback<ApiResponse<List<Category>>>() {
             @Override
             public void onResponse(Call<ApiResponse<List<Category>>> call, 
                                    Response<ApiResponse<List<Category>>> response) {
-                showLoading(false);
+                binding.progressBar.setVisibility(View.GONE);
+                binding.recyclerView.setVisibility(View.VISIBLE);
                 
                 if (response.isSuccessful() && response.body() != null) {
                     ApiResponse<List<Category>> apiResponse = response.body();
@@ -211,7 +212,7 @@ public class CategoryManageActivity extends AppCompatActivity {
                     } else {
                         // API请求成功但返回错误
                         Toast.makeText(CategoryManageActivity.this, 
-                                apiResponse.getMessage(), Toast.LENGTH_SHORT).show();
+                                apiResponse.getMsg(), Toast.LENGTH_SHORT).show();
                         binding.tvEmpty.setVisibility(View.VISIBLE);
                     }
                 } else {
@@ -225,7 +226,7 @@ public class CategoryManageActivity extends AppCompatActivity {
             @Override
             public void onFailure(Call<ApiResponse<List<Category>>> call, Throwable t) {
                 LogUtils.e(TAG, "加载分类失败", t);
-                showLoading(false);
+                binding.progressBar.setVisibility(View.GONE);
                 Toast.makeText(CategoryManageActivity.this, 
                         R.string.network_error, Toast.LENGTH_SHORT).show();
                 binding.tvEmpty.setVisibility(View.VISIBLE);
@@ -457,41 +458,46 @@ public class CategoryManageActivity extends AppCompatActivity {
      * 添加分类
      */
     private void addCategory(AddCategoryRequest request, AlertDialog dialog) {
-        showLoading(true);
+        binding.progressBar.setVisibility(View.VISIBLE);
         
-        apiService.addCategory(request).enqueue(new Callback<ApiResponse<Category>>() {
+        apiService.addCategory(request).enqueue(new Callback<ApiResponse<String>>() {
             @Override
-            public void onResponse(Call<ApiResponse<Category>> call, 
-                                   Response<ApiResponse<Category>> response) {
-                showLoading(false);
+            public void onResponse(Call<ApiResponse<String>> call, 
+                                   Response<ApiResponse<String>> response) {
+                binding.progressBar.setVisibility(View.GONE);
                 
                 if (response.isSuccessful() && response.body() != null) {
-                    ApiResponse<Category> apiResponse = response.body();
-                    
-                    if (apiResponse.isSuccess() && apiResponse.getData() != null) {
-                        // 添加成功
-                        Toast.makeText(CategoryManageActivity.this, 
-                                R.string.category_added, Toast.LENGTH_SHORT).show();
+                    ApiResponse<String> apiResponse = response.body();
+                    if (apiResponse.isSuccess()) {
                         dialog.dismiss();
-                        loadCategories(); // 重新加载分类列表
+                        
+                        // 创建新分类对象
+                        Category newCategory = new Category();
+                        newCategory.setName(request.getName());
+                        newCategory.setType(request.getType());
+                        newCategory.setIcon(request.getIcon());
+                        newCategory.setColor(request.getColor());
+                        
+                        // 假设服务器生成的ID
+                        newCategory.setId(System.currentTimeMillis());
+                        
+                        // 刷新列表
+                        categories.add(newCategory);
+                        adapter.updateData(categories);
+                        
+                        Toast.makeText(CategoryManageActivity.this, "分类添加成功", Toast.LENGTH_SHORT).show();
                     } else {
-                        // API请求成功但返回错误
-                        Toast.makeText(CategoryManageActivity.this, 
-                                apiResponse.getMessage(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(CategoryManageActivity.this, apiResponse.getMsg(), Toast.LENGTH_SHORT).show();
                     }
                 } else {
-                    // API请求失败
-                    Toast.makeText(CategoryManageActivity.this, 
-                            R.string.operation_failed, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(CategoryManageActivity.this, "添加失败，请稍后重试", Toast.LENGTH_SHORT).show();
                 }
             }
             
             @Override
-            public void onFailure(Call<ApiResponse<Category>> call, Throwable t) {
-                LogUtils.e(TAG, "添加分类失败", t);
-                showLoading(false);
-                Toast.makeText(CategoryManageActivity.this, 
-                        R.string.network_error, Toast.LENGTH_SHORT).show();
+            public void onFailure(Call<ApiResponse<String>> call, Throwable t) {
+                binding.progressBar.setVisibility(View.GONE);
+                Toast.makeText(CategoryManageActivity.this, "网络错误：" + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -500,41 +506,41 @@ public class CategoryManageActivity extends AppCompatActivity {
      * 更新分类
      */
     private void updateCategory(Category category, AlertDialog dialog) {
-        showLoading(true);
+        binding.progressBar.setVisibility(View.VISIBLE);
         
-        apiService.updateCategory(category.getId(), category).enqueue(new Callback<ApiResponse<Category>>() {
+        apiService.updateCategory(category).enqueue(new Callback<ApiResponse<String>>() {
             @Override
-            public void onResponse(Call<ApiResponse<Category>> call, 
-                                   Response<ApiResponse<Category>> response) {
-                showLoading(false);
+            public void onResponse(Call<ApiResponse<String>> call, 
+                                   Response<ApiResponse<String>> response) {
+                binding.progressBar.setVisibility(View.GONE);
                 
                 if (response.isSuccessful() && response.body() != null) {
-                    ApiResponse<Category> apiResponse = response.body();
-                    
+                    ApiResponse<String> apiResponse = response.body();
                     if (apiResponse.isSuccess()) {
-                        // 更新成功
-                        Toast.makeText(CategoryManageActivity.this, 
-                                R.string.category_updated, Toast.LENGTH_SHORT).show();
                         dialog.dismiss();
-                        loadCategories(); // 重新加载分类列表
+                        
+                        // 更新列表中的分类
+                        for (int i = 0; i < categories.size(); i++) {
+                            if (categories.get(i).getId() == category.getId()) {
+                                categories.set(i, category);
+                                break;
+                            }
+                        }
+                        adapter.updateData(categories);
+                        
+                        Toast.makeText(CategoryManageActivity.this, "分类更新成功", Toast.LENGTH_SHORT).show();
                     } else {
-                        // API请求成功但返回错误
-                        Toast.makeText(CategoryManageActivity.this, 
-                                apiResponse.getMessage(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(CategoryManageActivity.this, apiResponse.getMsg(), Toast.LENGTH_SHORT).show();
                     }
                 } else {
-                    // API请求失败
-                    Toast.makeText(CategoryManageActivity.this, 
-                            R.string.operation_failed, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(CategoryManageActivity.this, "更新失败，请稍后重试", Toast.LENGTH_SHORT).show();
                 }
             }
             
             @Override
-            public void onFailure(Call<ApiResponse<Category>> call, Throwable t) {
-                LogUtils.e(TAG, "更新分类失败", t);
-                showLoading(false);
-                Toast.makeText(CategoryManageActivity.this, 
-                        R.string.network_error, Toast.LENGTH_SHORT).show();
+            public void onFailure(Call<ApiResponse<String>> call, Throwable t) {
+                binding.progressBar.setVisibility(View.GONE);
+                Toast.makeText(CategoryManageActivity.this, "网络错误：" + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -543,48 +549,35 @@ public class CategoryManageActivity extends AppCompatActivity {
      * 删除分类
      */
     private void deleteCategory(Category category) {
-        showLoading(true);
+        binding.progressBar.setVisibility(View.VISIBLE);
         
-        apiService.deleteCategory(category.getId()).enqueue(new Callback<ApiResponse<Boolean>>() {
+        apiService.deleteCategory(String.valueOf(category.getId())).enqueue(new Callback<ApiResponse<String>>() {
             @Override
-            public void onResponse(Call<ApiResponse<Boolean>> call, 
-                                   Response<ApiResponse<Boolean>> response) {
-                showLoading(false);
+            public void onResponse(Call<ApiResponse<String>> call, 
+                                   Response<ApiResponse<String>> response) {
+                binding.progressBar.setVisibility(View.GONE);
                 
                 if (response.isSuccessful() && response.body() != null) {
-                    ApiResponse<Boolean> apiResponse = response.body();
-                    
-                    if (apiResponse.isSuccess() && apiResponse.getData() != null && apiResponse.getData()) {
-                        // 删除成功
-                        Toast.makeText(CategoryManageActivity.this, 
-                                R.string.category_deleted, Toast.LENGTH_SHORT).show();
-                        loadCategories(); // 重新加载分类列表
+                    ApiResponse<String> apiResponse = response.body();
+                    if (apiResponse.isSuccess()) {
+                        // 从列表中移除分类
+                        categories.remove(category);
+                        adapter.updateData(categories);
+                        
+                        Toast.makeText(CategoryManageActivity.this, "分类删除成功", Toast.LENGTH_SHORT).show();
                     } else {
-                        // API请求成功但返回错误
-                        Toast.makeText(CategoryManageActivity.this, 
-                                apiResponse.getMessage(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(CategoryManageActivity.this, apiResponse.getMsg(), Toast.LENGTH_SHORT).show();
                     }
                 } else {
-                    // API请求失败
-                    Toast.makeText(CategoryManageActivity.this, 
-                            R.string.operation_failed, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(CategoryManageActivity.this, "删除失败，请稍后重试", Toast.LENGTH_SHORT).show();
                 }
             }
             
             @Override
-            public void onFailure(Call<ApiResponse<Boolean>> call, Throwable t) {
-                LogUtils.e(TAG, "删除分类失败", t);
-                showLoading(false);
-                Toast.makeText(CategoryManageActivity.this, 
-                        R.string.network_error, Toast.LENGTH_SHORT).show();
+            public void onFailure(Call<ApiResponse<String>> call, Throwable t) {
+                binding.progressBar.setVisibility(View.GONE);
+                Toast.makeText(CategoryManageActivity.this, "网络错误：" + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
-    }
-    
-    /**
-     * 显示或隐藏加载中
-     */
-    private void showLoading(boolean show) {
-        binding.progressBar.setVisibility(show ? View.VISIBLE : View.GONE);
     }
 } 

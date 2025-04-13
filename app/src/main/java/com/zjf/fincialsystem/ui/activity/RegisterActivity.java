@@ -1,7 +1,9 @@
 package com.zjf.fincialsystem.ui.activity;
 
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -9,6 +11,9 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.zjf.fincialsystem.R;
 import com.zjf.fincialsystem.databinding.ActivityRegisterBinding;
+import com.zjf.fincialsystem.network.model.RegisterRequest;
+import com.zjf.fincialsystem.repository.RepositoryCallback;
+import com.zjf.fincialsystem.repository.UserRepository;
 import com.zjf.fincialsystem.utils.LogUtils;
 
 /**
@@ -18,12 +23,16 @@ public class RegisterActivity extends AppCompatActivity {
     
     private static final String TAG = "RegisterActivity";
     private ActivityRegisterBinding binding;
+    private UserRepository userRepository;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         binding = ActivityRegisterBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        
+        // 初始化仓库
+        userRepository = new UserRepository(this);
         
         // 初始化视图
         initViews();
@@ -42,8 +51,6 @@ public class RegisterActivity extends AppCompatActivity {
             // 设置注册按钮点击事件
             binding.btnRegister.setOnClickListener(v -> register());
             
-            // TODO: 初始化其他视图
-            
         } catch (Exception e) {
             LogUtils.e(TAG, "初始化视图失败：" + e.getMessage(), e);
         }
@@ -58,14 +65,17 @@ public class RegisterActivity extends AppCompatActivity {
             String username = binding.etUsername.getText().toString().trim();
             String password = binding.etPassword.getText().toString().trim();
             String confirmPassword = binding.etConfirmPassword.getText().toString().trim();
+            String name = binding.etName.getText().toString().trim();
+            String email = binding.etEmail.getText().toString().trim();
+            String phone = binding.etPhone.getText().toString().trim();
             
             // 验证输入
-            if (username.isEmpty()) {
+            if (TextUtils.isEmpty(username)) {
                 binding.etUsername.setError(getString(R.string.username_empty));
                 return;
             }
             
-            if (password.isEmpty()) {
+            if (TextUtils.isEmpty(password)) {
                 binding.etPassword.setError(getString(R.string.password_empty));
                 return;
             }
@@ -75,13 +85,58 @@ public class RegisterActivity extends AppCompatActivity {
                 return;
             }
             
-            // TODO: 实现注册逻辑
+            if (TextUtils.isEmpty(name)) {
+                binding.etName.setError(getString(R.string.field_required));
+                return;
+            }
             
-            Toast.makeText(this, R.string.register_success, Toast.LENGTH_SHORT).show();
-            finish();
+            // 显示加载对话框
+            showLoading(true);
+            
+            // 创建注册请求
+            RegisterRequest registerRequest = new RegisterRequest(username, password, name, email, phone);
+            
+            // 调用注册方法
+            userRepository.register(registerRequest, new RepositoryCallback<String>() {
+                @Override
+                public void onSuccess(String result) {
+                    // 隐藏加载对话框
+                    showLoading(false);
+                    
+                    // 处理注册成功
+                    Toast.makeText(RegisterActivity.this, R.string.register_success, Toast.LENGTH_SHORT).show();
+                    finish();
+                }
+                
+                @Override
+                public void onError(String error) {
+                    // 隐藏加载对话框
+                    showLoading(false);
+                    
+                    // 处理注册失败
+                    LogUtils.e(TAG, "注册失败：" + error);
+                    Toast.makeText(RegisterActivity.this, error, Toast.LENGTH_SHORT).show();
+                }
+            });
+            
         } catch (Exception e) {
             LogUtils.e(TAG, "注册失败：" + e.getMessage(), e);
             Toast.makeText(this, R.string.register_failed, Toast.LENGTH_SHORT).show();
+            showLoading(false);
+        }
+    }
+    
+    /**
+     * 显示或隐藏加载对话框
+     * @param show 是否显示
+     */
+    private void showLoading(boolean show) {
+        if (show) {
+            binding.progressBar.setVisibility(View.VISIBLE);
+            binding.btnRegister.setEnabled(false);
+        } else {
+            binding.progressBar.setVisibility(View.GONE);
+            binding.btnRegister.setEnabled(true);
         }
     }
     

@@ -44,13 +44,13 @@ public class UserDao extends BaseDao {
             values.put("updated_at", user.getUpdatedAt());
             
             if (user.getLastLoginTime() != null) {
-                values.put("last_login_time", DateUtils.formatDateTime(user.getLastLoginTime()));
+                values.put("last_login_time", user.getLastLoginTime());
             }
             
             values.put("failed_attempts", user.getFailedAttempts());
             
             if (user.getLockedUntil() != null) {
-                values.put("locked_until", DateUtils.formatDateTime(user.getLockedUntil()));
+                values.put("locked_until", user.getLockedUntil());
             }
             
             return database.insert(TABLE_NAME, null, values);
@@ -92,13 +92,13 @@ public class UserDao extends BaseDao {
             values.put("updated_at", user.getUpdatedAt());
             
             if (user.getLastLoginTime() != null) {
-                values.put("last_login_time", DateUtils.formatDateTime(user.getLastLoginTime()));
+                values.put("last_login_time", user.getLastLoginTime());
             }
             
             values.put("failed_attempts", user.getFailedAttempts());
             
             if (user.getLockedUntil() != null) {
-                values.put("locked_until", DateUtils.formatDateTime(user.getLockedUntil()));
+                values.put("locked_until", user.getLockedUntil());
             } else {
                 values.putNull("locked_until");
             }
@@ -358,7 +358,7 @@ public class UserDao extends BaseDao {
         
         int lastLoginTimeIndex = cursor.getColumnIndex("last_login_time");
         if (lastLoginTimeIndex != -1 && !cursor.isNull(lastLoginTimeIndex)) {
-            user.setLastLoginTime(DateUtils.parseDateTime(cursor.getString(lastLoginTimeIndex)));
+            user.setLastLoginTime(cursor.getString(lastLoginTimeIndex));
         }
         
         int failedAttemptsIndex = cursor.getColumnIndex("failed_attempts");
@@ -368,9 +368,36 @@ public class UserDao extends BaseDao {
         
         int lockedUntilIndex = cursor.getColumnIndex("locked_until");
         if (lockedUntilIndex != -1 && !cursor.isNull(lockedUntilIndex)) {
-            user.setLockedUntil(DateUtils.parseDateTime(cursor.getString(lockedUntilIndex)));
+            user.setLockedUntil(cursor.getString(lockedUntilIndex));
         }
         
         return user;
+    }
+
+    /**
+     * 根据ID获取用户
+     * @param userId 用户ID
+     * @return 用户对象，不存在返回null
+     */
+    public User getUserById(long userId) {
+        return queryById(userId);
+    }
+
+    /**
+     * 更新用户信息
+     * @param user 用户对象
+     * @return 是否成功
+     */
+    public boolean updateUser(User user) {
+        return update(user);
+    }
+
+    /**
+     * 插入用户
+     * @param user 用户对象
+     * @return 插入的用户ID，失败返回-1
+     */
+    public long insertUser(User user) {
+        return insert(user);
     }
 } 

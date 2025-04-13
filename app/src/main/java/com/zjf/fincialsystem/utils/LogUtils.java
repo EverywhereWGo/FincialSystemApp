@@ -11,7 +11,7 @@ import com.zjf.fincialsystem.BuildConfig;
 public class LogUtils {
     
     private static final String TAG = "FinancialSystem";
-    private static boolean isDebug = true;
+    private static boolean isDebug = BuildConfig.DEBUG; // 默认根据BuildConfig决定
     private static Context context;
     
     /**
@@ -20,9 +20,7 @@ public class LogUtils {
      */
     public static void init(Context context) {
         LogUtils.context = context.getApplicationContext();
-        isDebug = BuildConfig.DEBUG;
-        
-        i(TAG, "日志工具初始化成功，当前模式：" + (isDebug ? "Debug" : "Release"));
+        Log.i(TAG, "日志工具初始化成功，当前模式：" + (isDebug ? "Debug" : "Release"));
     }
     
     /**
@@ -31,6 +29,7 @@ public class LogUtils {
      */
     public static void setDebug(boolean debug) {
         isDebug = debug;
+        Log.i(TAG, "日志级别已设置为: " + (isDebug ? "DEBUG" : "RELEASE"));
     }
     
     /**

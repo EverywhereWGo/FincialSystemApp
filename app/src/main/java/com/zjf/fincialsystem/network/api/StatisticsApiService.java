@@ -2,6 +2,7 @@ package com.zjf.fincialsystem.network.api;
 
 import com.zjf.fincialsystem.network.ApiResponse;
 
+import java.util.List;
 import java.util.Map;
 
 import retrofit2.Call;
@@ -14,45 +15,47 @@ import retrofit2.http.Query;
 public interface StatisticsApiService {
     
     /**
-     * 获取收入支出概览
-     * @param period 统计周期：daily, weekly, monthly, yearly
+     * 获取分类支出统计
      */
-    @GET("api/statistics/overview")
-    Call<ApiResponse<Map<String, Object>>> getOverview(@Query("period") String period);
+    @GET("finance/statistic/category")
+    Call<ApiResponse<List<Map<String, Object>>>> getCategoryStatistics(
+            @Query("userId") Long userId,
+            @Query("startTime") Long startTime,
+            @Query("endTime") Long endTime,
+            @Query("type") Integer type);
     
     /**
-     * 获取收入分类统计
-     * @param startDate 开始日期时间戳
-     * @param endDate 结束日期时间戳
+     * 获取年度收支统计
      */
-    @GET("api/statistics/income-by-category")
-    Call<ApiResponse<Map<String, Object>>> getIncomeByCategory(
-            @Query("startDate") long startDate,
-            @Query("endDate") long endDate);
+    @GET("finance/statistic/year")
+    Call<ApiResponse<List<Map<String, Object>>>> getYearStatistics(
+            @Query("userId") Long userId,
+            @Query("year") Integer year);
     
     /**
-     * 获取支出分类统计
-     * @param startDate 开始日期时间戳
-     * @param endDate 结束日期时间戳
+     * 获取收支趋势
      */
-    @GET("api/statistics/expense-by-category")
-    Call<ApiResponse<Map<String, Object>>> getExpenseByCategory(
-            @Query("startDate") long startDate,
-            @Query("endDate") long endDate);
+    @GET("finance/statistic/trend")
+    Call<ApiResponse<List<Map<String, Object>>>> getTrend(
+            @Query("userId") Long userId,
+            @Query("months") Integer months);
     
     /**
-     * 获取日期趋势统计
-     * @param type 交易类型：0-支出，1-收入
-     * @param period 统计周期：daily, weekly, monthly, yearly
+     * 获取预算执行情况
      */
-    @GET("api/statistics/trend")
-    Call<ApiResponse<Map<String, Object>>> getTrend(
-            @Query("type") int type,
-            @Query("period") String period);
+    @GET("finance/statistic/budget")
+    Call<ApiResponse<Map<String, Object>>> getBudgetStatistics(
+            @Query("userId") Long userId,
+            @Query("month") String month);
     
     /**
-     * 获取预算使用统计
+     * 获取顺序记录
      */
-    @GET("api/statistics/budget-usage")
-    Call<ApiResponse<Map<String, Object>>> getBudgetUsage();
+    @GET("finance/statistic/topTransactions")
+    Call<ApiResponse<List<Map<String, Object>>>> getTopTransactions(
+            @Query("userId") Long userId,
+            @Query("type") Integer type,
+            @Query("startTime") Long startTime,
+            @Query("endTime") Long endTime,
+            @Query("limit") Integer limit);
 } 

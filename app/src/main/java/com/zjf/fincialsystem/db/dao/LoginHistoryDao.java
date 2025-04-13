@@ -230,4 +230,13 @@ public class LoginHistoryDao {
         loginHistory.setSuccess(cursor.getInt(cursor.getColumnIndex("success")) == 1);
         return loginHistory;
     }
+
+    /**
+     * 插入登录历史记录
+     * @param loginHistory 登录历史对象
+     * @return 插入的ID
+     */
+    public long insertLoginHistory(LoginHistory loginHistory) {
+        return insert(loginHistory);
+    }
 } 
