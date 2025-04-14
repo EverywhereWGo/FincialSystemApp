@@ -425,7 +425,7 @@ public class UserRepository {
         
         // 准备请求参数
         Map<String, Object> passwordData = new HashMap<>();
-        passwordData.put("userId", userId);
+        passwordData.put("id", userId);
         passwordData.put("oldPassword", oldPassword);
         passwordData.put("newPassword", newPassword);
         
