@@ -25,6 +25,7 @@ public class Transaction implements Serializable {
     private String note; // 备注
     private String imagePath; // 图片路径
     private String paymentMethod; // 支付方式
+    private String remark; // 额外备注信息
     private long createdAt;
     private long updatedAt;
     
@@ -172,6 +173,14 @@ public class Transaction implements Serializable {
     
     public void setPaymentMethod(String paymentMethod) {
         this.paymentMethod = paymentMethod;
+    }
+    
+    public String getRemark() {
+        return remark;
+    }
+    
+    public void setRemark(String remark) {
+        this.remark = remark;
     }
     
     @Override

@@ -26,7 +26,8 @@ public interface TransactionApiService {
      * 获取交易记录列表
      */
     @GET("finance/transaction/list")
-    Call<ApiResponse<List<Transaction>>> getTransactions(
+    Call<ApiResponse<Transaction>> getTransactions(
+            @Query("userId") Long userId,
             @Query("pageNum") Integer pageNum,
             @Query("pageSize") Integer pageSize,
             @Query("type") Integer type,
@@ -38,7 +39,9 @@ public interface TransactionApiService {
      * 获取交易记录详情
      */
     @GET("finance/transaction/{id}")
-    Call<ApiResponse<Transaction>> getTransactionDetail(@Path("id") long id);
+    Call<ApiResponse<Transaction>> getTransactionDetail(
+            @Query("userId") Long userId,
+            @Path("id") long id);
     
     /**
      * 按月获取交易记录
@@ -90,6 +93,12 @@ public interface TransactionApiService {
     Call<ApiResponse<String>> updateTransaction(@Body Transaction transaction);
     
     /**
+     * 更新交易记录（使用AddTransactionRequest对象）
+     */
+    @PUT("finance/transaction")
+    Call<ApiResponse<String>> updateTransaction(@Body AddTransactionRequest request);
+    
+    /**
      * 删除交易记录
      */
     @DELETE("finance/transaction/{ids}")
@@ -98,8 +107,15 @@ public interface TransactionApiService {
     /**
      * 获取交易分类
      * @param type 分类类型：0-支出分类，1-收入分类
+     * @param pageNum 页码，默认1
+     * @param pageSize 每页大小，默认10
+     * @param name 分类名称（模糊查询）
      * @return API响应
      */
     @GET("finance/category/list")
-    Call<ApiResponse<List<Category>>> getCategories(@Query("type") Integer type);
+    Call<ApiResponse<List<Category>>> getCategories(
+            @Query("pageNum") Integer pageNum, 
+            @Query("pageSize") Integer pageSize,
+            @Query("name") String name,
+            @Query("type") Integer type);
 } 

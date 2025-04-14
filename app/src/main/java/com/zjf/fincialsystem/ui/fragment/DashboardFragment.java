@@ -133,7 +133,8 @@ public class DashboardFragment extends Fragment {
             try {
                 // 跳转到记录页面
                 Intent intent = new Intent(requireContext(), AddTransactionActivity.class);
-                startActivity(intent);
+                // 使用宿主Activity的startActivityForResult
+                requireActivity().startActivityForResult(intent, MainActivity.REQUEST_ADD_TRANSACTION);
             } catch (Exception e) {
                 LogUtils.e(TAG, "跳转到记录页面失败：" + e.getMessage(), e);
                 Toast.makeText(requireContext(), R.string.operation_failed, Toast.LENGTH_SHORT).show();
@@ -174,7 +175,8 @@ public class DashboardFragment extends Fragment {
             try {
                 // 跳转到交易详情页
                 Intent intent = TransactionDetailActivity.createIntent(requireContext(), transaction.getId());
-                startActivity(intent);
+                // 使用宿主Activity的startActivityForResult
+                requireActivity().startActivityForResult(intent, MainActivity.REQUEST_TRANSACTION_DETAIL);
             } catch (Exception e) {
                 LogUtils.e(TAG, "跳转到交易详情页失败：" + e.getMessage(), e);
                 Toast.makeText(requireContext(), R.string.operation_failed, Toast.LENGTH_SHORT).show();
@@ -308,10 +310,11 @@ public class DashboardFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        LogUtils.d(TAG, "DashboardFragment恢复，刷新数据");
+        LogUtils.d(TAG, "DashboardFragment恢复");
         
         if (!isDataLoaded) {
             // 首次加载数据
+            LogUtils.d(TAG, "首次加载数据");
             // 延迟加载数据，确保TokenManager完全初始化
             new Handler().postDelayed(this::loadData, 500);
         } else {
@@ -362,6 +365,18 @@ public class DashboardFragment extends Fragment {
         
         // 标记数据已加载
         isDataLoaded = true;
+    }
+    
+    /**
+     * 刷新数据
+     * 供外部调用，重新加载所有数据
+     */
+    public void refreshData() {
+        LogUtils.d(TAG, "刷新DashboardFragment数据");
+        // 设置标记，表示数据需要重新加载
+        isDataLoaded = false;
+        // 立即加载数据
+        loadData();
     }
     
     /**

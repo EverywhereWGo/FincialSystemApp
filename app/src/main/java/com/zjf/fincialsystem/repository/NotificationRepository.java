@@ -59,15 +59,12 @@ public class NotificationRepository {
                                 notifications = apiResponse.convertRows(Notification.class);
                             }
                             
-                            if (!notifications.isEmpty()) {
-                                // 保存到缓存
-                                cacheManager.saveNotifications(notifications);
-                                
-                                // 返回数据
-                                callback.onSuccess(notifications);
-                            } else {
-                                callback.onError("返回数据为空");
-                            }
+                            // 返回数据，即使列表为空也正常返回
+                            // 保存到缓存
+                            cacheManager.saveNotifications(notifications);
+                            
+                            // 返回数据
+                            callback.onSuccess(notifications);
                         } else {
                             callback.onError(apiResponse.getMsg());
                         }

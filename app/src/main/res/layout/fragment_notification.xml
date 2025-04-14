@@ -105,9 +105,18 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="暂无通知"
+                    android:text="暂无通知消息"
                     android:textColor="@color/text_secondary"
                     android:textSize="16sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="您的消息通知将会显示在这里"
+                    android:textColor="@color/textHint"
+                    android:textSize="14sp"
+                    android:gravity="center" />
 
             </LinearLayout>
 

@@ -49,14 +49,19 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:hint="@string/username"
-                app:boxBackgroundColor="@color/white"
-                app:startIconDrawable="@drawable/ic_person">
+                style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox"
+                app:boxBackgroundColor="#F5F5F5"
+                app:boxStrokeColor="@color/text_input_box_stroke"
+                app:hintTextColor="@color/text_input_hint_color"
+                app:startIconDrawable="@drawable/ic_person"
+                app:startIconTint="@color/dark_gray">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_username"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="text" />
+                    android:inputType="text"
+                    android:textColor="@color/text_primary" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- 密码 -->
@@ -66,15 +71,21 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:hint="@string/password"
-                app:boxBackgroundColor="@color/white"
+                style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox"
+                app:boxBackgroundColor="#F5F5F5"
+                app:boxStrokeColor="@color/text_input_box_stroke"
+                app:hintTextColor="@color/text_input_hint_color"
                 app:endIconMode="password_toggle"
-                app:startIconDrawable="@drawable/ic_password">
+                app:endIconTint="@color/dark_gray"
+                app:startIconDrawable="@drawable/ic_password"
+                app:startIconTint="@color/dark_gray">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_password"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textPassword" />
+                    android:inputType="textPassword"
+                    android:textColor="@color/text_primary" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- 确认密码 -->
@@ -84,15 +95,21 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:hint="@string/confirm_password"
-                app:boxBackgroundColor="@color/white"
+                style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox"
+                app:boxBackgroundColor="#F5F5F5"
+                app:boxStrokeColor="@color/text_input_box_stroke"
+                app:hintTextColor="@color/text_input_hint_color"
                 app:endIconMode="password_toggle"
-                app:startIconDrawable="@drawable/ic_password">
+                app:endIconTint="@color/dark_gray"
+                app:startIconDrawable="@drawable/ic_password"
+                app:startIconTint="@color/dark_gray">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_confirm_password"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textPassword" />
+                    android:inputType="textPassword"
+                    android:textColor="@color/text_primary" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- 姓名 -->
@@ -102,14 +119,19 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:hint="@string/name"
-                app:boxBackgroundColor="@color/white"
-                app:startIconDrawable="@drawable/ic_badge">
+                style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox"
+                app:boxBackgroundColor="#F5F5F5"
+                app:boxStrokeColor="@color/text_input_box_stroke"
+                app:hintTextColor="@color/text_input_hint_color"
+                app:startIconDrawable="@drawable/ic_badge"
+                app:startIconTint="@color/dark_gray">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_name"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textPersonName" />
+                    android:inputType="textPersonName"
+                    android:textColor="@color/text_primary" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- 邮箱 -->
@@ -119,14 +141,19 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:hint="@string/email"
-                app:boxBackgroundColor="@color/white"
-                app:startIconDrawable="@drawable/ic_email">
+                style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox"
+                app:boxBackgroundColor="#F5F5F5"
+                app:boxStrokeColor="@color/text_input_box_stroke"
+                app:hintTextColor="@color/text_input_hint_color"
+                app:startIconDrawable="@drawable/ic_email"
+                app:startIconTint="@color/dark_gray">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_email"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textEmailAddress" />
+                    android:inputType="textEmailAddress"
+                    android:textColor="@color/text_primary" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- 手机号 -->
@@ -136,14 +163,19 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:hint="@string/phone"
-                app:boxBackgroundColor="@color/white"
-                app:startIconDrawable="@drawable/ic_phone">
+                style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox"
+                app:boxBackgroundColor="#F5F5F5"
+                app:boxStrokeColor="@color/text_input_box_stroke"
+                app:hintTextColor="@color/text_input_hint_color"
+                app:startIconDrawable="@drawable/ic_phone"
+                app:startIconTint="@color/dark_gray">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_phone"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="phone" />
+                    android:inputType="phone"
+                    android:textColor="@color/text_primary" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- 注册按钮 -->

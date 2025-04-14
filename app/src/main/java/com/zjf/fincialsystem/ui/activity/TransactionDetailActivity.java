@@ -33,12 +33,15 @@ import java.text.DecimalFormat;
 public class TransactionDetailActivity extends AppCompatActivity {
     
     private static final String TAG = "TransactionDetailActivity";
-    private static final String EXTRA_TRANSACTION_ID = "transaction_id";
+    private static final String EXTRA_TRANSACTION_ID = "extra_transaction_id";
     
     private ActivityTransactionDetailBinding binding;
     private TransactionRepository transactionRepository;
-    private long transactionId;
-    private Transaction transaction;
+    private long transactionId = -1;
+    private Transaction transaction = null;
+    
+    // 结果码
+    private static final int REQUEST_EDIT_TRANSACTION = 1001;
     
     /**
      * 创建启动此活动的意图
@@ -99,7 +102,7 @@ public class TransactionDetailActivity extends AppCompatActivity {
         binding.btnEdit.setOnClickListener(v -> {
             if (transaction != null) {
                 Intent intent = AddTransactionActivity.createIntent(this, transaction);
-                startActivity(intent);
+                startActivityForResult(intent, REQUEST_EDIT_TRANSACTION);
             }
         });
         
@@ -218,20 +221,25 @@ public class TransactionDetailActivity extends AppCompatActivity {
                 binding.tvPayment.setVisibility(View.GONE);
             }
             
-            // 设置描述
-            String description = transaction.getDescription();
-            if (description != null && !description.isEmpty()) {
-                binding.tvDescription.setText(description);
+            // 设置描述（优先显示备注信息）
+            String remark = transaction.getRemark();
+            String note = transaction.getNote();
+            
+            if (remark != null && !remark.isEmpty()) {
+                binding.tvDescription.setText(remark);
+                // 如果有备注，则隐藏备注字段
+                binding.tvNoteLabel.setVisibility(View.GONE);
+                binding.tvNote.setVisibility(View.GONE);
+            } else if (note != null && !note.isEmpty()) {
+                binding.tvDescription.setText(note);
+                // 如果只有描述，同样隐藏备注字段
+                binding.tvNoteLabel.setVisibility(View.GONE);
+                binding.tvNote.setVisibility(View.GONE);
             } else {
                 binding.tvDescription.setText("无描述");
-            }
-            
-            // 设置备注
-            String note = transaction.getNote();
-            if (note != null && !note.isEmpty()) {
-                binding.tvNote.setText(note);
-            } else {
-                binding.tvNote.setText("无备注");
+                // 隐藏备注字段
+                binding.tvNoteLabel.setVisibility(View.GONE);
+                binding.tvNote.setVisibility(View.GONE);
             }
             
             // 设置图片（如果有）
@@ -307,5 +315,15 @@ public class TransactionDetailActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         binding = null;
+    }
+    
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        
+        if (requestCode == REQUEST_EDIT_TRANSACTION && resultCode == RESULT_OK) {
+            // 交易编辑成功，重新加载数据
+            loadTransactionData();
+        }
     }
 } 

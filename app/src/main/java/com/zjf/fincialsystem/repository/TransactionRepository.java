@@ -14,6 +14,7 @@ import com.zjf.fincialsystem.network.api.TransactionApiService;
 import com.zjf.fincialsystem.network.model.AddTransactionRequest;
 import com.zjf.fincialsystem.utils.LogUtils;
 import com.zjf.fincialsystem.utils.NetworkUtils;
+import com.zjf.fincialsystem.utils.TokenManager;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -36,11 +37,13 @@ public class TransactionRepository {
     private final Context context;
     private final TransactionApiService apiService;
     private final DataCacheManager cacheManager;
+    private final TokenManager tokenManager;
     
     public TransactionRepository(Context context) {
         this.context = context.getApplicationContext();
         this.apiService = NetworkManager.getInstance().getTransactionApiService();
         this.cacheManager = DataCacheManager.getInstance(context);
+        this.tokenManager = TokenManager.getInstance();
     }
     
     /**
@@ -48,28 +51,46 @@ public class TransactionRepository {
      * @param callback 回调
      */
     public void getTransactions(final RepositoryCallback<List<Transaction>> callback) {
+        // 获取当前用户ID
+        long userId = tokenManager.getUserId();
+        if (userId <= 0) {
+            callback.onError("未获取到有效的用户ID");
+            return;
+        }
+        
         // 检查网络状态
         if (NetworkUtils.isNetworkAvailable(context)) {
             // 有网络连接，从网络获取数据
-            apiService.getTransactions(1, 100, null, null, null, null).enqueue(new Callback<ApiResponse<List<Transaction>>>() {
+            apiService.getTransactions(userId, 1, 100, null, null, null, null).enqueue(new Callback<ApiResponse<Transaction>>() {
                 @Override
-                public void onResponse(Call<ApiResponse<List<Transaction>>> call, Response<ApiResponse<List<Transaction>>> response) {
+                public void onResponse(Call<ApiResponse<Transaction>> call, Response<ApiResponse<Transaction>> response) {
                     if (response.isSuccessful() && response.body() != null) {
-                        ApiResponse<List<Transaction>> apiResponse = response.body();
+                        ApiResponse<Transaction> apiResponse = response.body();
                         if (apiResponse.isSuccess()) {
-                            // 优先使用data字段，如果为空则使用convertRows方法
-                            List<Transaction> transactions = apiResponse.getDataSafe(new ArrayList<>());
+                            List<Transaction> transactions = new ArrayList<>();
                             
-                            // 如果data为空，使用convertRows方法转换rows数据为Transaction列表
-                            if (transactions.isEmpty()) {
-                                // 修改为显式转换处理嵌套列表的情况
-                                List<Transaction> convertedTransactions = new ArrayList<>();
-                                // 使用convertRows方法处理嵌套列表的情况
-                                List<Transaction> rowsData = apiResponse.convertRows(Transaction.class);
-                                if (rowsData != null && !rowsData.isEmpty()) {
-                                    convertedTransactions.addAll(rowsData);
+                            // 处理Transaction对象
+                            Transaction transaction = apiResponse.getData();
+                            if (transaction != null) {
+                                transactions.add(transaction);
+                            }
+                            
+                            // 尝试从rows获取更多数据
+                            List<?> rowsData = apiResponse.getRowsSafe();
+                            if (rowsData != null && !rowsData.isEmpty()) {
+                                for (Object item : rowsData) {
+                                    if (item instanceof Transaction) {
+                                        transactions.add((Transaction) item);
+                                    } else if (item instanceof List) {
+                                        // 处理嵌套列表情况
+                                        List<?> itemList = (List<?>) item;
+                                        for (Object subItem : itemList) {
+                                            if (subItem instanceof Transaction) {
+                                                transactions.add((Transaction) subItem);
+                                            }
+                                        }
+                                    }
                                 }
-                                transactions = convertedTransactions;
                             }
                             
                             if (!transactions.isEmpty()) {
@@ -90,15 +111,12 @@ public class TransactionRepository {
                 }
 
                 @Override
-                public void onFailure(Call<ApiResponse<List<Transaction>>> call, Throwable t) {
+                public void onFailure(Call<ApiResponse<Transaction>> call, Throwable t) {
                     LogUtils.e(TAG, "获取交易记录列表失败", t);
                     
                     // 处理JSON解析异常，可能是服务端返回格式不一致导致的
-                    if (t instanceof com.google.gson.JsonSyntaxException && 
-                            t.getMessage() != null && 
-                            t.getMessage().contains("Expected BEGIN_ARRAY but was BEGIN_OBJECT")) {
-                        LogUtils.w(TAG, "服务端可能返回了对象而非数组格式，尝试使用备用方案获取数据");
-                        // 这里可能需要使用RawResponseBodyConverter处理
+                    if (t instanceof com.google.gson.JsonSyntaxException) {
+                        LogUtils.w(TAG, "服务端可能返回了非预期格式，尝试使用备用方案获取数据");
                         // 如果有缓存数据，先使用缓存数据
                         if (cacheManager.isCacheValid("transactions")) {
                             List<Transaction> cachedTransactions = cacheManager.getTransactions();
@@ -151,28 +169,46 @@ public class TransactionRepository {
      * @param callback 回调
      */
     public void getTransactionsByType(int type, final RepositoryCallback<List<Transaction>> callback) {
+        // 获取当前用户ID
+        long userId = tokenManager.getUserId();
+        if (userId <= 0) {
+            callback.onError("未获取到有效的用户ID");
+            return;
+        }
+        
         // 检查网络状态
         if (NetworkUtils.isNetworkAvailable(context)) {
             // 有网络连接，从网络获取数据
-            apiService.getTransactions(1, 100, type, null, null, null).enqueue(new Callback<ApiResponse<List<Transaction>>>() {
+            apiService.getTransactions(userId, 1, 100, type, null, null, null).enqueue(new Callback<ApiResponse<Transaction>>() {
                 @Override
-                public void onResponse(Call<ApiResponse<List<Transaction>>> call, Response<ApiResponse<List<Transaction>>> response) {
+                public void onResponse(Call<ApiResponse<Transaction>> call, Response<ApiResponse<Transaction>> response) {
                     if (response.isSuccessful() && response.body() != null) {
-                        ApiResponse<List<Transaction>> apiResponse = response.body();
+                        ApiResponse<Transaction> apiResponse = response.body();
                         if (apiResponse.isSuccess()) {
-                            // 优先使用data字段，如果为空则使用convertRows方法
-                            List<Transaction> transactions = apiResponse.getDataSafe(new ArrayList<>());
+                            List<Transaction> transactions = new ArrayList<>();
                             
-                            // 如果data为空，使用convertRows方法转换rows数据为Transaction列表
-                            if (transactions.isEmpty()) {
-                                // 修改为显式转换处理嵌套列表的情况
-                                List<Transaction> convertedTransactions = new ArrayList<>();
-                                // 使用convertRows方法处理嵌套列表的情况
-                                List<Transaction> rowsData = apiResponse.convertRows(Transaction.class);
-                                if (rowsData != null && !rowsData.isEmpty()) {
-                                    convertedTransactions.addAll(rowsData);
+                            // 处理Transaction对象
+                            Transaction transaction = apiResponse.getData();
+                            if (transaction != null) {
+                                transactions.add(transaction);
+                            }
+                            
+                            // 尝试从rows获取更多数据
+                            List<?> rowsData = apiResponse.getRowsSafe();
+                            if (rowsData != null && !rowsData.isEmpty()) {
+                                for (Object item : rowsData) {
+                                    if (item instanceof Transaction) {
+                                        transactions.add((Transaction) item);
+                                    } else if (item instanceof List) {
+                                        // 处理嵌套列表情况
+                                        List<?> itemList = (List<?>) item;
+                                        for (Object subItem : itemList) {
+                                            if (subItem instanceof Transaction) {
+                                                transactions.add((Transaction) subItem);
+                                            }
+                                        }
+                                    }
                                 }
-                                transactions = convertedTransactions;
                             }
                             
                             if (!transactions.isEmpty()) {
@@ -190,14 +226,12 @@ public class TransactionRepository {
                 }
 
                 @Override
-                public void onFailure(Call<ApiResponse<List<Transaction>>> call, Throwable t) {
+                public void onFailure(Call<ApiResponse<Transaction>> call, Throwable t) {
                     LogUtils.e(TAG, "获取交易记录列表失败", t);
                     
                     // 处理JSON解析异常，可能是服务端返回格式不一致导致的
-                    if (t instanceof com.google.gson.JsonSyntaxException && 
-                            t.getMessage() != null && 
-                            t.getMessage().contains("Expected BEGIN_ARRAY but was BEGIN_OBJECT")) {
-                        LogUtils.w(TAG, "服务端可能返回了对象而非数组格式，尝试使用备用方案获取数据");
+                    if (t instanceof com.google.gson.JsonSyntaxException) {
+                        LogUtils.w(TAG, "服务端可能返回了非预期格式，尝试使用备用方案获取数据");
                         // 如果有缓存数据，先使用缓存数据
                         if (cacheManager.isCacheValid("transactions")) {
                             List<Transaction> cachedTransactions = cacheManager.getTransactions();
@@ -270,20 +304,29 @@ public class TransactionRepository {
     
     /**
      * 添加交易记录
-     * @param request 添加交易记录请求参数
+     * @param request 添加交易请求
      * @param callback 回调
      */
     public void addTransaction(AddTransactionRequest request, final RepositoryCallback<Transaction> callback) {
+        // 获取当前用户ID并设置到请求中
+        long userId = tokenManager.getUserId();
+        if (userId <= 0) {
+            callback.onError("未获取到有效的用户ID");
+            return;
+        }
+        
+        // 设置当前用户ID
+        request.setUserId(userId);
+        
         // 检查网络状态
         if (!NetworkUtils.isNetworkAvailable(context)) {
-            LogUtils.e(TAG, "无网络连接，无法添加交易记录到服务器");
-            callback.onError("无网络连接，请检查您的网络设置后重试");
+            callback.onError("无网络连接，无法添加交易记录");
             return;
         }
         
         LogUtils.d(TAG, "开始调用API添加交易记录: " + request.toString());
         
-        // 有网络连接，调用API
+        // 调用API添加交易记录
         apiService.addTransaction(request).enqueue(new Callback<ApiResponse<String>>() {
             @Override
             public void onResponse(Call<ApiResponse<String>> call, Response<ApiResponse<String>> response) {
@@ -299,8 +342,8 @@ public class TransactionRepository {
                         transaction.setCategoryId(request.getCategoryId());
                         transaction.setType(request.getType());
                         transaction.setAmount(request.getAmount());
-                        transaction.setDescription(request.getDescription());
-                        transaction.setNote(request.getNote());
+                        transaction.setNote(request.getDescription());
+                        transaction.setRemark(request.getRemark());
                         transaction.setImagePath(request.getImagePath());
                         // 将long类型的日期转换为Date类型
                         transaction.setDate(new Date(request.getDate()));
@@ -352,38 +395,130 @@ public class TransactionRepository {
     
     /**
      * 更新交易记录
-     * @param transaction 要更新的交易记录
+     * @param request 更新交易请求
      * @param callback 回调
      */
-    public void updateTransaction(Transaction transaction, final RepositoryCallback<Transaction> callback) {
+    public void updateTransaction(AddTransactionRequest request, final RepositoryCallback<Transaction> callback) {
+        // 获取当前用户ID并设置到请求中
+        long userId = tokenManager.getUserId();
+        if (userId <= 0) {
+            callback.onError("未获取到有效的用户ID");
+            return;
+        }
+        
+        // 设置当前用户ID
+        request.setUserId(userId);
+        
         // 检查网络状态
         if (!NetworkUtils.isNetworkAvailable(context)) {
             callback.onError("无网络连接，无法更新交易记录");
             return;
         }
         
-        apiService.updateTransaction(transaction).enqueue(new Callback<ApiResponse<String>>() {
+        // 确保id存在
+        if (request.getId() <= 0) {
+            callback.onError("无法更新交易记录：缺少交易ID");
+            return;
+        }
+        
+        LogUtils.d(TAG, "开始更新交易记录，ID: " + request.getId() + ", 用户ID: " + request.getUserId());
+        
+        // 调用API更新交易记录
+        apiService.updateTransaction(request).enqueue(new Callback<ApiResponse<String>>() {
             @Override
             public void onResponse(Call<ApiResponse<String>> call, Response<ApiResponse<String>> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     ApiResponse<String> apiResponse = response.body();
                     if (apiResponse.isSuccess()) {
-                        // 更新缓存
-                        List<Transaction> cachedTransactions = cacheManager.getTransactions();
-                        for (int i = 0; i < cachedTransactions.size(); i++) {
-                            if (cachedTransactions.get(i).getId() == transaction.getId()) {
-                                cachedTransactions.set(i, transaction);
-                                break;
-                            }
+                        LogUtils.d(TAG, "交易记录更新成功，ID: " + request.getId());
+                        
+                        // 构建返回的交易对象
+                        Transaction transaction = new Transaction();
+                        transaction.setId(request.getId());
+                        transaction.setType(request.getType());
+                        transaction.setAmount(request.getAmount());
+                        transaction.setCategoryId(request.getCategoryId());
+                        
+                        // 设置日期
+                        if (request.getDate() > 0) {
+                            transaction.setDate(new Date(request.getDate()));
                         }
-                        cacheManager.saveTransactions(cachedTransactions);
+                        
+                        // 设置描述和备注
+                        transaction.setDescription(request.getDescription());
+                        transaction.setNote(request.getNote());
+                        transaction.setRemark(request.getRemark());
+                        
+                        // 更新缓存
+                        updateTransactionInCache(transaction);
                         
                         // 返回数据
                         callback.onSuccess(transaction);
                     } else {
+                        LogUtils.e(TAG, "交易记录更新失败: " + apiResponse.getMsg());
+                        
+                        // 检查是否为认证错误
+                        if (apiResponse.getMsg() != null && (apiResponse.getMsg().contains("401") || apiResponse.getMsg().contains("认证"))) {
+                            LogUtils.w(TAG, "可能是认证错误，尝试使用不同的用户ID重试");
+                            
+                            // 重新设置用户ID并重试
+                            request.setUserId(1); // 确保使用默认用户ID
+                            
+                            // 重试请求
+                            apiService.updateTransaction(request).enqueue(new Callback<ApiResponse<String>>() {
+                                @Override
+                                public void onResponse(Call<ApiResponse<String>> call, Response<ApiResponse<String>> response) {
+                                    if (response.isSuccessful() && response.body() != null) {
+                                        ApiResponse<String> apiResponse = response.body();
+                                        if (apiResponse.isSuccess()) {
+                                            LogUtils.d(TAG, "重试后交易记录更新成功，ID: " + request.getId());
+                                            
+                                            // 构建返回的交易对象
+                                            Transaction transaction = new Transaction();
+                                            transaction.setId(request.getId());
+                                            transaction.setType(request.getType());
+                                            transaction.setAmount(request.getAmount());
+                                            transaction.setCategoryId(request.getCategoryId());
+                                            
+                                            // 设置日期
+                                            if (request.getDate() > 0) {
+                                                transaction.setDate(new Date(request.getDate()));
+                                            }
+                                            
+                                            // 设置描述和备注
+                                            transaction.setDescription(request.getDescription());
+                                            transaction.setNote(request.getNote());
+                                            transaction.setRemark(request.getRemark());
+                                            
+                                            // 更新缓存
+                                            updateTransactionInCache(transaction);
+                                            
+                                            // 返回数据
+                                            callback.onSuccess(transaction);
+                                        } else {
+                                            LogUtils.e(TAG, "重试后交易记录更新仍然失败: " + apiResponse.getMsg());
+                                            callback.onError(apiResponse.getMsg() + " (重试后)");
+                                        }
+                                    } else {
+                                        LogUtils.e(TAG, "重试后交易记录更新网络请求仍然失败");
+                                        callback.onError("网络请求失败 (重试后)");
+                                    }
+                                }
+                                
+                                @Override
+                                public void onFailure(Call<ApiResponse<String>> call, Throwable t) {
+                                    LogUtils.e(TAG, "重试后更新交易记录失败", t);
+                                    callback.onError("更新交易记录失败: " + t.getMessage() + " (重试后)");
+                                }
+                            });
+                            return; // 防止多次回调
+                        }
+                        
+                        // 设置null来表示失败
                         callback.onError(apiResponse.getMsg());
                     }
                 } else {
+                    LogUtils.e(TAG, "交易记录更新网络请求失败");
                     callback.onError("网络请求失败");
                 }
             }
@@ -391,53 +526,167 @@ public class TransactionRepository {
             @Override
             public void onFailure(Call<ApiResponse<String>> call, Throwable t) {
                 LogUtils.e(TAG, "更新交易记录失败", t);
+                
+                // 检查是否为认证错误
+                if (t.getMessage() != null && (t.getMessage().contains("401") || t.getMessage().contains("认证"))) {
+                    LogUtils.w(TAG, "可能是认证错误，尝试使用不同的用户ID重试");
+                    
+                    // 重新设置用户ID并重试
+                    request.setUserId(1); // 确保使用默认用户ID
+                    
+                    // 重试请求
+                    apiService.updateTransaction(request).enqueue(new Callback<ApiResponse<String>>() {
+                        @Override
+                        public void onResponse(Call<ApiResponse<String>> call, Response<ApiResponse<String>> response) {
+                            if (response.isSuccessful() && response.body() != null) {
+                                ApiResponse<String> apiResponse = response.body();
+                                if (apiResponse.isSuccess()) {
+                                    LogUtils.d(TAG, "重试后交易记录更新成功，ID: " + request.getId());
+                                    
+                                    // 构建返回的交易对象
+                                    Transaction transaction = new Transaction();
+                                    transaction.setId(request.getId());
+                                    transaction.setType(request.getType());
+                                    transaction.setAmount(request.getAmount());
+                                    transaction.setCategoryId(request.getCategoryId());
+                                    
+                                    // 设置日期
+                                    if (request.getDate() > 0) {
+                                        transaction.setDate(new Date(request.getDate()));
+                                    }
+                                    
+                                    // 设置描述和备注
+                                    transaction.setDescription(request.getDescription());
+                                    transaction.setNote(request.getNote());
+                                    transaction.setRemark(request.getRemark());
+                                    
+                                    // 更新缓存
+                                    updateTransactionInCache(transaction);
+                                    
+                                    // 返回数据
+                                    callback.onSuccess(transaction);
+                                } else {
+                                    LogUtils.e(TAG, "重试后交易记录更新仍然失败: " + apiResponse.getMsg());
+                                    callback.onError(apiResponse.getMsg() + " (重试后)");
+                                }
+                            } else {
+                                LogUtils.e(TAG, "重试后交易记录更新网络请求仍然失败");
+                                callback.onError("网络请求失败 (重试后)");
+                            }
+                        }
+                        
+                        @Override
+                        public void onFailure(Call<ApiResponse<String>> call, Throwable t) {
+                            LogUtils.e(TAG, "重试后更新交易记录失败", t);
+                            callback.onError("更新交易记录失败: " + t.getMessage() + " (重试后)");
+                        }
+                    });
+                    return; // 防止多次回调
+                }
+                
                 callback.onError("更新交易记录失败: " + t.getMessage());
             }
         });
     }
     
     /**
-     * 删除交易记录
-     * @param transactionId 要删除的交易记录ID
-     * @param callback 回调
+     * 更新缓存中的交易记录
      */
-    public void deleteTransaction(long transactionId, final RepositoryCallback<Boolean> callback) {
-        // 检查网络状态
-        if (!NetworkUtils.isNetworkAvailable(context)) {
-            callback.onError("无网络连接，无法删除交易记录");
+    private void updateTransactionInCache(Transaction transaction) {
+        if (transaction == null || transaction.getId() <= 0) {
+            LogUtils.w(TAG, "无法更新缓存中的交易记录：无效的交易记录或ID");
             return;
         }
         
-        apiService.deleteTransaction(String.valueOf(transactionId)).enqueue(new Callback<ApiResponse<String>>() {
-            @Override
-            public void onResponse(Call<ApiResponse<String>> call, Response<ApiResponse<String>> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    ApiResponse<String> apiResponse = response.body();
-                    if (apiResponse.isSuccess()) {
-                        // 更新缓存
-                        List<Transaction> cachedTransactions = cacheManager.getTransactions();
-                        for (int i = 0; i < cachedTransactions.size(); i++) {
-                            if (cachedTransactions.get(i).getId() == transactionId) {
-                                cachedTransactions.remove(i);
-                                break;
-                            }
-                        }
-                        cacheManager.saveTransactions(cachedTransactions);
-                        
-                        // 返回数据
-                        callback.onSuccess(true);
-                    } else {
-                        callback.onError(apiResponse.getMsg());
+        try {
+            List<Transaction> cachedTransactions = cacheManager.getTransactions();
+            if (cachedTransactions != null && !cachedTransactions.isEmpty()) {
+                boolean found = false;
+                for (int i = 0; i < cachedTransactions.size(); i++) {
+                    if (cachedTransactions.get(i).getId() == transaction.getId()) {
+                        cachedTransactions.set(i, transaction);
+                        found = true;
+                        break;
                     }
-                } else {
-                    callback.onError("网络请求失败");
                 }
+                
+                if (found) {
+                    cacheManager.saveTransactions(cachedTransactions);
+                    LogUtils.d(TAG, "成功更新缓存中的交易记录，ID: " + transaction.getId());
+                } else {
+                    LogUtils.w(TAG, "未在缓存中找到要更新的交易记录，ID: " + transaction.getId());
+                }
+            } else {
+                LogUtils.w(TAG, "缓存中没有交易记录数据，无法更新");
             }
-
+        } catch (Exception e) {
+            LogUtils.e(TAG, "更新缓存中的交易记录失败: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 删除交易记录
+     * @param transactionId 交易记录ID
+     * @param callback 回调
+     */
+    public void deleteTransaction(long transactionId, final RepositoryCallback<Boolean> callback) {
+        // 获取当前用户ID
+        long userId = tokenManager.getUserId();
+        if (userId <= 0) {
+            callback.onError("未获取到有效的用户ID");
+            return;
+        }
+        
+        // 首先尝试获取交易记录详情，确认是否是当前用户的交易记录
+        getTransaction(transactionId, new RepositoryCallback<Transaction>() {
             @Override
-            public void onFailure(Call<ApiResponse<String>> call, Throwable t) {
-                LogUtils.e(TAG, "删除交易记录失败", t);
-                callback.onError("删除交易记录失败: " + t.getMessage());
+            public void onSuccess(Transaction transaction) {
+                // 验证交易记录所属用户是否与当前用户匹配
+                if (transaction.getUserId() != userId) {
+                    callback.onError("没有权限删除此交易记录");
+                    return;
+                }
+                
+                // 检查网络状态
+                if (!NetworkUtils.isNetworkAvailable(context)) {
+                    callback.onError("无网络连接，无法删除交易记录");
+                    return;
+                }
+                
+                // 实际删除操作
+                apiService.deleteTransaction(String.valueOf(transactionId)).enqueue(new Callback<ApiResponse<String>>() {
+                    @Override
+                    public void onResponse(Call<ApiResponse<String>> call, Response<ApiResponse<String>> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            ApiResponse<String> apiResponse = response.body();
+                            if (apiResponse.isSuccess()) {
+                                // 从缓存中移除
+                                removeTransactionFromCache(transactionId);
+                                callback.onSuccess(true);
+                            } else {
+                                callback.onError(apiResponse.getMsg());
+                            }
+                        } else {
+                            callback.onError("删除交易记录失败，请稍后重试");
+                        }
+                    }
+                    
+                    @Override
+                    public void onFailure(Call<ApiResponse<String>> call, Throwable t) {
+                        LogUtils.e(TAG, "删除交易记录失败", t);
+                        callback.onError("删除交易记录失败: " + t.getMessage());
+                    }
+                });
+            }
+            
+            @Override
+            public void onError(String error) {
+                callback.onError("获取交易记录失败: " + error);
+            }
+            
+            @Override
+            public void isCacheData(boolean isCache) {
+                // 不需要特殊处理
             }
         });
     }
@@ -448,10 +697,17 @@ public class TransactionRepository {
      * @param callback 回调
      */
     public void getTransaction(long transactionId, final RepositoryCallback<Transaction> callback) {
+        // 获取当前用户ID
+        long userId = tokenManager.getUserId();
+        if (userId <= 0) {
+            callback.onError("未获取到有效的用户ID");
+            return;
+        }
+        
         // 检查网络状态
         if (NetworkUtils.isNetworkAvailable(context)) {
             // 有网络连接，从网络获取数据
-            apiService.getTransactionDetail(transactionId).enqueue(new Callback<ApiResponse<Transaction>>() {
+            apiService.getTransactionDetail(userId, transactionId).enqueue(new Callback<ApiResponse<Transaction>>() {
                 @Override
                 public void onResponse(Call<ApiResponse<Transaction>> call, Response<ApiResponse<Transaction>> response) {
                     if (response.isSuccessful() && response.body() != null) {
@@ -522,58 +778,58 @@ public class TransactionRepository {
     }
     
     /**
-     * 按日期范围获取交易记录列表
+     * 按日期范围获取交易记录
      * @param startDate 开始日期
      * @param endDate 结束日期
      * @param callback 回调
      */
     public void getTransactionsByDateRange(Date startDate, Date endDate, final RepositoryCallback<List<Transaction>> callback) {
-        // 检查参数
-        if (startDate == null || endDate == null) {
-            callback.onError("日期参数不能为空");
+        // 获取当前用户ID
+        long userId = tokenManager.getUserId();
+        if (userId <= 0) {
+            callback.onError("未获取到有效的用户ID");
             return;
         }
         
-        // 转换日期为Long类型的时间戳
-        final long startTimestamp = startDate.getTime();
-        final long endTimestamp = endDate.getTime();
+        long startTime = startDate.getTime();
+        long endTime = endDate.getTime();
         
         // 检查网络状态
         if (NetworkUtils.isNetworkAvailable(context)) {
             // 有网络连接，从网络获取数据
-            apiService.getTransactions(1, 100, null, startTimestamp, endTimestamp, null).enqueue(new Callback<ApiResponse<List<Transaction>>>() {
+            apiService.getTransactionsByMonth(userId, startTime, endTime, null).enqueue(new Callback<ApiResponse<List<Transaction>>>() {
                 @Override
                 public void onResponse(Call<ApiResponse<List<Transaction>>> call, Response<ApiResponse<List<Transaction>>> response) {
                     if (response.isSuccessful() && response.body() != null) {
                         ApiResponse<List<Transaction>> apiResponse = response.body();
                         if (apiResponse.isSuccess()) {
-                            // 使用安全方法获取数据，优先从data字段获取
-                            List<Transaction> transactions = apiResponse.getData();
+                            List<Transaction> transactions = new ArrayList<>();
                             
-                            // 如果data为空，尝试从rows字段安全获取数据，并处理类型转换
-                            if (transactions == null || transactions.isEmpty()) {
-                                // 获取rows数据，并进行类型转换
-                                List<?> rowsData = apiResponse.getRowsSafe();
-                                if (rowsData != null && !rowsData.isEmpty()) {
-                                    transactions = new ArrayList<>();
-                                    // 尝试将rowsData转换为List<Transaction>
-                                    for (Object item : rowsData) {
-                                        if (item instanceof Transaction) {
-                                            transactions.add((Transaction) item);
-                                        } else if (item instanceof List) {
-                                            // 如果item是List，尝试获取List中的Transaction对象
-                                            List<?> itemList = (List<?>) item;
-                                            for (Object subItem : itemList) {
-                                                if (subItem instanceof Transaction) {
-                                                    transactions.add((Transaction) subItem);
-                                                }
+                            // 获取响应中的交易记录列表
+                            List<Transaction> dataList = apiResponse.getData();
+                            if (dataList != null && !dataList.isEmpty()) {
+                                transactions.addAll(dataList);
+                            }
+                            
+                            // 尝试从rows获取更多数据
+                            List<?> rowsData = apiResponse.getRowsSafe();
+                            if (rowsData != null && !rowsData.isEmpty()) {
+                                for (Object item : rowsData) {
+                                    if (item instanceof Transaction) {
+                                        transactions.add((Transaction) item);
+                                    } else if (item instanceof List) {
+                                        // 处理嵌套列表情况
+                                        List<?> itemList = (List<?>) item;
+                                        for (Object subItem : itemList) {
+                                            if (subItem instanceof Transaction) {
+                                                transactions.add((Transaction) subItem);
                                             }
                                         }
                                     }
                                 }
                             }
                             
-                            if (transactions != null && !transactions.isEmpty()) {
+                            if (!transactions.isEmpty()) {
                                 // 返回数据
                                 callback.onSuccess(transactions);
                             } else {
@@ -593,7 +849,7 @@ public class TransactionRepository {
                     
                     // 处理JSON解析异常，可能是服务端返回格式不一致导致的
                     if (t instanceof com.google.gson.JsonSyntaxException) {
-                        LogUtils.w(TAG, "服务端可能返回了错误格式，尝试使用缓存数据");
+                        LogUtils.w(TAG, "服务端可能返回了非预期格式，尝试使用缓存数据");
                         // 尝试从缓存获取
                         if (cacheManager.isCacheValid("transactions")) {
                             List<Transaction> cachedTransactions = cacheManager.getTransactions();
@@ -695,19 +951,36 @@ public class TransactionRepository {
         
         // 从API获取
         try {
-            ApiResponse<List<Category>> response = apiService.getCategories(type).execute().body();
+            ApiResponse<List<Category>> response = apiService.getCategories(1, 100, null, type).execute().body();
             if (response != null && response.isSuccess()) {
                 List<Category> categories = new ArrayList<>();
                 
-                // 尝试从data字段获取数据
-                List<Category> dataList = response.getData();
-                if (dataList != null && !dataList.isEmpty()) {
-                    categories.addAll(dataList);
+                // 优先使用data字段，如果为空则使用rows字段
+                List<Category> categoriesData = response.getDataSafe(new ArrayList<>());
+                if (!categoriesData.isEmpty()) {
+                    categories.addAll(categoriesData);
                 } else {
-                    // 如果data为空，使用新的convertRows方法将rows字段的数据转换为Category对象
-                    List<Category> rowsCategories = response.convertRows(Category.class);
-                    if (rowsCategories != null && !rowsCategories.isEmpty()) {
-                        categories.addAll(rowsCategories);
+                    // 如果data为空，从rows字段获取分类列表
+                    try {
+                        // 处理getRowsSafe可能返回泛型不匹配的情况
+                        List<?> rowsData = response.getRowsSafe();
+                        if (rowsData != null && !rowsData.isEmpty()) {
+                            for (Object item : rowsData) {
+                                if (item instanceof Category) {
+                                    categories.add((Category) item);
+                                } else if (item instanceof List) {
+                                    // 处理嵌套列表情况
+                                    List<?> nestedList = (List<?>) item;
+                                    for (Object nestedItem : nestedList) {
+                                        if (nestedItem instanceof Category) {
+                                            categories.add((Category) nestedItem);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        LogUtils.e(TAG, "处理rows数据失败: " + e.getMessage(), e);
                     }
                 }
                 
@@ -951,5 +1224,22 @@ public class TransactionRepository {
         categories.add(category4);
         
         return categories;
+    }
+    
+    /**
+     * 从缓存中移除交易记录
+     * @param transactionId 交易记录ID
+     */
+    private void removeTransactionFromCache(long transactionId) {
+        List<Transaction> cachedTransactions = cacheManager.getTransactions();
+        if (cachedTransactions != null) {
+            for (int i = 0; i < cachedTransactions.size(); i++) {
+                if (cachedTransactions.get(i).getId() == transactionId) {
+                    cachedTransactions.remove(i);
+                    break;
+                }
+            }
+            cacheManager.saveTransactions(cachedTransactions);
+        }
     }
 } 

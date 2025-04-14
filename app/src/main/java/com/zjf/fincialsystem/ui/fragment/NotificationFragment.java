@@ -232,13 +232,17 @@ public class NotificationFragment extends Fragment {
                 @Override
                 public void onError(String errorMsg) {
                     LogUtils.e(TAG, "加载通知失败: " + errorMsg);
-                    Toast.makeText(requireContext(), "加载通知失败: " + errorMsg, Toast.LENGTH_SHORT).show();
                     
                     // 尝试从本地数据库加载
                     loadNotificationsFromDatabase(userId);
                     
                     // 完成刷新
                     binding.swipeRefreshLayout.setRefreshing(false);
+                    
+                    // 只有在网络错误且非"无数据"错误时才显示Toast
+                    if (!errorMsg.contains("返回数据为空") && !errorMsg.contains("无数据")) {
+                        Toast.makeText(requireContext(), "网络连接异常，已加载本地数据", Toast.LENGTH_SHORT).show();
+                    }
                 }
                 
                 @Override
@@ -275,16 +279,10 @@ public class NotificationFragment extends Fragment {
                 notifications.addAll(dbNotifications);
                 adapter.notifyDataSetChanged();
             } else {
-                LogUtils.w(TAG, "本地数据库中没有通知数据");
-                
-                // 如果本地数据库也没有数据，则创建并使用测试数据
-                createTestNotifications();
-                dbNotifications = notificationDao.queryByUserId(userId);
-                if (dbNotifications != null && !dbNotifications.isEmpty()) {
-                    notifications.clear();
-                    notifications.addAll(dbNotifications);
-                    adapter.notifyDataSetChanged();
-                }
+                LogUtils.d(TAG, "本地数据库中没有通知数据");
+                // 清空当前列表并显示空状态
+                notifications.clear();
+                adapter.notifyDataSetChanged();
             }
             
             // 更新空列表状态
@@ -440,14 +438,15 @@ public class NotificationFragment extends Fragment {
      */
     private void updateEmptyState() {
         if (binding != null) {
-            if (notifications == null || notifications.isEmpty()) {
-                binding.emptyView.setVisibility(View.VISIBLE);
-                binding.recyclerView.setVisibility(View.GONE);
-                binding.btnClearAll.setVisibility(View.GONE);
-            } else {
-                binding.emptyView.setVisibility(View.GONE);
-                binding.recyclerView.setVisibility(View.VISIBLE);
-                binding.btnClearAll.setVisibility(View.VISIBLE);
+            boolean isEmpty = notifications == null || notifications.isEmpty();
+            
+            // 更新视图可见性
+            binding.emptyView.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
+            binding.recyclerView.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
+            binding.btnClearAll.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
+            
+            if (isEmpty) {
+                LogUtils.d(TAG, "显示空状态视图 - 暂无通知消息");
             }
         }
     }

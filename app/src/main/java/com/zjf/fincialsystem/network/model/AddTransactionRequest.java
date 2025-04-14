@@ -6,6 +6,7 @@ import java.util.Date;
  * 添加交易记录的请求参数
  */
 public class AddTransactionRequest {
+    private long id; // 交易ID，用于更新操作
     private long userId;
     private long categoryId;
     private int type;
@@ -14,6 +15,10 @@ public class AddTransactionRequest {
     private String description;
     private String note;
     private String imagePath;
+    private long transactionTime;
+    private Integer syncState = 1; // 默认同步状态为1(已同步)
+    private String location = ""; // 默认位置为空字符串
+    private String remark; // 备注信息
 
     public AddTransactionRequest() {
         // 默认构造函数
@@ -24,7 +29,16 @@ public class AddTransactionRequest {
         this.type = type;
         this.amount = amount;
         this.date = date;
+        this.transactionTime = date;
         this.description = description;
+    }
+
+    public long getId() {
+        return id;
+    }
+
+    public void setId(long id) {
+        this.id = id;
     }
 
     public long getUserId() {
@@ -65,6 +79,7 @@ public class AddTransactionRequest {
 
     public void setDate(long date) {
         this.date = date;
+        this.transactionTime = date;
     }
 
     public String getDescription() {
@@ -89,5 +104,37 @@ public class AddTransactionRequest {
 
     public void setImagePath(String imagePath) {
         this.imagePath = imagePath;
+    }
+    
+    public long getTransactionTime() {
+        return transactionTime;
+    }
+    
+    public void setTransactionTime(long transactionTime) {
+        this.transactionTime = transactionTime;
+    }
+    
+    public Integer getSyncState() {
+        return syncState;
+    }
+    
+    public void setSyncState(Integer syncState) {
+        this.syncState = syncState;
+    }
+    
+    public String getLocation() {
+        return location;
+    }
+    
+    public void setLocation(String location) {
+        this.location = location;
+    }
+    
+    public String getRemark() {
+        return remark;
+    }
+    
+    public void setRemark(String remark) {
+        this.remark = remark;
     }
 } 

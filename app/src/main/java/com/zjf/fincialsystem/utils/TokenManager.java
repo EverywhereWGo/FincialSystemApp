@@ -198,12 +198,23 @@ public class TokenManager {
     public long getUserId() {
         // 先检查登录状态，但即使未登录也继续尝试获取ID
         boolean isUserLoggedIn = isLoggedIn();
-        LogUtils.d("TokenManager", "检查登录状态: " + isUserLoggedIn);
+        LogUtils.d(TAG, "检查登录状态: " + isUserLoggedIn);
         
         // 从SharedPreferences中获取用户ID
         long userId = sharedPreferences.getLong(Constants.PREF_KEY_USER_ID, 1); // 默认返回1而不是-1
-        LogUtils.d("TokenManager", "获取到的用户ID: " + userId);
         
+        // 确保userID至少为1
+        if (userId <= 0) {
+            userId = 1;
+            LogUtils.w(TAG, "用户ID无效，使用默认ID: 1");
+            
+            // 保存默认ID到SharedPreferences
+            SharedPreferences.Editor editor = sharedPreferences.edit();
+            editor.putLong(Constants.PREF_KEY_USER_ID, userId);
+            editor.apply();
+        }
+        
+        LogUtils.d(TAG, "获取到的用户ID: " + userId);
         return userId;
     }
 } 

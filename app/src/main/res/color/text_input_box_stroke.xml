@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 获取焦点时的颜色 -->
+    <item android:color="@color/colorPrimary" android:state_focused="true"/>
+    <!-- 获取焦点或鼠标悬停 -->
+    <item android:color="@color/colorPrimary" android:state_hovered="true"/>
+    <!-- 默认颜色 -->
+    <item android:color="@color/dark_gray"/>
+</selector>

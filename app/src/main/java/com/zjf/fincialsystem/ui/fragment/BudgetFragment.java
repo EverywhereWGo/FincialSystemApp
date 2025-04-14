@@ -157,9 +157,14 @@ public class BudgetFragment extends Fragment implements BudgetAdapter.OnBudgetCl
      * 更新周期文本
      */
     private void updatePeriodText() {
-        String period = DateUtils.formatMonth(currentDate.getTime());
+        // 使用带年份的格式
+        int year = currentDate.get(Calendar.YEAR);
+        int month = currentDate.get(Calendar.MONTH) + 1;
+        String period = year + "年" + month + "月";
+        
         if (binding != null) {
             binding.tvPeriod.setText(period);
+            LogUtils.d(TAG, "当前选择的预算期间: " + period);
         }
     }
     
@@ -202,8 +207,8 @@ public class BudgetFragment extends Fragment implements BudgetAdapter.OnBudgetCl
             // 显示加载中
             showLoading();
             
-            // 获取月度预算数据
-            budgetRepository.getBudgets(Budget.PERIOD_MONTHLY, new RepositoryCallback<List<Budget>>() {
+            // 获取月度预算数据，传递当前选择的日期
+            budgetRepository.getBudgets(Budget.PERIOD_MONTHLY, currentDate, new RepositoryCallback<List<Budget>>() {
                 @Override
                 public void onSuccess(List<Budget> data) {
                     if (getActivity() == null || !isAdded()) {
@@ -254,8 +259,8 @@ public class BudgetFragment extends Fragment implements BudgetAdapter.OnBudgetCl
                 showLoading();
             }
             
-            // 获取月度预算数据
-            budgetRepository.getBudgets(Budget.PERIOD_MONTHLY, new RepositoryCallback<List<Budget>>() {
+            // 获取月度预算数据，传递当前选择的日期
+            budgetRepository.getBudgets(Budget.PERIOD_MONTHLY, currentDate, new RepositoryCallback<List<Budget>>() {
                 @Override
                 public void onSuccess(List<Budget> data) {
                     if (getActivity() == null || !isAdded()) {
@@ -448,9 +453,16 @@ public class BudgetFragment extends Fragment implements BudgetAdapter.OnBudgetCl
         
         // 设置确定按钮
         dialogView.findViewById(R.id.btn_ok).setOnClickListener(v -> {
+            // 获取选中的年月
+            int selectedYear = yearPicker.getValue();
+            int selectedMonth = monthPicker.getValue() - 1; // 月份是从0开始的，所以-1
+            
+            // 记录日志
+            LogUtils.d(TAG, "用户选择了日期: " + selectedYear + "年" + (selectedMonth + 1) + "月");
+            
             // 更新日期
-            currentDate.set(Calendar.YEAR, yearPicker.getValue());
-            currentDate.set(Calendar.MONTH, monthPicker.getValue() - 1); // 月份是从0开始的，所以-1
+            currentDate.set(Calendar.YEAR, selectedYear);
+            currentDate.set(Calendar.MONTH, selectedMonth); 
             currentDate.set(Calendar.DAY_OF_MONTH, 1); // 设置为当月第一天
             
             // 更新UI

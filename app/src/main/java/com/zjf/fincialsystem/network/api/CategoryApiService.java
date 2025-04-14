@@ -24,7 +24,7 @@ public interface CategoryApiService {
      * 获取分类列表
      */
     @GET("finance/category/list")
-    Call<ApiResponse<List<Category>>> getCategories(@Query("pageNum") Integer pageNum, 
+    Call<ApiResponse<Category>> getCategories(@Query("pageNum") Integer pageNum, 
                                                    @Query("pageSize") Integer pageSize,
                                                    @Query("name") String name,
                                                    @Query("type") Integer type);
@@ -39,7 +39,7 @@ public interface CategoryApiService {
      * 获取指定类型的分类
      */
     @GET("finance/category/type/{type}")
-    Call<ApiResponse<List<Category>>> getCategoriesByType(@Path("type") Integer type);
+    Call<ApiResponse<Category>> getCategoriesByType(@Path("type") Integer type);
     
     /**
      * 添加分类

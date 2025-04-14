@@ -180,6 +180,40 @@ public class BudgetEditFragment extends Fragment {
         ArrayAdapter<String> thresholdAdapter = new ArrayAdapter<>(context, android.R.layout.simple_dropdown_item_1line, thresholds);
         binding.spinnerNotifyPercent.setAdapter(thresholdAdapter);
         binding.spinnerNotifyPercent.setText(thresholds[1], false); // 默认80%
+        
+        // 确保分类下拉框能够触发下拉菜单
+        if (expenseCategories.isEmpty()) {
+            // 如果分类数据尚未加载，先添加一个默认配置
+            binding.spinnerCategory.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_dropdown_item_1line, new ArrayList<>()));
+        } else {
+            // 如果分类数据已经加载好，直接更新
+            updateCategorySpinner();
+        }
+        
+        // 添加点击事件，确保点击时能正确显示下拉菜单
+        binding.spinnerCategory.setOnClickListener(v -> {
+            binding.spinnerCategory.showDropDown();
+            
+            // 如果分类为空，重新加载
+            if (expenseCategories.isEmpty()) {
+                LogUtils.d(TAG, "分类数据为空，重新加载分类数据");
+                loadCategories();
+                Toast.makeText(context, "正在加载分类数据...", Toast.LENGTH_SHORT).show();
+            }
+        });
+        
+        // 设置focus change事件
+        binding.spinnerCategory.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                binding.spinnerCategory.showDropDown();
+                
+                // 如果分类为空，重新加载
+                if (expenseCategories.isEmpty()) {
+                    LogUtils.d(TAG, "分类数据为空，重新加载分类数据");
+                    loadCategories();
+                }
+            }
+        });
     }
 
     /**
@@ -192,23 +226,61 @@ public class BudgetEditFragment extends Fragment {
                 return;
             }
 
+            // 显示加载提示
+            if (getContext() != null && expenseCategories.isEmpty()) {
+                binding.spinnerCategory.setEnabled(false);
+                binding.spinnerCategory.setHint("正在加载分类...");
+            }
+            
+            LogUtils.d(TAG, "开始加载分类数据");
             categoryRepository.getCategories(Category.TYPE_EXPENSE, new RepositoryCallback<List<Category>>() {
                 @Override
                 public void onSuccess(List<Category> data) {
+                    if (!isAdded() || getContext() == null) return;
+                    
+                    LogUtils.d(TAG, "成功加载分类数据，数量: " + data.size());
                     expenseCategories = data;
-                    updateCategorySpinner();
+                    
+                    // 确保UI更新在主线程
+                    getActivity().runOnUiThread(() -> {
+                        // 重新启用分类选择器
+                        binding.spinnerCategory.setEnabled(true);
+                        binding.spinnerCategory.setHint(getString(R.string.category_hint));
+                        
+                        // 更新分类下拉框
+                        updateCategorySpinner();
+                        
+                        // 如果用户正在查看分类列表，自动显示下拉选项
+                        if (binding.spinnerCategory.hasFocus()) {
+                            binding.spinnerCategory.showDropDown();
+                        }
+                    });
                 }
 
                 @Override
                 public void onError(String error) {
                     LogUtils.e(TAG, "加载分类数据失败：" + error);
-                    if (isAdded()) {
-                        Toast.makeText(getContext(), "加载分类数据失败", Toast.LENGTH_SHORT).show();
-                    }
+                    if (!isAdded() || getContext() == null) return;
+                    
+                    getActivity().runOnUiThread(() -> {
+                        // 重新启用分类选择器，但显示错误提示
+                        binding.spinnerCategory.setEnabled(true);
+                        binding.spinnerCategory.setHint(getString(R.string.category_hint));
+                        
+                        Toast.makeText(getContext(), "加载分类数据失败，请重试", Toast.LENGTH_SHORT).show();
+                    });
                 }
             });
         } catch (Exception e) {
             LogUtils.e(TAG, "加载分类数据失败：" + e.getMessage(), e);
+            
+            if (isAdded() && getContext() != null) {
+                getActivity().runOnUiThread(() -> {
+                    binding.spinnerCategory.setEnabled(true);
+                    binding.spinnerCategory.setHint(getString(R.string.category_hint));
+                    Toast.makeText(getContext(), "加载分类数据失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+            }
         }
     }
 
@@ -217,6 +289,8 @@ public class BudgetEditFragment extends Fragment {
      */
     private void updateCategorySpinner() {
         if (!isAdded() || getContext() == null) return;
+
+        LogUtils.d(TAG, "更新分类下拉框，总分类数量: " + expenseCategories.size());
 
         // 限制预算类别只有餐饮、购物、交通、住房、娱乐五个
         List<String> restrictedCategories = new ArrayList<>();
@@ -231,15 +305,32 @@ public class BudgetEditFragment extends Fragment {
         for (Category category : expenseCategories) {
             if (restrictedCategories.contains(category.getName())) {
                 categoryNames.add(category.getName());
+                LogUtils.d(TAG, "添加分类到下拉列表: " + category.getName());
             }
         }
         
+        // 检查是否有可用分类
+        if (categoryNames.isEmpty()) {
+            // 如果没有匹配的限制分类，则使用所有可用分类
+            LogUtils.w(TAG, "没有找到限制列表中的分类，显示所有可用分类");
+            for (Category category : expenseCategories) {
+                categoryNames.add(category.getName());
+            }
+        }
+        
+        // 创建并设置适配器
         ArrayAdapter<String> categoryAdapter = new ArrayAdapter<>(getContext(), android.R.layout.simple_dropdown_item_1line, categoryNames);
         binding.spinnerCategory.setAdapter(categoryAdapter);
+        
+        // 通知适配器数据已更新
+        categoryAdapter.notifyDataSetChanged();
+        
+        LogUtils.i(TAG, "分类下拉菜单已更新，包含 " + categoryNames.size() + " 个选项");
 
         // 如果是编辑模式并且存在预算，选择对应的分类
         if (editMode && existingBudget != null && existingBudget.getCategory() != null) {
             binding.spinnerCategory.setText(existingBudget.getCategory().getName(), false);
+            LogUtils.d(TAG, "已选择编辑预算的分类: " + existingBudget.getCategory().getName());
         }
     }
 

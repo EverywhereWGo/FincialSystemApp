@@ -424,31 +424,12 @@ public class UserRepository {
         }
         
         // 准备请求参数
-        Map<String, String> passwordData = new HashMap<>();
-        passwordData.put("userId", String.valueOf(userId));
+        Map<String, Object> passwordData = new HashMap<>();
+        passwordData.put("userId", userId);
         passwordData.put("oldPassword", oldPassword);
         passwordData.put("newPassword", newPassword);
         
-        // 实际项目中应调用真实API，这里模拟一个成功的响应
-        // 模拟网络延迟
-        new android.os.Handler().postDelayed(() -> {
-            try {
-                // 模拟密码验证 (实际中应该由服务器验证)
-                boolean verified = true; // 模拟验证成功
-                
-                if (verified) {
-                    // 模拟成功响应
-                    callback.onSuccess(true);
-                } else {
-                    callback.onError("原密码不正确");
-                }
-            } catch (Exception e) {
-                LogUtils.e(TAG, "修改密码失败", e);
-                callback.onError("修改密码失败: " + e.getMessage());
-            }
-        }, 1500); // 1.5秒延迟模拟网络请求
-        
-        /* 实际API调用应该类似这样：
+        // 调用实际API
         apiService.changePassword(passwordData).enqueue(new Callback<ApiResponse<Boolean>>() {
             @Override
             public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
@@ -470,7 +451,6 @@ public class UserRepository {
                 callback.onError("修改密码失败: " + t.getMessage());
             }
         });
-        */
     }
 
     /**

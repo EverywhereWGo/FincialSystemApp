@@ -193,18 +193,18 @@ public class CategoryManageActivity extends AppCompatActivity {
         binding.progressBar.setVisibility(View.VISIBLE);
         binding.recyclerView.setVisibility(View.GONE);
         
-        apiService.getCategories(1, 20, null, currentType).enqueue(new Callback<ApiResponse<List<Category>>>() {
+        apiService.getCategories(1, 20, null, currentType).enqueue(new Callback<ApiResponse<Category>>() {
             @Override
-            public void onResponse(Call<ApiResponse<List<Category>>> call, 
-                                   Response<ApiResponse<List<Category>>> response) {
+            public void onResponse(Call<ApiResponse<Category>> call, 
+                                   Response<ApiResponse<Category>> response) {
                 binding.progressBar.setVisibility(View.GONE);
                 binding.recyclerView.setVisibility(View.VISIBLE);
                 
                 if (response.isSuccessful() && response.body() != null) {
-                    ApiResponse<List<Category>> apiResponse = response.body();
+                    ApiResponse<Category> apiResponse = response.body();
                     
-                    if (apiResponse.isSuccess() && apiResponse.getData() != null) {
-                        categories = apiResponse.getData();
+                    if (apiResponse.isSuccess()) {
+                        categories = apiResponse.getRowsSafe();
                         adapter.updateData(categories);
                         
                         // 显示空状态
@@ -224,7 +224,7 @@ public class CategoryManageActivity extends AppCompatActivity {
             }
             
             @Override
-            public void onFailure(Call<ApiResponse<List<Category>>> call, Throwable t) {
+            public void onFailure(Call<ApiResponse<Category>> call, Throwable t) {
                 LogUtils.e(TAG, "加载分类失败", t);
                 binding.progressBar.setVisibility(View.GONE);
                 Toast.makeText(CategoryManageActivity.this, 

@@ -437,20 +437,45 @@ public class EditProfileActivity extends AppCompatActivity {
         showLoading(true);
 
         // 获取用户ID
-        long userId = TokenManager.getInstance().getUserId();
-        if (userId == -1) {
-            userId = 1; // 使用默认ID
+        final long userId = TokenManager.getInstance().getUserId() > 0 ? 
+                TokenManager.getInstance().getUserId() : 1; // 使用默认ID
+        
+        if (TokenManager.getInstance().getUserId() <= 0) {
             LogUtils.w(TAG, "未获取到有效的用户ID，使用默认ID: " + userId);
         }
 
-        // 创建模拟用户数据
-        currentUser = createMockUser(userId);
-        
-        // 显示用户数据
-        fillUserData(currentUser);
-        
-        // 隐藏加载中
-        showLoading(false);
+        // 从服务器获取用户数据
+        userRepository.getUserInfo(userId, new RepositoryCallback<User>() {
+            @Override
+            public void onSuccess(User user) {
+                runOnUiThread(() -> {
+                    currentUser = user;
+                    fillUserData(user);
+                    showLoading(false);
+                });
+            }
+            
+            @Override
+            public void onError(String error) {
+                runOnUiThread(() -> {
+                    LogUtils.e(TAG, "获取用户信息失败：" + error);
+                    Toast.makeText(EditProfileActivity.this, "获取用户信息失败：" + error, Toast.LENGTH_SHORT).show();
+                    showLoading(false);
+                    
+                    // 如果获取失败，使用本地模拟数据作为后备
+                    currentUser = createMockUser(userId);
+                    fillUserData(currentUser);
+                });
+            }
+            
+            @Override
+            public void isCacheData(boolean isCache) {
+                if (isCache) {
+                    LogUtils.d(TAG, "显示的是缓存用户数据");
+                    // 可以在UI上显示缓存标记
+                }
+            }
+        });
     }
 
     /**
@@ -487,73 +512,52 @@ public class EditProfileActivity extends AppCompatActivity {
      * 保存用户资料
      */
     private void saveUserProfile() {
-        // 获取并验证输入
+        if (currentUser == null) {
+            Toast.makeText(this, "用户数据不存在", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // 获取编辑后的数据
         String nickname = binding.etNickname.getText().toString().trim();
         String email = binding.etEmail.getText().toString().trim();
         String phone = binding.etPhone.getText().toString().trim();
-        String wechat = binding.etWechat.getText().toString().trim();
-        String qq = binding.etQq.getText().toString().trim();
 
-        // 验证昵称
+        // 基本验证
         if (TextUtils.isEmpty(nickname)) {
-            binding.tilNickname.setError(getString(R.string.nickname_empty));
+            Toast.makeText(this, "昵称不能为空", Toast.LENGTH_SHORT).show();
             return;
-        } else {
-            binding.tilNickname.setError(null);
         }
-
-        // 验证邮箱
-        if (!TextUtils.isEmpty(email) && !Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            binding.tilEmail.setError(getString(R.string.email_invalid));
-            return;
-        } else {
-            binding.tilEmail.setError(null);
-        }
-
-        // 验证手机号
-        if (!TextUtils.isEmpty(phone) && !Patterns.PHONE.matcher(phone).matches()) {
-            binding.tilPhone.setError(getString(R.string.phone_invalid));
-            return;
-        } else {
-            binding.tilPhone.setError(null);
-        }
-
-        // 显示加载中
-        showLoading(true);
 
         // 更新用户对象
         currentUser.setNickname(nickname);
         currentUser.setEmail(email);
         currentUser.setPhone(phone);
-        // 设置社交账号
-        currentUser.setWechat(wechat);
-        currentUser.setQq(qq);
-        
-        // 保存用户资料到服务器
-        saveUserProfileToServer();
-    }
 
-    /**
-     * 保存用户资料到服务器
-     */
-    private void saveUserProfileToServer() {
-        // 使用UserRepository保存用户资料
+        showLoading(true);
+
+        // 调用API保存用户信息
         userRepository.updateUserProfile(currentUser, new RepositoryCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean result) {
                 runOnUiThread(() -> {
+                    Toast.makeText(EditProfileActivity.this, "保存成功", Toast.LENGTH_SHORT).show();
                     showLoading(false);
-                    Toast.makeText(EditProfileActivity.this, R.string.profile_updated, Toast.LENGTH_SHORT).show();
-                    finish(); // 返回上一页
+                    setResult(RESULT_OK);
+                    finish();
                 });
             }
-            
+
             @Override
             public void onError(String error) {
                 runOnUiThread(() -> {
+                    Toast.makeText(EditProfileActivity.this, "保存失败：" + error, Toast.LENGTH_SHORT).show();
                     showLoading(false);
-                    Toast.makeText(EditProfileActivity.this, error, Toast.LENGTH_SHORT).show();
                 });
+            }
+
+            @Override
+            public void isCacheData(boolean isCache) {
+                // 保存操作不需要处理缓存状态
             }
         });
     }

@@ -189,7 +189,13 @@ public class MockInterceptor implements Interceptor {
                 categories.add(createCategory(9L, "兼职", Category.TYPE_INCOME, "ic_parttime", "#795548"));
             }
             
-            ApiResponse<List<Category>> response = ApiResponse.success(categories);
+            // 创建分页格式的响应
+            ApiResponse<Category> response = new ApiResponse<>();
+            response.setCode(200);
+            response.setMsg("操作成功");
+            response.setTotal(categories.size());
+            response.setRows(categories);
+            
             String jsonResponse = gson.toJson(response);
             
             return new Response.Builder()

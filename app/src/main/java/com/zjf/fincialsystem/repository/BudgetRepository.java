@@ -39,17 +39,21 @@ public class BudgetRepository {
     /**
      * 获取预算列表
      * @param period 预算周期（月度/年度）
+     * @param selectedDate 指定的日期，如果为null则使用当前日期
      * @param callback 回调
      */
-    public void getBudgets(String period, final RepositoryCallback<List<Budget>> callback) {
+    public void getBudgets(String period, Calendar selectedDate, final RepositoryCallback<List<Budget>> callback) {
         // 检查网络状态
         if (NetworkUtils.isNetworkAvailable(context)) {
             // 有网络连接，从网络获取数据
-            // 获取当前月份作为整数参数 (如果是monthly，使用当前月份数字，否则传null)
+            // 获取月份作为整数参数 (如果是monthly，使用选定月份数字，否则传null)
             Integer monthParam = null;
             if (Budget.PERIOD_MONTHLY.equals(period)) {
-                // 获取当前月份(1-12)
-                monthParam = Calendar.getInstance().get(Calendar.MONTH) + 1;
+                // 使用选定的日期，如果没有则使用当前日期
+                Calendar cal = selectedDate != null ? selectedDate : Calendar.getInstance();
+                // 获取月份(1-12)
+                monthParam = cal.get(Calendar.MONTH) + 1;
+                LogUtils.d(TAG, "查询预算数据，月份: " + monthParam + "，年份: " + cal.get(Calendar.YEAR));
             }
             apiService.getBudgets(1, 100, null, monthParam).enqueue(new Callback<ApiResponse<List<Budget>>>() {
                 @Override
@@ -143,95 +147,8 @@ public class BudgetRepository {
      * @param callback 回调
      */
     public void getCurrentBudgets(final RepositoryCallback<List<Budget>> callback) {
-        // 检查网络状态
-        if (NetworkUtils.isNetworkAvailable(context)) {
-            // 有网络连接，从网络获取数据
-            // 获取当前月份数字
-            int currentMonth = Calendar.getInstance().get(Calendar.MONTH) + 1;
-            apiService.getBudgets(1, 100, null, currentMonth).enqueue(new Callback<ApiResponse<List<Budget>>>() {
-                @Override
-                public void onResponse(Call<ApiResponse<List<Budget>>> call, Response<ApiResponse<List<Budget>>> response) {
-                    if (response.isSuccessful() && response.body() != null) {
-                        ApiResponse<List<Budget>> apiResponse = response.body();
-                        if (apiResponse.isSuccess()) {
-                            // 首先尝试从data获取数据
-                            List<Budget> budgets = apiResponse.getData();
-                            
-                            // 如果data为空，从rows获取数据（适配后端返回的TableDataInfo格式）
-                            if (budgets == null || budgets.isEmpty()) {
-                                budgets = apiResponse.convertRows(Budget.class);
-                            }
-                            
-                            // 返回数据
-                            callback.onSuccess(budgets);
-                        } else {
-                            callback.onError(apiResponse.getMsg());
-                        }
-                    } else {
-                        callback.onError("网络请求失败");
-                    }
-                }
-
-                @Override
-                public void onFailure(Call<ApiResponse<List<Budget>>> call, Throwable t) {
-                    LogUtils.e(TAG, "获取当前预算失败", t);
-                    
-                    // 网络请求失败，尝试从缓存获取月度预算
-                    if (cacheManager.isCacheValid("budgets")) {
-                        List<Budget> cachedBudgets = cacheManager.getBudgets();
-                        if (cachedBudgets != null && !cachedBudgets.isEmpty()) {
-                            // 过滤月度预算
-                            List<Budget> monthlyBudgets = new ArrayList<>();
-                            for (Budget budget : cachedBudgets) {
-                                if (budget.isMonthly()) {
-                                    monthlyBudgets.add(budget);
-                                }
-                            }
-                            
-                            if (!monthlyBudgets.isEmpty()) {
-                                callback.onSuccess(monthlyBudgets);
-                                
-                                // 标记为从缓存获取
-                                callback.isCacheData(true);
-                            } else {
-                                callback.onError("获取当前预算失败: " + t.getMessage());
-                            }
-                        } else {
-                            callback.onError("获取当前预算失败: " + t.getMessage());
-                        }
-                    } else {
-                        callback.onError("获取当前预算失败: " + t.getMessage());
-                    }
-                }
-            });
-        } else {
-            // 无网络连接，从缓存获取数据
-            if (cacheManager.isCacheValid("budgets")) {
-                List<Budget> cachedBudgets = cacheManager.getBudgets();
-                if (cachedBudgets != null && !cachedBudgets.isEmpty()) {
-                    // 过滤月度预算
-                    List<Budget> monthlyBudgets = new ArrayList<>();
-                    for (Budget budget : cachedBudgets) {
-                        if (budget.isMonthly()) {
-                            monthlyBudgets.add(budget);
-                        }
-                    }
-                    
-                    if (!monthlyBudgets.isEmpty()) {
-                        callback.onSuccess(monthlyBudgets);
-                        
-                        // 标记为从缓存获取
-                        callback.isCacheData(true);
-                    } else {
-                        callback.onError("无网络连接且无有效缓存数据");
-                    }
-                } else {
-                    callback.onError("无网络连接且无缓存数据");
-                }
-            } else {
-                callback.onError("无网络连接且无缓存数据");
-            }
-        }
+        // 直接调用getBudgets方法，传入null表示使用当前日期
+        getBudgets(Budget.PERIOD_MONTHLY, null, callback);
     }
     
     /**

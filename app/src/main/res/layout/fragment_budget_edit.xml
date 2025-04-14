@@ -150,10 +150,15 @@
                     android:layout_width="match_parent"
                     android:layout_height="56dp"
                     android:inputType="none"
+                    android:focusable="true"
+                    android:clickable="true"
                     android:paddingTop="16dp"
                     android:paddingBottom="16dp"
                     android:textColor="@color/text_primary"
-                    android:textSize="@dimen/text_size_medium" />
+                    android:textSize="@dimen/text_size_medium"
+                    android:completionThreshold="1"
+                    android:dropDownHeight="wrap_content"
+                    android:hint="@string/category_hint" />
 
             </com.google.android.material.textfield.TextInputLayout>
 

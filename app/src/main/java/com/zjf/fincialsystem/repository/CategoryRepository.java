@@ -45,7 +45,7 @@ public class CategoryRepository {
             // 检查网络状态
             if (NetworkUtils.isNetworkAvailable(context)) {
                 // 有网络连接，从网络获取数据
-                Call<ApiResponse<List<Category>>> call;
+                Call<ApiResponse<Category>> call;
                 if (type != null) {
                     call = apiService.getCategories(1, 100, null, type);
                 } else {
@@ -53,15 +53,16 @@ public class CategoryRepository {
                     call = apiService.getCategoriesByType(null);
                 }
                 
-                call.enqueue(new Callback<ApiResponse<List<Category>>>() {
+                call.enqueue(new Callback<ApiResponse<Category>>() {
                     @Override
-                    public void onResponse(Call<ApiResponse<List<Category>>> call, Response<ApiResponse<List<Category>>> response) {
+                    public void onResponse(Call<ApiResponse<Category>> call, Response<ApiResponse<Category>> response) {
                         if (response.isSuccessful() && response.body() != null) {
-                            ApiResponse<List<Category>> apiResponse = response.body();
+                            ApiResponse<Category> apiResponse = response.body();
                             if (apiResponse.isSuccess()) {
-                                List<Category> categories = apiResponse.getData();
+                                // 从rows字段获取分类列表
+                                List<Category> categories = apiResponse.getRowsSafe();
                                 
-                                if (categories != null) {
+                                if (categories != null && !categories.isEmpty()) {
                                     // 保存到缓存
                                     cacheManager.saveCategories(categories);
                                     
@@ -81,7 +82,7 @@ public class CategoryRepository {
                     }
 
                     @Override
-                    public void onFailure(Call<ApiResponse<List<Category>>> call, Throwable t) {
+                    public void onFailure(Call<ApiResponse<Category>> call, Throwable t) {
                         LogUtils.e(TAG, "获取分类列表失败", t);
                         
                         // 网络请求失败，尝试从缓存获取

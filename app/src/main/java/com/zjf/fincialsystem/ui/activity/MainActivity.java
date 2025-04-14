@@ -31,7 +31,12 @@ import java.util.Date;
  */
 public class MainActivity extends AppCompatActivity {
     
+    private static final String TAG = "MainActivity";
     private ActivityMainBinding binding;
+    
+    // 结果码
+    public static final int REQUEST_ADD_TRANSACTION = 1001;
+    public static final int REQUEST_TRANSACTION_DETAIL = 1002;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -159,7 +164,8 @@ public class MainActivity extends AppCompatActivity {
         // 设置悬浮按钮
         binding.fab.setOnClickListener(v -> {
             // 跳转到记账页面
-            startActivity(new Intent(this, AddTransactionActivity.class));
+            Intent intent = new Intent(this, AddTransactionActivity.class);
+            startActivityForResult(intent, REQUEST_ADD_TRANSACTION);
         });
         
         // 修正FAB位置（如果使用ConstraintLayout）
@@ -176,5 +182,28 @@ public class MainActivity extends AppCompatActivity {
         getSupportFragmentManager().beginTransaction()
                 .replace(R.id.fragment_container, fragment)
                 .commit();
+    }
+    
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        
+        LogUtils.d(TAG, "收到活动结果 - requestCode: " + requestCode + ", resultCode: " + resultCode);
+        
+        // 只有当结果为RESULT_OK时才刷新数据
+        if (resultCode == RESULT_OK) {
+            if (requestCode == REQUEST_ADD_TRANSACTION || requestCode == REQUEST_TRANSACTION_DETAIL) {
+                // 刷新DashboardFragment
+                Fragment currentFragment = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+                if (currentFragment instanceof DashboardFragment) {
+                    LogUtils.d(TAG, "正在刷新DashboardFragment数据");
+                    DashboardFragment dashboardFragment = (DashboardFragment) currentFragment;
+                    // 通知DashboardFragment刷新数据
+                    dashboardFragment.refreshData();
+                }
+            }
+        } else {
+            LogUtils.d(TAG, "操作取消或失败，不刷新数据");
+        }
     }
 } 
