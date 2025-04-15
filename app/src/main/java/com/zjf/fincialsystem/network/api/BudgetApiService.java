@@ -20,23 +20,24 @@ import retrofit2.http.Query;
  * 预算相关API接口
  */
 public interface BudgetApiService {
-    
+
     /**
      * 获取预算列表
      */
     @GET("finance/budget/list")
-    Call<ApiResponse<List<Budget>>> getBudgets(
+    Call<ApiResponse<Budget>> getBudgets(
             @Query("pageNum") Integer pageNum,
             @Query("pageSize") Integer pageSize,
             @Query("categoryId") Long categoryId,
-            @Query("month") Integer month);
-    
+            @Query("month") Integer month,
+            @Query("userId") Long userId);
+
     /**
      * 获取预算详情
      */
     @GET("finance/budget/{id}")
     Call<ApiResponse<Budget>> getBudgetDetail(@Path("id") long id);
-    
+
     /**
      * 获取某月的预算
      */
@@ -44,7 +45,7 @@ public interface BudgetApiService {
     Call<ApiResponse<List<Map<String, Object>>>> getMonthBudgets(
             @Query("userId") Long userId,
             @Query("month") String month);
-    
+
     /**
      * 获取预算警告
      */
@@ -52,19 +53,19 @@ public interface BudgetApiService {
     Call<ApiResponse<List<Map<String, Object>>>> getWarningBudgets(
             @Query("userId") Long userId,
             @Query("month") String month);
-    
+
     /**
      * 添加预算
      */
     @POST("finance/budget")
     Call<ApiResponse<String>> addBudget(@Body AddBudgetRequest request);
-    
+
     /**
      * 更新预算
      */
     @PUT("finance/budget")
     Call<ApiResponse<String>> updateBudget(@Body Budget budget);
-    
+
     /**
      * 删除预算
      */

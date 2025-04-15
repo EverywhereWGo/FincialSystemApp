@@ -1,30 +1,35 @@
 package com.zjf.fincialsystem.network.model;
 
-import java.util.Date;
-
 /**
  * 添加预算请求
  */
 public class AddBudgetRequest {
     private long userId;
     private long categoryId;
+    private String categoryName;
     private double amount;
-    private String period;
-    private Date startDate;
-    private Date endDate;
-    private int notifyPercent;
-    private boolean notifyEnabled;
+    private Integer year;
+    private Integer month;
+    private int warningThreshold;
+    private Boolean warned;
+
 
     public AddBudgetRequest() {
         // 默认构造函数
     }
 
-    public AddBudgetRequest(long categoryId, double amount, String period) {
-        this.categoryId = categoryId;
-        this.amount = amount;
-        this.period = period;
-        this.notifyPercent = 80; // 默认80%提醒
-        this.notifyEnabled = true; // 默认开启提醒
+    @Override
+    public String toString() {
+        return "AddBudgetRequest{" +
+                "userId=" + userId +
+                ", categoryId=" + categoryId +
+                ", categoryName='" + categoryName + '\'' +
+                ", amount=" + amount +
+                ", year=" + year +
+                ", month=" + month +
+                ", warningThreshold=" + warningThreshold +
+                ", warned=" + warned +
+                '}';
     }
 
     public long getUserId() {
@@ -43,6 +48,14 @@ public class AddBudgetRequest {
         this.categoryId = categoryId;
     }
 
+    public String getCategoryName() {
+        return categoryName;
+    }
+
+    public void setCategoryName(String categoryName) {
+        this.categoryName = categoryName;
+    }
+
     public double getAmount() {
         return amount;
     }
@@ -51,43 +64,35 @@ public class AddBudgetRequest {
         this.amount = amount;
     }
 
-    public String getPeriod() {
-        return period;
+    public Integer getYear() {
+        return year;
     }
 
-    public void setPeriod(String period) {
-        this.period = period;
+    public void setYear(Integer year) {
+        this.year = year;
     }
 
-    public Date getStartDate() {
-        return startDate;
+    public Integer getMonth() {
+        return month;
     }
 
-    public void setStartDate(Date startDate) {
-        this.startDate = startDate;
+    public void setMonth(Integer month) {
+        this.month = month;
     }
 
-    public Date getEndDate() {
-        return endDate;
+    public int getWarningThreshold() {
+        return warningThreshold;
     }
 
-    public void setEndDate(Date endDate) {
-        this.endDate = endDate;
+    public void setWarningThreshold(int warningThreshold) {
+        this.warningThreshold = warningThreshold;
     }
 
-    public int getNotifyPercent() {
-        return notifyPercent;
+    public Boolean getWarned() {
+        return warned;
     }
 
-    public void setNotifyPercent(int notifyPercent) {
-        this.notifyPercent = notifyPercent;
+    public void setWarned(Boolean warned) {
+        this.warned = warned;
     }
-
-    public boolean isNotifyEnabled() {
-        return notifyEnabled;
-    }
-
-    public void setNotifyEnabled(boolean notifyEnabled) {
-        this.notifyEnabled = notifyEnabled;
-    }
-} 
+}

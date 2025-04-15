@@ -18,8 +18,8 @@ public class Notification {
     private String title;
     private String content;
     private String type;
-    private Date createdAt;
-    private boolean isRead;
+    private Date createTime;
+    private Integer read;
     
     public Notification() {
         // 默认构造函数
@@ -30,8 +30,8 @@ public class Notification {
         this.title = title;
         this.content = content;
         this.type = type;
-        this.createdAt = new Date();
-        this.isRead = false;
+        this.createTime = new Date();
+        this.read = 0;
     }
     
     public long getId() {
@@ -74,20 +74,20 @@ public class Notification {
         this.type = type;
     }
     
-    public Date getCreatedAt() {
-        return createdAt;
+    public Date getCreateTime() {
+        return createTime;
     }
     
-    public void setCreatedAt(Date createdAt) {
-        this.createdAt = createdAt;
+    public void setCreateTime(Date createTime) {
+        this.createTime = createTime;
     }
     
-    public boolean isRead() {
-        return isRead;
+    public Integer isRead() {
+        return read;
     }
     
-    public void setRead(boolean isRead) {
-        this.isRead = isRead;
+    public void setRead(Integer isRead) {
+        this.read = isRead;
     }
     
     /**

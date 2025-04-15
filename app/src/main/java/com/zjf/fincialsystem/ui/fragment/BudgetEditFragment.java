@@ -1,8 +1,6 @@
 package com.zjf.fincialsystem.ui.fragment;
 
 import android.content.Context;
-import android.graphics.Color;
-import android.os.Build;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -13,7 +11,6 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentTransaction;
 
 import com.zjf.fincialsystem.R;
 import com.zjf.fincialsystem.databinding.FragmentBudgetEditBinding;
@@ -23,9 +20,10 @@ import com.zjf.fincialsystem.network.model.AddBudgetRequest;
 import com.zjf.fincialsystem.repository.BudgetRepository;
 import com.zjf.fincialsystem.repository.CategoryRepository;
 import com.zjf.fincialsystem.repository.RepositoryCallback;
+import com.zjf.fincialsystem.utils.DateUtils;
 import com.zjf.fincialsystem.utils.LogUtils;
-import com.zjf.fincialsystem.utils.TokenManager;
 import com.zjf.fincialsystem.utils.StatusBarUtils;
+import com.zjf.fincialsystem.utils.TokenManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,6 +47,7 @@ public class BudgetEditFragment extends Fragment {
 
     /**
      * 创建新实例
+     *
      * @param budget 要编辑的预算，如果为null则为添加模式
      * @return Fragment实例
      */
@@ -100,7 +99,7 @@ public class BudgetEditFragment extends Fragment {
 
         // 设置沉浸式状态栏
         setupStatusBar();
-        
+
         // 设置标题栏顶部内边距，避免与状态栏重叠
         adjustLayoutToolbarPadding();
 
@@ -136,10 +135,10 @@ public class BudgetEditFragment extends Fragment {
             if (getActivity() != null) {
                 // 使用StatusBarUtils类统一处理状态栏，避免不同处理方式导致的闪烁
                 StatusBarUtils.setImmersiveStatusBar(getActivity(), true);
-                
+
                 // 注意：这里不要修改Window的透明度和系统UI可见性，
                 // 以避免与主界面设置不同导致的切换闪烁
-                
+
                 LogUtils.d(TAG, "状态栏设置完成");
             }
         } catch (Exception e) {
@@ -180,7 +179,7 @@ public class BudgetEditFragment extends Fragment {
         ArrayAdapter<String> thresholdAdapter = new ArrayAdapter<>(context, android.R.layout.simple_dropdown_item_1line, thresholds);
         binding.spinnerNotifyPercent.setAdapter(thresholdAdapter);
         binding.spinnerNotifyPercent.setText(thresholds[1], false); // 默认80%
-        
+
         // 确保分类下拉框能够触发下拉菜单
         if (expenseCategories.isEmpty()) {
             // 如果分类数据尚未加载，先添加一个默认配置
@@ -189,11 +188,11 @@ public class BudgetEditFragment extends Fragment {
             // 如果分类数据已经加载好，直接更新
             updateCategorySpinner();
         }
-        
+
         // 添加点击事件，确保点击时能正确显示下拉菜单
         binding.spinnerCategory.setOnClickListener(v -> {
             binding.spinnerCategory.showDropDown();
-            
+
             // 如果分类为空，重新加载
             if (expenseCategories.isEmpty()) {
                 LogUtils.d(TAG, "分类数据为空，重新加载分类数据");
@@ -201,12 +200,12 @@ public class BudgetEditFragment extends Fragment {
                 Toast.makeText(context, "正在加载分类数据...", Toast.LENGTH_SHORT).show();
             }
         });
-        
+
         // 设置focus change事件
         binding.spinnerCategory.setOnFocusChangeListener((v, hasFocus) -> {
             if (hasFocus) {
                 binding.spinnerCategory.showDropDown();
-                
+
                 // 如果分类为空，重新加载
                 if (expenseCategories.isEmpty()) {
                     LogUtils.d(TAG, "分类数据为空，重新加载分类数据");
@@ -231,25 +230,25 @@ public class BudgetEditFragment extends Fragment {
                 binding.spinnerCategory.setEnabled(false);
                 binding.spinnerCategory.setHint("正在加载分类...");
             }
-            
+
             LogUtils.d(TAG, "开始加载分类数据");
             categoryRepository.getCategories(Category.TYPE_EXPENSE, new RepositoryCallback<List<Category>>() {
                 @Override
                 public void onSuccess(List<Category> data) {
                     if (!isAdded() || getContext() == null) return;
-                    
+
                     LogUtils.d(TAG, "成功加载分类数据，数量: " + data.size());
                     expenseCategories = data;
-                    
+
                     // 确保UI更新在主线程
                     getActivity().runOnUiThread(() -> {
                         // 重新启用分类选择器
                         binding.spinnerCategory.setEnabled(true);
                         binding.spinnerCategory.setHint(getString(R.string.category_hint));
-                        
+
                         // 更新分类下拉框
                         updateCategorySpinner();
-                        
+
                         // 如果用户正在查看分类列表，自动显示下拉选项
                         if (binding.spinnerCategory.hasFocus()) {
                             binding.spinnerCategory.showDropDown();
@@ -261,19 +260,19 @@ public class BudgetEditFragment extends Fragment {
                 public void onError(String error) {
                     LogUtils.e(TAG, "加载分类数据失败：" + error);
                     if (!isAdded() || getContext() == null) return;
-                    
+
                     getActivity().runOnUiThread(() -> {
                         // 重新启用分类选择器，但显示错误提示
                         binding.spinnerCategory.setEnabled(true);
                         binding.spinnerCategory.setHint(getString(R.string.category_hint));
-                        
+
                         Toast.makeText(getContext(), "加载分类数据失败，请重试", Toast.LENGTH_SHORT).show();
                     });
                 }
             });
         } catch (Exception e) {
             LogUtils.e(TAG, "加载分类数据失败：" + e.getMessage(), e);
-            
+
             if (isAdded() && getContext() != null) {
                 getActivity().runOnUiThread(() -> {
                     binding.spinnerCategory.setEnabled(true);
@@ -299,7 +298,7 @@ public class BudgetEditFragment extends Fragment {
         restrictedCategories.add("交通");
         restrictedCategories.add("住房");
         restrictedCategories.add("娱乐");
-        
+
         // 只显示限制列表中的分类
         List<String> categoryNames = new ArrayList<>();
         for (Category category : expenseCategories) {
@@ -308,7 +307,7 @@ public class BudgetEditFragment extends Fragment {
                 LogUtils.d(TAG, "添加分类到下拉列表: " + category.getName());
             }
         }
-        
+
         // 检查是否有可用分类
         if (categoryNames.isEmpty()) {
             // 如果没有匹配的限制分类，则使用所有可用分类
@@ -317,14 +316,14 @@ public class BudgetEditFragment extends Fragment {
                 categoryNames.add(category.getName());
             }
         }
-        
+
         // 创建并设置适配器
         ArrayAdapter<String> categoryAdapter = new ArrayAdapter<>(getContext(), android.R.layout.simple_dropdown_item_1line, categoryNames);
         binding.spinnerCategory.setAdapter(categoryAdapter);
-        
+
         // 通知适配器数据已更新
         categoryAdapter.notifyDataSetChanged();
-        
+
         LogUtils.i(TAG, "分类下拉菜单已更新，包含 " + categoryNames.size() + " 个选项");
 
         // 如果是编辑模式并且存在预算，选择对应的分类
@@ -490,10 +489,14 @@ public class BudgetEditFragment extends Fragment {
                     return;
                 }
 
-                AddBudgetRequest request = new AddBudgetRequest(selectedCategory.getId(), amount, period);
+                AddBudgetRequest request = new AddBudgetRequest();
                 request.setUserId(userId);
-                request.setNotifyPercent(notifyPercent);
-                request.setNotifyEnabled(notifyEnabled);
+                request.setWarningThreshold(notifyPercent);
+                request.setCategoryId(selectedCategory.getId());
+                request.setCategoryName(selectedCategory.getName());
+                request.setAmount(amount);
+                request.setWarned(false);
+
 
                 // 保存预算
                 budgetRepository.addBudget(request, new RepositoryCallback<Budget>() {
@@ -554,13 +557,13 @@ public class BudgetEditFragment extends Fragment {
     private void adjustLayoutToolbarPadding() {
         try {
             if (getContext() == null || binding == null || binding.layoutToolbar == null) return;
-            
+
             // 使用StatusBarUtils统一处理工具栏调整，确保一致性
             StatusBarUtils.adjustToolbarForStatusBar(binding.layoutToolbar, getContext());
-            
+
             // 由于没有直接的binding.scrollView，我们不再尝试调整滚动视图
             // 直接处理工具栏就足够避免闪烁问题
-            
+
             LogUtils.d(TAG, "已调整标题栏布局");
         } catch (Exception e) {
             LogUtils.e(TAG, "调整标题栏内边距时出错: " + e.getMessage());

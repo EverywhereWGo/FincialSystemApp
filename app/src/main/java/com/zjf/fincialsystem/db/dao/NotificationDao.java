@@ -37,8 +37,8 @@ public class NotificationDao extends BaseDao {
             values.put("title", notification.getTitle());
             values.put("content", notification.getContent());
             values.put("type", notification.getType());
-            values.put("created_at", DateUtils.formatDateTime(notification.getCreatedAt()));
-            values.put("is_read", notification.isRead() ? 1 : 0);
+            values.put("created_at", DateUtils.formatDateTime(notification.getCreateTime()));
+            values.put("is_read", notification.isRead() == 1 ? 1 : 0);
             
             return database.insert(TABLE_NAME, null, values);
         } catch (Exception e) {
@@ -59,8 +59,8 @@ public class NotificationDao extends BaseDao {
             values.put("title", notification.getTitle());
             values.put("content", notification.getContent());
             values.put("type", notification.getType());
-            values.put("created_at", DateUtils.formatDateTime(notification.getCreatedAt()));
-            values.put("is_read", notification.isRead() ? 1 : 0);
+            values.put("created_at", DateUtils.formatDateTime(notification.getCreateTime()));
+            values.put("is_read", notification.isRead() == 1 ? 1 : 0);
             
             int rowsAffected = database.update(TABLE_NAME, values, "id = ?", new String[]{String.valueOf(notification.getId())});
             return rowsAffected > 0;
@@ -267,8 +267,8 @@ public class NotificationDao extends BaseDao {
         notification.setTitle(cursor.getString(cursor.getColumnIndex("title")));
         notification.setContent(cursor.getString(cursor.getColumnIndex("content")));
         notification.setType(cursor.getString(cursor.getColumnIndex("type")));
-        notification.setCreatedAt(DateUtils.parseDateTime(cursor.getString(cursor.getColumnIndex("created_at"))));
-        notification.setRead(cursor.getInt(cursor.getColumnIndex("is_read")) == 1);
+        notification.setCreateTime(DateUtils.parseDateTime(cursor.getString(cursor.getColumnIndex("created_at"))));
+        notification.setRead(cursor.getInt(cursor.getColumnIndex("is_read")) == 1 ? 1 : 0);
         return notification;
     }
 } 

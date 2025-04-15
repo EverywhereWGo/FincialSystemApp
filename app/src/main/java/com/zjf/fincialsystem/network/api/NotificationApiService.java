@@ -19,54 +19,55 @@ import retrofit2.http.Query;
  * 通知相关API接口
  */
 public interface NotificationApiService {
-    
+
     /**
      * 获取通知列表
      */
     @GET("finance/notification/list")
-    Call<ApiResponse<List<Notification>>> getNotifications(
+    Call<ApiResponse<Notification>> getNotifications(
             @Query("pageNum") Integer pageNum,
             @Query("pageSize") Integer pageSize,
             @Query("title") String title,
-            @Query("type") Integer type,
-            @Query("isRead") Integer isRead);
-    
+            @Query("type") String type,
+            @Query("read") Integer read,
+            @Query("userId") Long userId);
+
     /**
      * 获取通知详情
      */
     @GET("finance/notification/{id}")
     Call<ApiResponse<Notification>> getNotificationDetail(@Path("id") long id);
-    
+
     /**
      * 获取未读通知
      */
     @GET("finance/notification/unread")
-    Call<ApiResponse<List<Notification>>> getUnreadNotifications(@Query("userId") Long userId);
-    
+    Call<ApiResponse<Notification>> getUnreadNotifications(@Query("userId") Long userId);
+
     /**
      * 添加通知
      */
     @POST("finance/notification")
     Call<ApiResponse<String>> addNotification(@Body Notification notification);
-    
+
     /**
      * 更新通知
      */
     @PUT("finance/notification")
     Call<ApiResponse<String>> updateNotification(@Body Notification notification);
-    
+
     /**
      * 删除通知
      */
     @DELETE("finance/notification/{ids}")
     Call<ApiResponse<String>> deleteNotification(@Path("ids") String ids);
-    
+
     /**
      * 标记通知为已读
      */
     @PUT("finance/notification/read/{id}")
     Call<ApiResponse<String>> markAsRead(@Path("id") long id);
-    
+
     /**
      * 批量标记通知为已读
      */

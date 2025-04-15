@@ -11,7 +11,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.zjf.fincialsystem.R;
 import com.zjf.fincialsystem.databinding.FragmentNotificationBinding;
@@ -143,7 +142,7 @@ public class NotificationFragment extends Fragment {
                     "您的餐饮预算已使用80%，请注意合理消费。",
                     Notification.TYPE_BUDGET_WARNING
             );
-            budgetWarning.setCreatedAt(new Date(System.currentTimeMillis() - 3600000)); // 1小时前
+            budgetWarning.setCreateTime(new Date(System.currentTimeMillis() - 3600000)); // 1小时前
             notificationDao.insert(budgetWarning);
             
             // 预算超支通知
@@ -153,7 +152,7 @@ public class NotificationFragment extends Fragment {
                     "您的购物预算已超支15%，建议控制支出。",
                     Notification.TYPE_BUDGET_EXCEED
             );
-            budgetExceed.setCreatedAt(new Date(System.currentTimeMillis() - 7200000)); // 2小时前
+            budgetExceed.setCreateTime(new Date(System.currentTimeMillis() - 7200000)); // 2小时前
             notificationDao.insert(budgetExceed);
             
             // 账单提醒通知
@@ -163,7 +162,7 @@ public class NotificationFragment extends Fragment {
                     "您的水电费将于3天后到期，请及时缴纳。",
                     Notification.TYPE_BILL_REMINDER
             );
-            billReminder.setCreatedAt(new Date(System.currentTimeMillis() - 86400000)); // 1天前
+            billReminder.setCreateTime(new Date(System.currentTimeMillis() - 86400000)); // 1天前
             notificationDao.insert(billReminder);
             
             // 大额支出通知
@@ -173,8 +172,8 @@ public class NotificationFragment extends Fragment {
                     "检测到一笔¥1,999的大额支出，请确认是否为您本人操作。",
                     Notification.TYPE_LARGE_EXPENSE
             );
-            largeExpense.setCreatedAt(new Date(System.currentTimeMillis() - 172800000)); // 2天前
-            largeExpense.setRead(true); // 已读
+            largeExpense.setCreateTime(new Date(System.currentTimeMillis() - 172800000)); // 2天前
+            largeExpense.setRead(1); // 已读
             notificationDao.insert(largeExpense);
             
             // 收入到账通知
@@ -184,8 +183,8 @@ public class NotificationFragment extends Fragment {
                     "您有一笔¥5,000的收入已到账，来源：工资。",
                     Notification.TYPE_INCOME_RECEIVED
             );
-            incomeReceived.setCreatedAt(new Date(System.currentTimeMillis() - 259200000)); // 3天前
-            incomeReceived.setRead(true); // 已读
+            incomeReceived.setCreateTime(new Date(System.currentTimeMillis() - 259200000)); // 3天前
+            incomeReceived.setRead(1); // 已读
             notificationDao.insert(incomeReceived);
             
             LogUtils.d(TAG, "已创建5条测试通知数据");
@@ -301,12 +300,12 @@ public class NotificationFragment extends Fragment {
         }
         
         // 如果已经是已读状态，不需要操作
-        if (notification.isRead()) {
+        if (notification.isRead() == 1) {
             return;
         }
         
         // 先在UI上标记为已读
-        notification.setRead(true);
+        notification.setRead(1);
         adapter.notifyDataSetChanged();
         
         // 调用API标记为已读
@@ -386,9 +385,12 @@ public class NotificationFragment extends Fragment {
                 
                 // 显示加载中
                 binding.swipeRefreshLayout.setRefreshing(true);
-                
+                ArrayList<Long> ids = new ArrayList<>();
+                for (Notification notification : adapter.getDataList()){
+                    ids.add(notification.getId());
+                }
                 // 调用API批量标记为已读
-                notificationRepository.markAllAsRead(userId, new RepositoryCallback<Boolean>() {
+                notificationRepository.markAllAsRead(userId, ids, new RepositoryCallback<Boolean>() {
                     @Override
                     public void onSuccess(Boolean result) {
                         LogUtils.d(TAG, "成功标记所有通知为已读");

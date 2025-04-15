@@ -26,43 +26,37 @@ import retrofit2.Response;
  */
 public class NotificationRepository {
     private static final String TAG = "NotificationRepository";
-    
+
     private final Context context;
     private final NotificationApiService apiService;
     private final DataCacheManager cacheManager;
-    
+
     public NotificationRepository(Context context) {
         this.context = context.getApplicationContext();
         this.apiService = NetworkManager.getInstance().getNotificationApiService();
         this.cacheManager = DataCacheManager.getInstance(context);
     }
-    
+
     /**
      * 获取通知列表
+     *
      * @param callback 回调
      */
     public void getNotifications(final RepositoryCallback<List<Notification>> callback) {
         // 检查网络状态
         if (NetworkUtils.isNetworkAvailable(context)) {
             // 有网络连接，从网络获取数据
-            apiService.getNotifications(1, 100, null, null, null).enqueue(new Callback<ApiResponse<List<Notification>>>() {
+            apiService.getNotifications(1, 100, null, null, 0, TokenManager.getInstance().getUserId()).enqueue(new Callback<ApiResponse<Notification>>() {
                 @Override
-                public void onResponse(Call<ApiResponse<List<Notification>>> call, Response<ApiResponse<List<Notification>>> response) {
+                public void onResponse(Call<ApiResponse<Notification>> call, Response<ApiResponse<Notification>> response) {
                     if (response.isSuccessful() && response.body() != null) {
-                        ApiResponse<List<Notification>> apiResponse = response.body();
+                        ApiResponse<Notification> apiResponse = response.body();
                         if (apiResponse.isSuccess()) {
                             // 优先使用data字段，如果为空则使用rows字段
-                            List<Notification> notifications = apiResponse.getDataSafe(new ArrayList<>());
-                            
-                            // 如果data为空，使用convertRows方法转换rows数据为Notification列表
-                            if (notifications.isEmpty()) {
-                                notifications = apiResponse.convertRows(Notification.class);
-                            }
-                            
+                            List<Notification> notifications = apiResponse.getRows();
                             // 返回数据，即使列表为空也正常返回
                             // 保存到缓存
                             cacheManager.saveNotifications(notifications);
-                            
                             // 返回数据
                             callback.onSuccess(notifications);
                         } else {
@@ -74,15 +68,15 @@ public class NotificationRepository {
                 }
 
                 @Override
-                public void onFailure(Call<ApiResponse<List<Notification>>> call, Throwable t) {
+                public void onFailure(Call<ApiResponse<Notification>> call, Throwable t) {
                     LogUtils.e(TAG, "获取通知列表失败", t);
-                    
+
                     // 尝试从缓存获取
                     if (cacheManager.isCacheValid("notifications")) {
                         List<Notification> cachedNotifications = cacheManager.getNotifications();
                         if (cachedNotifications != null && !cachedNotifications.isEmpty()) {
                             callback.onSuccess(cachedNotifications);
-                            
+
                             // 标记为从缓存获取
                             callback.isCacheData(true);
                         } else {
@@ -99,7 +93,6 @@ public class NotificationRepository {
                 List<Notification> cachedNotifications = cacheManager.getNotifications();
                 if (cachedNotifications != null && !cachedNotifications.isEmpty()) {
                     callback.onSuccess(cachedNotifications);
-                    
                     // 标记为从缓存获取
                     callback.isCacheData(true);
                 } else {
@@ -110,31 +103,26 @@ public class NotificationRepository {
             }
         }
     }
-    
+
     /**
      * 获取未读通知
-     * @param userId 用户ID
+     *
+     * @param userId   用户ID
      * @param callback 回调
      */
-    public void getUnreadNotifications(Long userId, final RepositoryCallback<List<Notification>> callback) {
+    public void getUnreadNotifications(Long userId, final RepositoryCallback<Notification> callback) {
         // 检查网络状态
         if (NetworkUtils.isNetworkAvailable(context)) {
             // 有网络连接，从网络获取数据
-            apiService.getUnreadNotifications(userId).enqueue(new Callback<ApiResponse<List<Notification>>>() {
+            apiService.getUnreadNotifications(userId).enqueue(new Callback<ApiResponse<Notification>>() {
                 @Override
-                public void onResponse(Call<ApiResponse<List<Notification>>> call, Response<ApiResponse<List<Notification>>> response) {
+                public void onResponse(Call<ApiResponse<Notification>> call, Response<ApiResponse<Notification>> response) {
                     if (response.isSuccessful() && response.body() != null) {
-                        ApiResponse<List<Notification>> apiResponse = response.body();
+                        ApiResponse<Notification> apiResponse = response.body();
                         if (apiResponse.isSuccess()) {
                             // 优先使用data字段，如果为空则使用rows字段
-                            List<Notification> notifications = apiResponse.getDataSafe(new ArrayList<>());
-                            
-                            // 如果data为空，使用convertRows方法转换rows数据为Notification列表
-                            if (notifications.isEmpty()) {
-                                notifications = apiResponse.convertRows(Notification.class);
-                            }
-                            
-                            callback.onSuccess(notifications);
+                            List<Notification> notifications = apiResponse.getRows();
+//                            callback.onSuccess(notifications);
                         } else {
                             callback.onError(apiResponse.getMsg());
                         }
@@ -144,7 +132,7 @@ public class NotificationRepository {
                 }
 
                 @Override
-                public void onFailure(Call<ApiResponse<List<Notification>>> call, Throwable t) {
+                public void onFailure(Call<ApiResponse<Notification>> call, Throwable t) {
                     LogUtils.e(TAG, "获取未读通知失败", t);
                     callback.onError("获取未读通知失败: " + t.getMessage());
                 }
@@ -153,11 +141,12 @@ public class NotificationRepository {
             callback.onError("无网络连接，无法获取未读通知");
         }
     }
-    
+
     /**
      * 标记通知为已读
+     *
      * @param notificationId 通知ID
-     * @param callback 回调
+     * @param callback       回调
      */
     public void markAsRead(long notificationId, final RepositoryCallback<Boolean> callback) {
         // 检查网络状态
@@ -165,7 +154,7 @@ public class NotificationRepository {
             callback.onError("无网络连接，无法标记通知为已读");
             return;
         }
-        
+
         apiService.markAsRead(notificationId).enqueue(new Callback<ApiResponse<String>>() {
             @Override
             public void onResponse(Call<ApiResponse<String>> call, Response<ApiResponse<String>> response) {
@@ -173,8 +162,8 @@ public class NotificationRepository {
                     ApiResponse<String> apiResponse = response.body();
                     if (apiResponse.isSuccess()) {
                         // 更新缓存
-                        updateCachedNotificationReadStatus(notificationId, true);
-                        
+                        updateCachedNotificationReadStatus(notificationId, 1);
+
                         callback.onSuccess(true);
                     } else {
                         callback.onError(apiResponse.getMsg());
@@ -191,22 +180,23 @@ public class NotificationRepository {
             }
         });
     }
-    
+
     /**
      * 批量标记通知为已读
-     * @param userId 用户ID
+     *
+     * @param userId   用户ID
      * @param callback 回调
      */
-    public void markAllAsRead(long userId, final RepositoryCallback<Boolean> callback) {
+    public void markAllAsRead(long userId, ArrayList<Long> ids, final RepositoryCallback<Boolean> callback) {
         // 检查网络状态
         if (!NetworkUtils.isNetworkAvailable(context)) {
             callback.onError("无网络连接，无法标记所有通知为已读");
             return;
         }
-        
+
         Map<String, Object> params = new HashMap<>();
         params.put("userId", userId);
-        
+        params.put("ids", ids);
         apiService.batchMarkAsRead(params).enqueue(new Callback<ApiResponse<String>>() {
             @Override
             public void onResponse(Call<ApiResponse<String>> call, Response<ApiResponse<String>> response) {
@@ -214,8 +204,8 @@ public class NotificationRepository {
                     ApiResponse<String> apiResponse = response.body();
                     if (apiResponse.isSuccess()) {
                         // 更新缓存中所有通知为已读
-                        updateAllCachedNotificationsReadStatus(userId, true);
-                        
+                        updateAllCachedNotificationsReadStatus(userId, 1);
+
                         callback.onSuccess(true);
                     } else {
                         callback.onError(apiResponse.getMsg());
@@ -232,11 +222,12 @@ public class NotificationRepository {
             }
         });
     }
-    
+
     /**
      * 删除通知
+     *
      * @param notificationId 通知ID
-     * @param callback 回调
+     * @param callback       回调
      */
     public void deleteNotification(long notificationId, final RepositoryCallback<Boolean> callback) {
         // 检查网络状态
@@ -244,7 +235,7 @@ public class NotificationRepository {
             callback.onError("无网络连接，无法删除通知");
             return;
         }
-        
+
         apiService.deleteNotification(String.valueOf(notificationId)).enqueue(new Callback<ApiResponse<String>>() {
             @Override
             public void onResponse(Call<ApiResponse<String>> call, Response<ApiResponse<String>> response) {
@@ -253,7 +244,7 @@ public class NotificationRepository {
                     if (apiResponse.isSuccess()) {
                         // 更新缓存
                         removeCachedNotification(notificationId);
-                        
+
                         callback.onSuccess(true);
                     } else {
                         callback.onError(apiResponse.getMsg());
@@ -270,11 +261,11 @@ public class NotificationRepository {
             }
         });
     }
-    
+
     /**
      * 更新缓存中通知的已读状态
      */
-    private void updateCachedNotificationReadStatus(long notificationId, boolean isRead) {
+    private void updateCachedNotificationReadStatus(long notificationId, Integer isRead) {
         List<Notification> cachedNotifications = cacheManager.getNotifications();
         if (cachedNotifications != null) {
             for (Notification notification : cachedNotifications) {
@@ -286,11 +277,11 @@ public class NotificationRepository {
             cacheManager.saveNotifications(cachedNotifications);
         }
     }
-    
+
     /**
      * 更新缓存中所有通知的已读状态
      */
-    private void updateAllCachedNotificationsReadStatus(long userId, boolean isRead) {
+    private void updateAllCachedNotificationsReadStatus(long userId, Integer isRead) {
         List<Notification> cachedNotifications = cacheManager.getNotifications();
         if (cachedNotifications != null) {
             for (Notification notification : cachedNotifications) {
@@ -301,7 +292,7 @@ public class NotificationRepository {
             cacheManager.saveNotifications(cachedNotifications);
         }
     }
-    
+
     /**
      * 从缓存中移除通知
      */

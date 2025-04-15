@@ -98,7 +98,8 @@ public class ProfileFragment extends Fragment {
             try {
                 // 跳转到编辑个人资料页面
                 Intent intent = new Intent(requireContext(), EditProfileActivity.class);
-                startActivity(intent);
+                // 使用startActivityForResult启动编辑页面
+                startActivityForResult(intent, com.zjf.fincialsystem.ui.activity.MainActivity.REQUEST_EDIT_PROFILE);
             } catch (Exception e) {
                 LogUtils.e(TAG, "跳转到编辑个人资料页面失败：" + e.getMessage(), e);
                 Toast.makeText(requireContext(), "跳转失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -130,7 +131,7 @@ public class ProfileFragment extends Fragment {
     /**
      * 加载数据
      */
-    private void loadData() {
+    public void loadData() {
         try {
             // 显示加载中
             showLoading(true);
@@ -497,5 +498,27 @@ public class ProfileFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
         binding = null;
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        LogUtils.d(TAG, "ProfileFragment重新可见，刷新用户数据");
+        // 如果界面可见，重新加载数据以确保显示最新的用户信息
+        if (isAdded() && !isDetached()) {
+            loadData();
+        }
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        LogUtils.d(TAG, "收到活动结果 - requestCode: " + requestCode + ", resultCode: " + resultCode);
+        
+        if (requestCode == com.zjf.fincialsystem.ui.activity.MainActivity.REQUEST_EDIT_PROFILE && 
+            resultCode == requireActivity().RESULT_OK) {
+            LogUtils.d(TAG, "编辑个人资料成功，刷新数据");
+            loadData();
+        }
     }
 } 

@@ -37,6 +37,7 @@ public class MainActivity extends AppCompatActivity {
     // 结果码
     public static final int REQUEST_ADD_TRANSACTION = 1001;
     public static final int REQUEST_TRANSACTION_DETAIL = 1002;
+    public static final int REQUEST_EDIT_PROFILE = 1003;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -201,9 +202,26 @@ public class MainActivity extends AppCompatActivity {
                     // 通知DashboardFragment刷新数据
                     dashboardFragment.refreshData();
                 }
+            } else if (requestCode == REQUEST_EDIT_PROFILE) {
+                // 刷新ProfileFragment
+                Fragment currentFragment = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+                if (currentFragment instanceof ProfileFragment) {
+                    LogUtils.d(TAG, "正在刷新ProfileFragment数据");
+                    ProfileFragment profileFragment = (ProfileFragment) currentFragment;
+                    // 通知ProfileFragment刷新数据
+                    profileFragment.loadData();
+                } else {
+                    LogUtils.d(TAG, "修改个人资料成功，但当前不在个人资料页面，待切换时将自动刷新");
+                }
             }
         } else {
             LogUtils.d(TAG, "操作取消或失败，不刷新数据");
         }
+    }
+    
+    @Override
+    protected void onResume() {
+        super.onResume();
+        LogUtils.d(TAG, "MainActivity重新可见");
     }
 } 

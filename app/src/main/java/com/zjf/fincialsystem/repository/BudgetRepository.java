@@ -10,6 +10,7 @@ import com.zjf.fincialsystem.network.api.BudgetApiService;
 import com.zjf.fincialsystem.network.model.AddBudgetRequest;
 import com.zjf.fincialsystem.utils.LogUtils;
 import com.zjf.fincialsystem.utils.NetworkUtils;
+import com.zjf.fincialsystem.utils.TokenManager;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -55,19 +56,14 @@ public class BudgetRepository {
                 monthParam = cal.get(Calendar.MONTH) + 1;
                 LogUtils.d(TAG, "查询预算数据，月份: " + monthParam + "，年份: " + cal.get(Calendar.YEAR));
             }
-            apiService.getBudgets(1, 100, null, monthParam).enqueue(new Callback<ApiResponse<List<Budget>>>() {
+            apiService.getBudgets(1, 100, null, monthParam, TokenManager.getInstance().getUserId()).enqueue(new Callback<ApiResponse<Budget>>() {
                 @Override
-                public void onResponse(Call<ApiResponse<List<Budget>>> call, Response<ApiResponse<List<Budget>>> response) {
+                public void onResponse(Call<ApiResponse<Budget>> call, Response<ApiResponse<Budget>> response) {
                     if (response.isSuccessful() && response.body() != null) {
-                        ApiResponse<List<Budget>> apiResponse = response.body();
+                        ApiResponse<Budget> apiResponse = response.body();
                         if (apiResponse.isSuccess()) {
                             // 首先尝试从data获取数据
-                            List<Budget> budgets = apiResponse.getData();
-                            
-                            // 如果data为空，从rows获取数据（适配后端返回的TableDataInfo格式）
-                            if (budgets == null || budgets.isEmpty()) {
-                                budgets = apiResponse.convertRows(Budget.class);
-                            }
+                            List<Budget> budgets = apiResponse.getRows();
                             
                             // 保存到缓存
                             cacheManager.saveBudgets(budgets);
@@ -83,7 +79,7 @@ public class BudgetRepository {
                 }
 
                 @Override
-                public void onFailure(Call<ApiResponse<List<Budget>>> call, Throwable t) {
+                public void onFailure(Call<ApiResponse<Budget>> call, Throwable t) {
                     LogUtils.e(TAG, "获取预算列表失败", t);
                     
                     // 网络请求失败，尝试从缓存获取
@@ -173,7 +169,6 @@ public class BudgetRepository {
                         Budget budget = new Budget();
                         budget.setCategoryId(request.getCategoryId());
                         budget.setAmount(request.getAmount());
-                        budget.setPeriod(request.getPeriod());
                         
                         // 更新缓存
                         List<Budget> cachedBudgets = cacheManager.getBudgets();

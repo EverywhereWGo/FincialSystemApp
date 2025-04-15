@@ -30,6 +30,10 @@ public class NotificationAdapter extends RecyclerView.Adapter<NotificationAdapte
         this.notifications = notifications;
     }
 
+    public List<Notification> getDataList() {
+        return notifications;
+    }
+
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -43,26 +47,26 @@ public class NotificationAdapter extends RecyclerView.Adapter<NotificationAdapte
         Notification notification = notifications.get(position);
         try {
             // 设置未读标记
-            holder.viewUnread.setVisibility(notification.isRead() ? View.GONE : View.VISIBLE);
-            
+            holder.viewUnread.setVisibility(notification.isRead() == 1 ? View.GONE : View.VISIBLE);
+
             // 设置标题和内容文字样式
-            holder.tvTitle.setTypeface(notification.isRead() ? Typeface.DEFAULT : Typeface.DEFAULT_BOLD);
+            holder.tvTitle.setTypeface(notification.isRead() == 1 ? Typeface.DEFAULT : Typeface.DEFAULT_BOLD);
             holder.tvTitle.setText(notification.getTitle());
             holder.tvContent.setText(notification.getContent());
-            
+
             // 设置时间
-            holder.tvTime.setText(getRelativeTimeSpanString(notification.getCreatedAt().getTime()));
-            
+            holder.tvTime.setText(getRelativeTimeSpanString(notification.getCreateTime().getTime()));
+
             // 设置图标
             setNotificationIcon(holder.ivIcon, notification.getType());
-            
+
             // 设置点击事件
             holder.itemView.setOnClickListener(v -> {
                 if (listener != null) {
                     listener.onNotificationClicked(notification);
                 }
             });
-            
+
         } catch (Exception e) {
             LogUtils.e(TAG, "绑定通知视图错误: " + e.getMessage(), e);
         }
@@ -81,7 +85,7 @@ public class NotificationAdapter extends RecyclerView.Adapter<NotificationAdapte
             imageView.setImageResource(R.drawable.ic_notification);
             return;
         }
-        
+
         int iconRes;
         switch (type) {
             case Notification.TYPE_BUDGET_WARNING:
@@ -101,31 +105,31 @@ public class NotificationAdapter extends RecyclerView.Adapter<NotificationAdapte
                 iconRes = R.drawable.ic_notification;
                 break;
         }
-        
+
         imageView.setImageResource(iconRes);
     }
-    
+
     /**
      * 获取相对时间字符串
      */
     private String getRelativeTimeSpanString(long timeMs) {
         long now = System.currentTimeMillis();
-        
+
         // 使用系统的相对时间格式化
         CharSequence relativeTime = DateUtils.getRelativeTimeSpanString(
                 timeMs, now, DateUtils.MINUTE_IN_MILLIS,
                 DateUtils.FORMAT_ABBREV_RELATIVE);
-        
+
         return relativeTime.toString();
     }
-    
+
     /**
      * 设置通知点击监听器
      */
     public void setOnNotificationClickListener(OnNotificationClickListener listener) {
         this.listener = listener;
     }
-    
+
     /**
      * 通知点击监听器接口
      */
@@ -142,10 +146,10 @@ public class NotificationAdapter extends RecyclerView.Adapter<NotificationAdapte
         TextView tvTitle;
         TextView tvTime;
         TextView tvContent;
-        
+
         ViewHolder(View itemView) {
             super(itemView);
-            
+
             ivIcon = itemView.findViewById(R.id.iv_icon);
             viewUnread = itemView.findViewById(R.id.view_unread);
             tvTitle = itemView.findViewById(R.id.tv_title);

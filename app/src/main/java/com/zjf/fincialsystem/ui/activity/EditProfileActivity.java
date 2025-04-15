@@ -521,6 +521,10 @@ public class EditProfileActivity extends AppCompatActivity {
         String nickname = binding.etNickname.getText().toString().trim();
         String email = binding.etEmail.getText().toString().trim();
         String phone = binding.etPhone.getText().toString().trim();
+        
+        // 获取社交账号信息
+        String wechat = binding.etWechat.getText().toString().trim();
+        String qq = binding.etQq.getText().toString().trim();
 
         // 基本验证
         if (TextUtils.isEmpty(nickname)) {
@@ -532,7 +536,14 @@ public class EditProfileActivity extends AppCompatActivity {
         currentUser.setNickname(nickname);
         currentUser.setEmail(email);
         currentUser.setPhone(phone);
+        currentUser.setWechat(wechat);
+        currentUser.setQq(qq);
 
+        LogUtils.d(TAG, "保存用户信息: ID=" + currentUser.getId() + 
+                ", 昵称=" + nickname + 
+                ", 电话=" + phone + 
+                ", 邮箱=" + email);
+        
         showLoading(true);
 
         // 调用API保存用户信息
@@ -542,8 +553,14 @@ public class EditProfileActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     Toast.makeText(EditProfileActivity.this, "保存成功", Toast.LENGTH_SHORT).show();
                     showLoading(false);
+                    
+                    // 确保设置结果为OK，通知调用者刷新数据
                     setResult(RESULT_OK);
+                    
+                    // 结束当前活动，返回到调用者
                     finish();
+                    
+                    LogUtils.d(TAG, "用户资料保存成功，通知刷新");
                 });
             }
 
@@ -552,6 +569,7 @@ public class EditProfileActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     Toast.makeText(EditProfileActivity.this, "保存失败：" + error, Toast.LENGTH_SHORT).show();
                     showLoading(false);
+                    LogUtils.e(TAG, "保存用户资料失败: " + error);
                 });
             }
 

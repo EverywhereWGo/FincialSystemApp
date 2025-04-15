@@ -355,7 +355,6 @@ public class DashboardFragment extends Fragment {
         showError(false);
         // 显示加载中
         showLoading(true);
-        
         // 加载概览数据
         loadOverviewData();
         // 加载消费趋势数据
@@ -637,6 +636,7 @@ public class DashboardFragment extends Fragment {
             }
         });
     }
+
     
     /**
      * 显示/隐藏加载中
