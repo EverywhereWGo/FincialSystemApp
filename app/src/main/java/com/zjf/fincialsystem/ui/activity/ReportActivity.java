@@ -471,11 +471,11 @@ public class ReportActivity extends AppCompatActivity {
      */
     private void loadDailyTransactions(long startDate, long endDate) {
         // 获取支出数据
-        statisticsRepository.getTrend(0, "monthly", new RepositoryCallback<Map<String, Object>>() {
+        statisticsRepository.getTrend(1, "monthly", new RepositoryCallback<Map<String, Object>>() {
             @Override
             public void onSuccess(Map<String, Object> expenseData) {
                 // 获取收入数据
-                statisticsRepository.getTrend(1, "monthly", new RepositoryCallback<Map<String, Object>>() {
+                statisticsRepository.getTrend(2, "monthly", new RepositoryCallback<Map<String, Object>>() {
                     @Override
                     public void onSuccess(Map<String, Object> incomeData) {
                         runOnUiThread(() -> {

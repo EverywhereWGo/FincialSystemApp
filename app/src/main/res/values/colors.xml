@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#1976D2</color>
-    <color name="colorPrimaryDark">#1565C0</color>
-    <color name="colorAccent">#03A9F4</color>
+    <color name="colorPrimary">#3F51B5</color>
+    <color name="colorPrimaryDark">#303F9F</color>
+    <color name="colorAccent">#FF4081</color>
     <color name="colorPrimaryLight">#BBDEFB</color>
     <color name="primary">#1976D2</color>
     <color name="primary_dark">#1565C0</color>
@@ -18,6 +18,7 @@
     <color name="background">#F5F5F5</color>
     <color name="text_primary">#212121</color>
     <color name="text_secondary">#757575</color>
+    <color name="text_tertiary">#9E9E9E</color>
     <color name="textPrimary">@color/text_primary</color>
     <color name="textSecondary">@color/text_secondary</color>
     <color name="textHint">#BDBDBD</color>
@@ -25,7 +26,7 @@
     
     <color name="income">#4CAF50</color>
     <color name="expense">#F44336</color>
-    <color name="expense_light">#FFCDD2</color>
+    <color name="expense_light">#EF9A9A</color>
     <color name="balance">#2196F3</color>
     <color name="success">#4CAF50</color>
     <color name="warning">#FFC107</color>
@@ -59,4 +60,10 @@
     <color name="chart_line">@color/colorPrimary</color>
     <color name="chart_fill">#33673AB7</color>
     <color name="transfer">#FF9800</color>
+    
+    <!-- 背景颜色 -->
+    <color name="card_background">#FFFFFF</color>
+    
+    <!-- 图表颜色 -->
+    <color name="income_light">#A5D6A7</color>
 </resources>

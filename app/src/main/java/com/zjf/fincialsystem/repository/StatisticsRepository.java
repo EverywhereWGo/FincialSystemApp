@@ -4,6 +4,7 @@ import android.content.Context;
 
 import com.google.gson.Gson;
 import com.zjf.fincialsystem.model.CategoryStatistic;
+import com.zjf.fincialsystem.model.TrendData;
 import com.zjf.fincialsystem.network.ApiResponse;
 import com.zjf.fincialsystem.network.NetworkManager;
 import com.zjf.fincialsystem.network.api.StatisticsApiService;
@@ -24,6 +25,10 @@ import java.util.Map;
 import java.util.Random;
 import java.util.SimpleTimeZone;
 
+import io.reactivex.Observable;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.schedulers.Schedulers;
+
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -34,6 +39,16 @@ import retrofit2.Response;
  */
 public class StatisticsRepository {
     private static final String TAG = "StatisticsRepository";
+    
+    /**
+     * 统计周期类型枚举
+     */
+    public enum PeriodType {
+        DAILY,      // 日统计
+        WEEKLY,     // 周统计
+        MONTHLY,    // 月统计
+        YEARLY      // 年统计
+    }
     
     private final Context context;
     private final StatisticsApiService apiService;
@@ -437,7 +452,7 @@ public class StatisticsRepository {
         if (NetworkUtils.isNetworkAvailable(context)) {
             // 有网络连接，从网络获取数据
             long userId = TokenManager.getInstance().getUserId();
-            apiService.getCategoryStatistics(userId, startDate, endDate, 0).enqueue(new Callback<ApiResponse<List<Map<String, Object>>>>() {
+            apiService.getCategoryStatistics(userId, startDate, endDate, 1).enqueue(new Callback<ApiResponse<List<Map<String, Object>>>>() {
                 @Override
                 public void onResponse(Call<ApiResponse<List<Map<String, Object>>>> call, Response<ApiResponse<List<Map<String, Object>>>> response) {
                     if (response.isSuccessful() && response.body() != null) {
@@ -574,60 +589,49 @@ public class StatisticsRepository {
                             allData = new ArrayList<>();
                         }
                         
-                        // 过滤特定类型的数据
+                        // 直接使用原始数据，不做过滤，因为API已经按要求返回了正确格式的数据
                         List<Map<String, Object>> filteredData = new ArrayList<>();
+                        
+                        // 如果API返回的数据中直接包含expense和income字段，则按类型提取
                         for (Map<String, Object> item : allData) {
-                            // 支持多种数据格式
-                            // 格式1: {type: 1, ...}
-                            // 格式2: {expense: 1000, income: 2000, ...}
-                            if (item.containsKey("type")) {
-                                int itemType = (int) getDoubleValue(item, "type", -1);
-                                if (itemType == type) {
-                                    filteredData.add(item);
+                            // 创建新的条目，以确保不修改原始数据
+                            Map<String, Object> newItem = new HashMap<>(item);
+                            
+                            // 根据请求的类型获取相应的数据
+                            if (type == 0 || type == 1) { // 支出
+                                if (item.containsKey("expense")) {
+                                    newItem.put("amount", getDoubleValue(item, "expense", 0));
+                                    newItem.put("type", 1); // 设置为支出类型
+                                    filteredData.add(newItem);
                                 }
-                            } else {
-                                // 如果数据中没有type字段，可能是收入/支出混合格式
-                                // 创建新的条目，根据请求的类型选择相应的字段
-                                Map<String, Object> newItem = new HashMap<>(item);
-                                if (type == 0) { // 支出
-                                    if (item.containsKey("expense")) {
-                                        newItem.put("amount", getDoubleValue(item, "expense", 0));
-                                        filteredData.add(newItem);
-                                    }
-                                } else { // 收入
-                                    if (item.containsKey("income")) {
-                                        newItem.put("amount", getDoubleValue(item, "income", 0));
-                                        filteredData.add(newItem);
-                                    }
+                            } else if (type == 2) { // 收入
+                                if (item.containsKey("income")) {
+                                    newItem.put("amount", getDoubleValue(item, "income", 0));
+                                    newItem.put("type", 2); // 设置为收入类型
+                                    filteredData.add(newItem);
                                 }
                             }
                         }
                         
-                        // 如果过滤后没有数据，可能需要转换格式
+                        // 如果过滤后没有数据，可能需要采用不同的解析方式
                         if (filteredData.isEmpty() && !allData.isEmpty()) {
                             LogUtils.w(TAG, "过滤后趋势数据为空，尝试其他格式解析");
                             
-                            // 检查是否是整体趋势数据格式
-                            boolean hasExpenseOrIncome = false;
-                            for (Map<String, Object> item : allData) {
-                                if (item.containsKey("expense") || item.containsKey("income")) {
-                                    hasExpenseOrIncome = true;
-                                    break;
-                                }
-                            }
+                            // 直接使用原始数据 - 假设API返回的数据格式已经符合要求
+                            filteredData = allData;
                             
-                            if (hasExpenseOrIncome) {
-                                // 使用收入/支出格式
-                                for (Map<String, Object> item : allData) {
-                                    Map<String, Object> newItem = new HashMap<>(item);
-                                    if (type == 0 && item.containsKey("expense")) { // 支出
-                                        newItem.put("amount", getDoubleValue(item, "expense", 0));
-                                        newItem.put("type", 0);
-                                        filteredData.add(newItem);
-                                    } else if (type == 1 && item.containsKey("income")) { // 收入
-                                        newItem.put("amount", getDoubleValue(item, "income", 0));
-                                        newItem.put("type", 1);
-                                        filteredData.add(newItem);
+                            // 确保每个条目都有amount字段（如果需要）
+                            for (Map<String, Object> item : filteredData) {
+                                if (!item.containsKey("amount")) {
+                                    // 根据数据中可能存在的字段来设置amount
+                                    if (type == 0 || type == 1) { // 支出
+                                        if (item.containsKey("expense")) {
+                                            item.put("amount", getDoubleValue(item, "expense", 0));
+                                        }
+                                    } else if (type == 2) { // 收入
+                                        if (item.containsKey("income")) {
+                                            item.put("amount", getDoubleValue(item, "income", 0));
+                                        }
                                     }
                                 }
                             }
@@ -774,5 +778,169 @@ public class StatisticsRepository {
                 callback.onError("无网络连接且无缓存数据");
             }
         }
+    }
+
+    /**
+     * 获取趋势数据
+     * @param periodType 周期类型
+     * @param statisticType 统计类型：0-支出，1-收入
+     * @return Observable<List<TrendData>>
+     */
+    public Observable<List<TrendData>> getTrendData(PeriodType periodType, int statisticType) {
+        return Observable.create(emitter -> {
+            try {
+                // 转换周期类型为API参数
+                String periodString;
+                switch (periodType) {
+                    case YEARLY:
+                        periodString = "yearly";
+                        break;
+                    case MONTHLY:
+                        periodString = "monthly";
+                        break;
+                    case WEEKLY:
+                        periodString = "weekly";
+                        break;
+                    case DAILY:
+                    default:
+                        periodString = "daily";
+                        break;
+                }
+                
+                // 调用原有的getTrend方法获取数据
+                getTrend(statisticType, periodString, new RepositoryCallback<Map<String, Object>>() {
+                    @Override
+                    public void onSuccess(Map<String, Object> data) {
+                        try {
+                            List<TrendData> result = new ArrayList<>();
+                            
+                            // 处理API返回的趋势数据
+                            if (data.containsKey("trendData") && data.get("trendData") instanceof List) {
+                                List<?> trendDataList = (List<?>) data.get("trendData");
+                                
+                                for (Object item : trendDataList) {
+                                    if (item instanceof Map) {
+                                        Map<?, ?> itemMap = (Map<?, ?>) item;
+                                        TrendData trendData = new TrendData();
+                                        
+                                        // 设置年份
+                                        if (itemMap.containsKey("year")) {
+                                            Object yearObj = itemMap.get("year");
+                                            if (yearObj instanceof Number) {
+                                                trendData.setYear(((Number) yearObj).intValue());
+                                            }
+                                        }
+                                        
+                                        // 设置月份
+                                        if (itemMap.containsKey("month")) {
+                                            Object monthObj = itemMap.get("month");
+                                            if (monthObj instanceof Number) {
+                                                trendData.setMonth(((Number) monthObj).intValue());
+                                            } else if (monthObj instanceof String) {
+                                                try {
+                                                    String monthStr = (String) monthObj;
+                                                    // 处理 "2025-04" 这种格式的月份
+                                                    if (monthStr.contains("-")) {
+                                                        // 分割字符串，取第二部分作为月份
+                                                        String[] parts = monthStr.split("-");
+                                                        if (parts.length > 1) {
+                                                            // 如果是 "2025-04" 这种格式，把年份也保存下来
+                                                            try {
+                                                                trendData.setYear(Integer.parseInt(parts[0]));
+                                                            } catch (NumberFormatException e) {
+                                                                LogUtils.e(TAG, "年份解析错误: " + parts[0], e);
+                                                            }
+                                                            // 设置月份，注意可能存在前导0
+                                                            trendData.setMonth(Integer.parseInt(parts[1]));
+                                                        }
+                                                    } else {
+                                                        // 尝试直接解析为整数
+                                                        trendData.setMonth(Integer.parseInt(monthStr));
+                                                    }
+                                                } catch (NumberFormatException e) {
+                                                    LogUtils.e(TAG, "月份解析错误: " + monthObj, e);
+                                                    // 解析失败时设置默认值
+                                                    trendData.setMonth(0);
+                                                }
+                                            }
+                                        }
+                                        
+                                        // 设置周
+                                        if (itemMap.containsKey("week")) {
+                                            Object weekObj = itemMap.get("week");
+                                            if (weekObj instanceof Number) {
+                                                trendData.setWeek(((Number) weekObj).intValue());
+                                            }
+                                        }
+                                        
+                                        // 设置日
+                                        if (itemMap.containsKey("day")) {
+                                            Object dayObj = itemMap.get("day");
+                                            if (dayObj instanceof Number) {
+                                                trendData.setDay(((Number) dayObj).intValue());
+                                            }
+                                        }
+                                        
+                                        // 设置金额
+                                        if (itemMap.containsKey("amount")) {
+                                            Object amountObj = itemMap.get("amount");
+                                            if (amountObj instanceof Number) {
+                                                trendData.setAmount(((Number) amountObj).doubleValue());
+                                            }
+                                        } else if (statisticType == 0 && itemMap.containsKey("expense")) {
+                                            // 支出类型
+                                            Object expenseObj = itemMap.get("expense");
+                                            if (expenseObj instanceof Number) {
+                                                trendData.setAmount(((Number) expenseObj).doubleValue());
+                                            }
+                                        } else if (statisticType == 1 && itemMap.containsKey("income")) {
+                                            // 收入类型
+                                            Object incomeObj = itemMap.get("income");
+                                            if (incomeObj instanceof Number) {
+                                                trendData.setAmount(((Number) incomeObj).doubleValue());
+                                            }
+                                        }
+                                        
+                                        // 设置数量
+                                        if (itemMap.containsKey("count")) {
+                                            Object countObj = itemMap.get("count");
+                                            if (countObj instanceof Number) {
+                                                trendData.setCount(((Number) countObj).intValue());
+                                            }
+                                        }
+                                        
+                                        // 设置标签
+                                        if (itemMap.containsKey("label")) {
+                                            Object labelObj = itemMap.get("label");
+                                            if (labelObj instanceof String) {
+                                                trendData.setLabel((String) labelObj);
+                                            }
+                                        }
+                                        
+                                        result.add(trendData);
+                                    }
+                                }
+                            }
+                            
+                            // 发送结果
+                            emitter.onNext(result);
+                            emitter.onComplete();
+                        } catch (Exception e) {
+                            LogUtils.e(TAG, "处理趋势数据失败", e);
+                            emitter.onError(e);
+                        }
+                    }
+                    
+                    @Override
+                    public void onError(String error) {
+                        LogUtils.e(TAG, "获取趋势数据失败: " + error);
+                        emitter.onError(new Exception(error));
+                    }
+                });
+            } catch (Exception e) {
+                LogUtils.e(TAG, "创建趋势数据Observable失败", e);
+                emitter.onError(e);
+            }
+        });
     }
 } 

@@ -15,6 +15,7 @@ import androidx.fragment.app.Fragment;
 import androidx.core.content.ContextCompat;
 import androidx.core.widget.NestedScrollView;
 
+import com.blankj.utilcode.util.ToastUtils;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.components.YAxis;
@@ -22,9 +23,11 @@ import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
+import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.zjf.fincialsystem.R;
 import com.zjf.fincialsystem.databinding.FragmentDashboardBinding;
 import com.zjf.fincialsystem.model.Transaction;
+import com.zjf.fincialsystem.model.TrendData;
 import com.zjf.fincialsystem.model.User;
 import com.zjf.fincialsystem.repository.RepositoryCallback;
 import com.zjf.fincialsystem.repository.StatisticsRepository;
@@ -53,6 +56,13 @@ import java.util.Map;
 import android.content.Context;
 import android.util.Pair;
 
+import com.google.gson.Gson;
+
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.schedulers.Schedulers;
+import io.reactivex.Observer;
+import io.reactivex.disposables.Disposable;
+
 /**
  * 仪表盘Fragment
  * 显示用户财务概览，包括收支统计、消费趋势等
@@ -71,6 +81,31 @@ public class DashboardFragment extends Fragment {
     private int scrollY = 0;
     // 添加x轴标签集合
     private List<String> xAxisLabels = new ArrayList<>();
+    
+    // 添加统计类型和周期类型的变量
+    private int periodType = 1; // 默认为月度
+    private int statisticType = 0; // 默认为支出
+    
+    // 添加ResourceObserver类
+    private abstract class ResourceObserver<T> implements Observer<T> {
+        private Disposable disposable;
+        
+        @Override
+        public void onSubscribe(Disposable d) {
+            disposable = d;
+        }
+        
+        @Override
+        public void onComplete() {
+            // 默认实现，可在子类中重写
+        }
+        
+        public void dispose() {
+            if (disposable != null && !disposable.isDisposed()) {
+                disposable.dispose();
+            }
+        }
+    }
     
     @Nullable
     @Override
@@ -535,268 +570,106 @@ public class DashboardFragment extends Fragment {
     /**
      * 加载消费趋势数据
      */
-    private void loadConsumptionTrendData() {
-        int type = 0; // 支出
-        String period = "monthly";
+    public void loadConsumptionTrendData() {
+        LogUtils.d(TAG, "开始加载消费趋势数据，周期类型: " + periodType + "，统计类型: " + statisticType);
         
-        statisticsRepository.getTrend(type, period, new RepositoryCallback<Map<String, Object>>() {
-            @Override
-            public void onSuccess(Map<String, Object> data) {
-                if (getActivity() == null || !isAdded()) return;
-                
-                requireActivity().runOnUiThread(() -> {
-                    try {
-                        // 获取LineChart对象
-                        LineChart chart = binding.lineChart;
-                        
-                        // 记录调试信息
-                        LogUtils.d(TAG, "趋势数据响应: " + data);
-                        
-                        // 准备数据集合
-                        List<Entry> entries = new ArrayList<>();
-                        xAxisLabels.clear(); // 清空全局变量
-
-                        // 检查数据结构
-                        Object trendDataObj = null;
-                        if (data.containsKey("trendData")) {
-                            trendDataObj = data.get("trendData");
-                        } else if (data.containsKey("trend")) {
-                            trendDataObj = data.get("trend");
-                        } else if (data.containsKey("data")) {
-                            trendDataObj = data.get("data");
-                        }
-                        
-                        if (trendDataObj instanceof List) {
-                            List<Map<String, Object>> trendData = (List<Map<String, Object>>) trendDataObj;
-                            LogUtils.d(TAG, "趋势数据列表大小: " + trendData.size());
-                            
-                            // 用于存储日期点及数据值
-                            List<Pair<String, Float>> dataPoints = new ArrayList<>();
-                            
-                            // 遍历趋势数据
-                            if (trendData != null && !trendData.isEmpty()) {
-                                for (int i = 0; i < trendData.size(); i++) {
-                                    Map<String, Object> item = trendData.get(i);
-                                    
-                                    // 调试日志
-                                    LogUtils.d(TAG, "趋势数据项: " + item);
-                                    
-                                    // 尝试不同的日期字段名称
-                                    String date = null;
-                                    if (item.containsKey("date")) {
-                                        date = String.valueOf(item.get("date"));
-                                    } else if (item.containsKey("month")) {
-                                        date = String.valueOf(item.get("month"));
-                                    }
-                                    
-                                    // 尝试不同的金额字段名称
-                                    double amount = 0.0;
-                                    if (item.containsKey("amount")) {
-                                        amount = NumberUtils.toDouble(item.get("amount"), 0.0);
-                                    } else if (item.containsKey("expense")) {
-                                        amount = NumberUtils.toDouble(item.get("expense"), 0.0);
-                                    }
-                                    
-                                    if (date != null) {
-                                        // 格式化日期
-                                        String formattedDate = DateUtils.formatShortDate(date);
-                                        dataPoints.add(new Pair<>(formattedDate, (float)amount));
-                                        LogUtils.d(TAG, "添加数据点: 日期=" + date + ", 格式化后=" + formattedDate + ", 金额=" + amount);
-                                    }
-                                }
-                            }
-                            
-                            // 按日期排序
-                            dataPoints.sort((a, b) -> {
-                                return a.first.compareTo(b.first);
-                            });
-                            
-                            if (!dataPoints.isEmpty()) {
-                                // 获取数据的时间范围
-                                String firstMonth = dataPoints.get(0).first;
-                                String lastMonth = dataPoints.get(dataPoints.size() - 1).first;
-                                
-                                // 生成前5个月和后5个月的空数据点
-                                List<Pair<String, Float>> fullDataPoints = generateFullTimeRange(dataPoints, 5, 5);
-                                
-                                // 将数据点转换为图表所需格式
-                                for (int i = 0; i < fullDataPoints.size(); i++) {
-                                    Pair<String, Float> point = fullDataPoints.get(i);
-                                    entries.add(new Entry(i, point.second));
-                                    xAxisLabels.add(point.first);
-                                    LogUtils.d(TAG, "最终数据点 " + i + ": 月份=" + point.first + ", 金额=" + point.second);
-                                }
-                            }
-                        } else {
-                            LogUtils.w(TAG, "趋势数据不是列表格式");
-                        }
-                        
-                        // 设置X轴
-                        XAxis xAxis = chart.getXAxis();
-                        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
-                        xAxis.setGranularity(1f);
-                        xAxis.setValueFormatter(new IndexAxisValueFormatter() {
-                            @Override
-                            public String getFormattedValue(float value) {
-                                int index = (int) value;
-                                if (index >= 0 && index < xAxisLabels.size()) {
-                                    return xAxisLabels.get(index);
-                                }
-                                return "";
-                            }
-                        });
-                        
-                        // 恢复标签倾斜显示
-                        xAxis.setLabelRotationAngle(45f);
-                        
-                        // 其他X轴设置
-                        xAxis.setTextSize(10f);
-                        xAxis.setTextColor(getResources().getColor(R.color.text_primary));
-                        xAxis.setDrawGridLines(false);
-                        xAxis.setLabelCount(7, true);
-                        
-                        // 创建数据集
-                        if (!entries.isEmpty()) {
-                            LogUtils.d(TAG, "创建LineDataSet，数据点数量: " + entries.size());
-                            
-                            LineDataSet dataSet = new LineDataSet(entries, "支出趋势");
-                            
-                            // 设置线条样式
-                            dataSet.setColor(ContextCompat.getColor(requireContext(), R.color.expense));
-                            dataSet.setLineWidth(2f);
-                            
-                            // 设置数据点样式
-                            dataSet.setDrawCircles(true);
-                            dataSet.setCircleColor(ContextCompat.getColor(requireContext(), R.color.expense));
-                            dataSet.setCircleRadius(4f);
-                            dataSet.setCircleHoleRadius(2f);
-                            dataSet.setCircleHoleColor(Color.WHITE);
-                            
-                            // 设置数值显示
-                            dataSet.setDrawValues(true);  // 启用数值显示
-                            dataSet.setValueTextSize(9f);
-                            dataSet.setValueTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
-                            
-                            // 设置曲线模式和填充
-                            dataSet.setMode(LineDataSet.Mode.CUBIC_BEZIER);
-                            dataSet.setDrawFilled(true);
-                            dataSet.setFillColor(ContextCompat.getColor(requireContext(), R.color.expense_light));
-                            dataSet.setFillAlpha(50);
-                            
-                            // 设置数据
-                            LineData lineData = new LineData(dataSet);
-                            chart.setData(lineData);
-                            
-                            // 使用简短的动画，避免过长的动画影响用户体验
-                            chart.animateX(300); // 使用300毫秒的短动画
-                            chart.setVisibleXRangeMaximum(7); // 最多同时显示7个月
-                            
-                            // 刷新图表
-                            chart.invalidate();
-                            LogUtils.d(TAG, "图表已刷新");
-                        } else {
-                            LogUtils.w(TAG, "没有有效的趋势数据点");
-                            chart.setNoDataText("暂无趋势数据");
-                            chart.invalidate();
-                        }
-                    } catch (Exception e) {
-                        LogUtils.e(TAG, "设置消费趋势数据失败", e);
-                        binding.lineChart.setNoDataText("加载趋势数据失败");
-                        binding.lineChart.invalidate();
+        // 检查图表和加载视图是否已初始化
+        if (binding.lineChart == null || binding.loadingView == null) {
+            LogUtils.e(TAG, "图表或加载视图未初始化");
+            return;
+        }
+        
+        // 显示加载指示器，隐藏无趋势数据提示
+        binding.loadingView.setVisibility(View.VISIBLE);
+        binding.tvNoTrendData.setVisibility(View.GONE);
+        
+        // 根据periodType确定查询的时间段类型
+        StatisticsRepository.PeriodType type;
+        switch (periodType) {
+            case 0:
+                type = StatisticsRepository.PeriodType.YEARLY;
+                break;
+            case 1:
+                type = StatisticsRepository.PeriodType.MONTHLY;
+                break;
+            case 2:
+                type = StatisticsRepository.PeriodType.WEEKLY;
+                break;
+            case 3:
+            default:
+                type = StatisticsRepository.PeriodType.DAILY;
+                break;
+        }
+        
+        // 根据statisticType确定是加载支出、收入或净收入趋势
+        statisticsRepository.getTrendData(type, statisticType)
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(new ResourceObserver<List<TrendData>>() {
+                @Override
+                public void onNext(List<TrendData> trendDataList) {
+                    LogUtils.d(TAG, "趋势数据获取成功，数据条数: " + trendDataList.size());
+                    binding.loadingView.setVisibility(View.GONE);
+                    
+                    // 检查是否有趋势数据
+                    if (trendDataList.isEmpty()) {
+                        LogUtils.d(TAG, "趋势数据为空");
+                        binding.tvNoTrendData.setVisibility(View.VISIBLE);
+                        binding.lineChart.setVisibility(View.GONE);
+                        return;
                     }
-                });
-            }
-
-            @Override
-            public void onError(String error) {
-                LogUtils.e(TAG, "获取消费趋势失败: " + error);
+                    
+                    // 显示图表，隐藏无趋势数据提示
+                    binding.tvNoTrendData.setVisibility(View.GONE);
+                    binding.lineChart.setVisibility(View.VISIBLE);
+                    
+                    // 准备图表数据
+                    List<Entry> entries = new ArrayList<>();
+                    List<String> labels = new ArrayList<>();
+                    
+                    for (int i = 0; i < trendDataList.size(); i++) {
+                        TrendData data = trendDataList.get(i);
+                        // 添加数据点
+                        entries.add(new Entry(i, (float) data.getAmount()));
+                        
+                        // 根据周期类型添加标签
+                        String label = formatLabel(data, type);
+                        labels.add(label);
+                    }
+                    
+                    // 设置图表
+                    setupChart(entries, labels);
+                }
                 
-                if (getActivity() == null || !isAdded()) return;
+                @Override
+                public void onError(Throwable e) {
+                    LogUtils.e(TAG, "加载趋势数据失败: " + e.getMessage());
+                    binding.loadingView.setVisibility(View.GONE);
+                    binding.tvNoTrendData.setVisibility(View.VISIBLE);
+                    binding.tvNoTrendData.setText("加载趋势数据失败: " + e.getMessage());
+                    binding.lineChart.setVisibility(View.GONE);
+                    ToastUtils.showShort("加载趋势数据失败: " + e.getMessage());
+                }
                 
-                requireActivity().runOnUiThread(() -> {
-                    binding.lineChart.setNoDataText("获取趋势数据失败");
-                    binding.lineChart.invalidate();
-                });
-            }
-        });
+                @Override
+                public void onComplete() {
+                    LogUtils.d(TAG, "趋势数据加载完成");
+                }
+            });
     }
     
-    /**
-     * 生成包含前后额外月份的完整时间序列
-     * @param dataPoints 原始数据点
-     * @param monthsBefore 添加前面的月份数
-     * @param monthsAfter 添加后面的月份数
-     * @return 完整的数据序列
-     */
-    private List<Pair<String, Float>> generateFullTimeRange(List<Pair<String, Float>> dataPoints, int monthsBefore, int monthsAfter) {
-        List<Pair<String, Float>> result = new ArrayList<>();
-        
-        if (dataPoints.isEmpty()) {
-            return result;
-        }
-        
-        try {
-            // 解析最早的日期
-            String firstMonth = dataPoints.get(0).first;
-            
-            // 添加前面的月份
-            for (int i = monthsBefore; i > 0; i--) {
-                String prevMonth = getRelativeYearMonth(firstMonth, -i);
-                result.add(new Pair<>(prevMonth, 0f));
-            }
-            
-            // 添加原有数据点
-            result.addAll(dataPoints);
-            
-            // 解析最晚的日期
-            String lastMonth = dataPoints.get(dataPoints.size() - 1).first;
-            
-            // 添加后面的月份
-            for (int i = 1; i <= monthsAfter; i++) {
-                String nextMonth = getRelativeYearMonth(lastMonth, i);
-                result.add(new Pair<>(nextMonth, 0f));
-            }
-            
-        } catch (Exception e) {
-            LogUtils.e(TAG, "生成完整时间序列失败: " + e.getMessage(), e);
-        }
-        
-        return result;
-    }
-    
-    /**
-     * 获取相对于指定年月的偏移月份
-     * @param yearMonth 格式为"yyyy-MM"的年月字符串
-     * @param monthOffset 月份偏移量，正数表示之后，负数表示之前
-     * @return 偏移后的年月字符串，格式为"yyyy-MM"
-     */
-    private String getRelativeYearMonth(String yearMonth, int monthOffset) {
-        try {
-            // 解析年月
-            String[] parts = yearMonth.split("-");
-            int year = Integer.parseInt(parts[0]);
-            int month = Integer.parseInt(parts[1]);
-            
-            // 计算新月份
-            month += monthOffset;
-            
-            // 处理年份变化
-            while (month < 1) {
-                month += 12;
-                year--;
-            }
-            
-            while (month > 12) {
-                month -= 12;
-                year++;
-            }
-            
-            // 格式化为yyyy-MM
-            return String.format("%d-%02d", year, month);
-            
-        } catch (Exception e) {
-            LogUtils.e(TAG, "计算相对月份失败: " + e.getMessage(), e);
-            return yearMonth;
+    // 根据不同的时间周期类型格式化标签
+    private String formatLabel(TrendData data, StatisticsRepository.PeriodType type) {
+        switch (type) {
+            case YEARLY:
+                return data.getYear() + "年";
+            case MONTHLY:
+                return data.getMonth() + "月";
+            case WEEKLY:
+                return "第" + data.getWeek() + "周";
+            case DAILY:
+            default:
+                return data.getDay() + "日";
         }
     }
     
@@ -905,6 +778,92 @@ public class DashboardFragment extends Fragment {
             scrollY = savedInstanceState.getInt("scrollY", 0);
             isDataLoaded = savedInstanceState.getBoolean("isDataLoaded", false);
             LogUtils.d(TAG, "恢复实例状态: scrollY=" + scrollY + ", isDataLoaded=" + isDataLoaded);
+        }
+    }
+
+    /**
+     * 设置图表
+     * @param entries 数据点集合
+     * @param labels X轴标签集合
+     */
+    private void setupChart(List<Entry> entries, List<String> labels) {
+        if (binding.lineChart == null || entries == null || entries.isEmpty()) {
+            LogUtils.e(TAG, "图表或数据为空，无法设置图表");
+            return;
+        }
+        
+        try {
+            // 创建数据集
+            LineDataSet dataSet = new LineDataSet(entries, "");
+            dataSet.setDrawFilled(true);
+            dataSet.setDrawCircles(true);
+            dataSet.setLineWidth(2f);
+            dataSet.setCircleRadius(4f);
+            dataSet.setDrawValues(true);
+            dataSet.setValueTextSize(9f);
+            dataSet.setMode(LineDataSet.Mode.CUBIC_BEZIER);
+            
+            // 设置颜色
+            int lineColor = ContextCompat.getColor(requireContext(), R.color.chart_line);
+            int fillColor = ContextCompat.getColor(requireContext(), R.color.chart_fill);
+            
+            // 根据统计类型选择不同颜色
+            if (statisticType == 0 || statisticType == 1) {
+                // 支出
+                lineColor = ContextCompat.getColor(requireContext(), R.color.expense);
+                fillColor = ContextCompat.getColor(requireContext(), R.color.expense_light);
+            } else if (statisticType == 2) {
+                // 收入
+                lineColor = ContextCompat.getColor(requireContext(), R.color.income);
+                fillColor = ContextCompat.getColor(requireContext(), R.color.income_light);
+            }
+            
+            dataSet.setColor(lineColor);
+            dataSet.setCircleColor(lineColor);
+            dataSet.setFillColor(fillColor);
+            
+            // 格式化数值
+            dataSet.setValueFormatter(new ValueFormatter() {
+                @Override
+                public String getFormattedValue(float value) {
+                    return NumberUtils.formatAmount(value);
+                }
+            });
+            
+            // 创建LineData对象
+            LineData lineData = new LineData(dataSet);
+            
+            // 配置X轴
+            XAxis xAxis = binding.lineChart.getXAxis();
+            xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+            xAxis.setGranularity(1f);
+            xAxis.setDrawGridLines(false);
+            xAxis.setValueFormatter(new IndexAxisValueFormatter(labels));
+            
+            // 配置Y轴
+            YAxis leftAxis = binding.lineChart.getAxisLeft();
+            leftAxis.setDrawGridLines(true);
+            leftAxis.setAxisMinimum(0f); // 从0开始
+            
+            // 禁用右侧Y轴
+            binding.lineChart.getAxisRight().setEnabled(false);
+            
+            // 禁用描述
+            binding.lineChart.getDescription().setEnabled(false);
+            
+            // 禁用图例
+            binding.lineChart.getLegend().setEnabled(false);
+            
+            // 设置数据
+            binding.lineChart.setData(lineData);
+            
+            // 绘制图表
+            binding.lineChart.invalidate();
+            
+            LogUtils.d(TAG, "图表设置完成，数据点数量: " + entries.size());
+        } catch (Exception e) {
+            LogUtils.e(TAG, "设置图表失败: " + e.getMessage(), e);
+            ToastUtils.showShort("设置图表失败");
         }
     }
 } 

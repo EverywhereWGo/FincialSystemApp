@@ -280,4 +280,7 @@
     <string name="create_time">创建时间</string>
     <string name="create_by">创建者</string>
     <string name="sync_state">同步状态</string>
+    
+    <!-- 趋势数据相关 -->
+    <string name="no_trend_data">暂无趋势数据</string>
 </resources>

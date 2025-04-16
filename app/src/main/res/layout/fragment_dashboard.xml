@@ -241,6 +241,26 @@
                             android:textSize="16sp"
                             android:textStyle="bold" />
 
+                        <!-- 添加加载视图 -->
+                        <ProgressBar
+                            android:id="@+id/loading_view"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center"
+                            android:layout_marginTop="16dp"
+                            android:visibility="gone" />
+                        
+                        <!-- 添加无数据提示 -->
+                        <TextView
+                            android:id="@+id/tv_no_trend_data"
+                            android:layout_width="match_parent"
+                            android:layout_height="200dp"
+                            android:gravity="center"
+                            android:text="@string/no_trend_data"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="14sp"
+                            android:visibility="gone" />
+
                         <com.github.mikephil.charting.charts.LineChart
                             android:id="@+id/line_chart"
                             android:layout_width="match_parent"
