@@ -48,6 +48,7 @@ import com.zjf.fincialsystem.ui.activity.TransactionDetailActivity;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -623,19 +624,31 @@ public class DashboardFragment extends Fragment {
                     binding.tvNoTrendData.setVisibility(View.GONE);
                     binding.lineChart.setVisibility(View.VISIBLE);
                     
+                    // 确保数据点是连续的（特别是月份）
+                    trendDataList = ensureConsecutiveData(trendDataList, type);
+                    
                     // 准备图表数据
                     List<Entry> entries = new ArrayList<>();
                     List<String> labels = new ArrayList<>();
                     
                     for (int i = 0; i < trendDataList.size(); i++) {
                         TrendData data = trendDataList.get(i);
-                        // 添加数据点
+                        // 添加数据点 - 即使金额为0也添加
                         entries.add(new Entry(i, (float) data.getAmount()));
                         
                         // 根据周期类型添加标签
                         String label = formatLabel(data, type);
                         labels.add(label);
+                        
+                        // 添加到全局标签集合
+                        if (xAxisLabels.size() <= i) {
+                            xAxisLabels.add(label);
+                        } else {
+                            xAxisLabels.set(i, label);
+                        }
                     }
+                    
+                    LogUtils.d(TAG, "准备绘制图表，点数: " + entries.size() + ", 标签数: " + labels.size());
                     
                     // 设置图表
                     setupChart(entries, labels);
@@ -656,6 +669,76 @@ public class DashboardFragment extends Fragment {
                     LogUtils.d(TAG, "趋势数据加载完成");
                 }
             });
+    }
+    
+    /**
+     * 确保数据点是连续的，特别是月份
+     * 如果发现月份不连续（比如从1月跳到4月），则添加中间缺失的月份，金额为0
+     * @param dataList 原始数据列表
+     * @param type 周期类型
+     * @return 确保连续的数据列表
+     */
+    private List<TrendData> ensureConsecutiveData(List<TrendData> dataList, StatisticsRepository.PeriodType type) {
+        if (dataList.isEmpty() || type != StatisticsRepository.PeriodType.MONTHLY) {
+            return dataList; // 如果不是月度数据，或列表为空，直接返回
+        }
+        
+        List<TrendData> result = new ArrayList<>();
+        
+        // 按年份和月份排序
+        Collections.sort(dataList, (a, b) -> {
+            int yearDiff = a.getYear() - b.getYear();
+            if (yearDiff != 0) return yearDiff;
+            return a.getMonth() - b.getMonth();
+        });
+        
+        // 获取第一个和最后一个数据点
+        TrendData first = dataList.get(0);
+        TrendData last = dataList.get(dataList.size() - 1);
+        
+        // 计算总月数
+        int totalMonths = (last.getYear() - first.getYear()) * 12 + last.getMonth() - first.getMonth() + 1;
+        
+        LogUtils.d(TAG, "数据范围: " + first.getYear() + "-" + first.getMonth() + " 到 " + 
+                  last.getYear() + "-" + last.getMonth() + "，总月数: " + totalMonths);
+        
+        // 创建一个映射，将年月映射到数据
+        java.util.Map<String, TrendData> dataMap = new java.util.HashMap<>();
+        for (TrendData data : dataList) {
+            String key = data.getYear() + "-" + data.getMonth();
+            dataMap.put(key, data);
+        }
+        
+        // 填充完整的月份序列
+        int currentYear = first.getYear();
+        int currentMonth = first.getMonth();
+        
+        for (int i = 0; i < totalMonths; i++) {
+            String key = currentYear + "-" + currentMonth;
+            if (dataMap.containsKey(key)) {
+                // 使用现有数据
+                result.add(dataMap.get(key));
+            } else {
+                // 创建填充数据
+                TrendData fillerData = new TrendData();
+                fillerData.setYear(currentYear);
+                fillerData.setMonth(currentMonth);
+                fillerData.setAmount(0);
+                fillerData.setCount(0);
+                result.add(fillerData);
+                LogUtils.d(TAG, "添加填充数据点: " + currentYear + "-" + currentMonth);
+            }
+            
+            // 移动到下一个月
+            currentMonth++;
+            if (currentMonth > 12) {
+                currentMonth = 1;
+                currentYear++;
+            }
+        }
+        
+        LogUtils.d(TAG, "处理后的数据点数量: " + result.size() + "，原始数据点数量: " + dataList.size());
+        return result;
     }
     
     // 根据不同的时间周期类型格式化标签
@@ -801,7 +884,32 @@ public class DashboardFragment extends Fragment {
             dataSet.setCircleRadius(4f);
             dataSet.setDrawValues(true);
             dataSet.setValueTextSize(9f);
-            dataSet.setMode(LineDataSet.Mode.CUBIC_BEZIER);
+            
+            // 使用LINEAR模式而不是CUBIC_BEZIER，确保直线连接所有点
+            dataSet.setMode(LineDataSet.Mode.LINEAR);
+            
+            // 设置圆点样式
+            dataSet.setDrawCircleHole(true);
+            dataSet.setCircleHoleRadius(2f);
+            dataSet.setFormLineWidth(1f);
+            dataSet.setFormSize(15.f);
+            
+            // 设置是否在折线图中每个数据点处绘制小圆点
+            dataSet.setDrawCircles(true);
+            
+            // 启用数据点数值显示
+            dataSet.setDrawValues(true);
+            
+            // 禁用虚线
+            dataSet.enableDashedLine(0, 0, 0);
+            
+            // 格式化数值显示
+            dataSet.setValueFormatter(new ValueFormatter() {
+                @Override
+                public String getFormattedValue(float value) {
+                    return NumberUtils.formatAmount(value);
+                }
+            });
             
             // 设置颜色
             int lineColor = ContextCompat.getColor(requireContext(), R.color.chart_line);
@@ -821,14 +929,6 @@ public class DashboardFragment extends Fragment {
             dataSet.setColor(lineColor);
             dataSet.setCircleColor(lineColor);
             dataSet.setFillColor(fillColor);
-            
-            // 格式化数值
-            dataSet.setValueFormatter(new ValueFormatter() {
-                @Override
-                public String getFormattedValue(float value) {
-                    return NumberUtils.formatAmount(value);
-                }
-            });
             
             // 创建LineData对象
             LineData lineData = new LineData(dataSet);
@@ -854,10 +954,27 @@ public class DashboardFragment extends Fragment {
             // 禁用图例
             binding.lineChart.getLegend().setEnabled(false);
             
+            // 恢复图表的交互性
+            binding.lineChart.setNoDataText("无数据");
+            binding.lineChart.setDrawGridBackground(false);
+            binding.lineChart.setTouchEnabled(true);
+            binding.lineChart.setDragEnabled(true);
+            binding.lineChart.setScaleEnabled(true);
+            binding.lineChart.setPinchZoom(true);
+            binding.lineChart.setDoubleTapToZoomEnabled(true);
+            
             // 设置数据
             binding.lineChart.setData(lineData);
             
-            // 绘制图表
+            // 设置合适的视口范围
+            binding.lineChart.setVisibleXRangeMaximum(Math.min(entries.size(), 7)); // 最多显示7个点
+            binding.lineChart.setVisibleXRangeMinimum(2); // 至少显示2个点
+            
+            // 设置合理的边距
+            binding.lineChart.setExtraOffsets(10, 10, 10, 10);
+            
+            // 绘制图表 - 使用完整绘制而不是增量绘制
+            binding.lineChart.notifyDataSetChanged();
             binding.lineChart.invalidate();
             
             LogUtils.d(TAG, "图表设置完成，数据点数量: " + entries.size());
