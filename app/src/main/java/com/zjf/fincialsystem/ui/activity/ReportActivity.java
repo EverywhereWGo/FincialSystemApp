@@ -351,13 +351,17 @@ public class ReportActivity extends AppCompatActivity {
     private void loadExpenseByCategory(long startDate, long endDate) {
         LogUtils.d(TAG, "开始加载支出分类数据: startDate=" + startDate + ", endDate=" + endDate);
         
-        // 记录当前请求的年月
+        // 提取当前年月
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeInMillis(startDate);
         String yearMonth = String.format("%d-%02d", calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH) + 1);
         LogUtils.d(TAG, "加载支出分类数据，年月: " + yearMonth);
         
-        statisticsRepository.getExpenseByCategory(startDate, endDate, new RepositoryCallback<Map<String, Object>>() {
+        // 创建自定义period
+        String customPeriod = "monthly_" + yearMonth;
+        
+        // 使用特定月份标识符获取支出分类数据，而不是直接使用起止时间
+        statisticsRepository.getExpenseByCategoryForMonth(customPeriod, startDate, endDate, new RepositoryCallback<Map<String, Object>>() {
             @Override
             public void onSuccess(Map<String, Object> data) {
                 runOnUiThread(() -> {
