@@ -51,6 +51,7 @@ import java.util.Locale;
 import java.util.Map;
 
 import android.content.Context;
+import android.util.Pair;
 
 /**
  * 仪表盘Fragment
@@ -68,6 +69,8 @@ public class DashboardFragment extends Fragment {
     private boolean isDataLoaded = false;
     private int scrollX = 0;
     private int scrollY = 0;
+    // 添加x轴标签集合
+    private List<String> xAxisLabels = new ArrayList<>();
     
     @Nullable
     @Override
@@ -220,13 +223,27 @@ public class DashboardFragment extends Fragment {
         // 设置X轴
         XAxis xAxis = chart.getXAxis();
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
-        xAxis.setDrawGridLines(false);
         xAxis.setGranularity(1f);
-        xAxis.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary));
-        // 设置X轴标签数量上限，防止标签重叠
-        xAxis.setLabelCount(7, true);
-        // 在标签过多时使标签倾斜
-        xAxis.setLabelRotationAngle(45f);
+        xAxis.setValueFormatter(new IndexAxisValueFormatter() {
+            @Override
+            public String getFormattedValue(float value) {
+                int index = (int) value;
+                if (index >= 0 && index < xAxisLabels.size()) {
+                    return xAxisLabels.get(index);
+                }
+                return "";
+            }
+        });
+        
+        // 增强X轴标签可读性
+        xAxis.setTextSize(10f);
+        xAxis.setTextColor(getResources().getColor(R.color.text_primary));
+        xAxis.setDrawGridLines(false);
+        if (!xAxisLabels.isEmpty()) {
+            xAxis.setLabelCount(Math.min(xAxisLabels.size(), 7)); // 限制显示的标签数量，避免拥挤
+        } else {
+            xAxis.setLabelCount(7); // 默认值
+        }
         
         // 设置左Y轴
         YAxis leftAxis = chart.getAxisLeft();
@@ -529,42 +546,138 @@ public class DashboardFragment extends Fragment {
                 
                 requireActivity().runOnUiThread(() -> {
                     try {
-                        // 解析趋势数据
+                        // 获取LineChart对象
                         LineChart chart = binding.lineChart;
-                        List<Entry> entries = new ArrayList<>();
-                        List<String> xAxisLabels = new ArrayList<>();
                         
+                        // 记录调试信息
+                        LogUtils.d(TAG, "趋势数据响应: " + data);
+                        
+                        // 准备数据集合
+                        List<Entry> entries = new ArrayList<>();
+                        xAxisLabels.clear(); // 清空全局变量
+
+                        // 检查数据结构
+                        Object trendDataObj = null;
                         if (data.containsKey("trendData")) {
-                            List<Map<String, Object>> trendData = (List<Map<String, Object>>) data.get("trendData");
+                            trendDataObj = data.get("trendData");
+                        } else if (data.containsKey("trend")) {
+                            trendDataObj = data.get("trend");
+                        } else if (data.containsKey("data")) {
+                            trendDataObj = data.get("data");
+                        }
+                        
+                        if (trendDataObj instanceof List) {
+                            List<Map<String, Object>> trendData = (List<Map<String, Object>>) trendDataObj;
+                            LogUtils.d(TAG, "趋势数据列表大小: " + trendData.size());
+                            
+                            // 用于存储日期点及数据值
+                            List<Pair<String, Float>> dataPoints = new ArrayList<>();
                             
                             // 遍历趋势数据
                             if (trendData != null && !trendData.isEmpty()) {
                                 for (int i = 0; i < trendData.size(); i++) {
                                     Map<String, Object> item = trendData.get(i);
-                                    String date = (String) item.get("date");
-                                    double amount = NumberUtils.toDouble(item.get("amount"), 0.0);
                                     
-                                    entries.add(new Entry(i, (float) amount));
-                                    // 将日期格式转换为"月/日"的简短形式
-                                    xAxisLabels.add(DateUtils.formatShortDate(date));
+                                    // 调试日志
+                                    LogUtils.d(TAG, "趋势数据项: " + item);
+                                    
+                                    // 尝试不同的日期字段名称
+                                    String date = null;
+                                    if (item.containsKey("date")) {
+                                        date = String.valueOf(item.get("date"));
+                                    } else if (item.containsKey("month")) {
+                                        date = String.valueOf(item.get("month"));
+                                    }
+                                    
+                                    // 尝试不同的金额字段名称
+                                    double amount = 0.0;
+                                    if (item.containsKey("amount")) {
+                                        amount = NumberUtils.toDouble(item.get("amount"), 0.0);
+                                    } else if (item.containsKey("expense")) {
+                                        amount = NumberUtils.toDouble(item.get("expense"), 0.0);
+                                    }
+                                    
+                                    if (date != null) {
+                                        // 格式化日期
+                                        String formattedDate = DateUtils.formatShortDate(date);
+                                        dataPoints.add(new Pair<>(formattedDate, (float)amount));
+                                        LogUtils.d(TAG, "添加数据点: 日期=" + date + ", 格式化后=" + formattedDate + ", 金额=" + amount);
+                                    }
                                 }
                             }
+                            
+                            // 按日期排序
+                            dataPoints.sort((a, b) -> {
+                                return a.first.compareTo(b.first);
+                            });
+                            
+                            if (!dataPoints.isEmpty()) {
+                                // 获取数据的时间范围
+                                String firstMonth = dataPoints.get(0).first;
+                                String lastMonth = dataPoints.get(dataPoints.size() - 1).first;
+                                
+                                // 生成前5个月和后5个月的空数据点
+                                List<Pair<String, Float>> fullDataPoints = generateFullTimeRange(dataPoints, 5, 5);
+                                
+                                // 将数据点转换为图表所需格式
+                                for (int i = 0; i < fullDataPoints.size(); i++) {
+                                    Pair<String, Float> point = fullDataPoints.get(i);
+                                    entries.add(new Entry(i, point.second));
+                                    xAxisLabels.add(point.first);
+                                    LogUtils.d(TAG, "最终数据点 " + i + ": 月份=" + point.first + ", 金额=" + point.second);
+                                }
+                            }
+                        } else {
+                            LogUtils.w(TAG, "趋势数据不是列表格式");
                         }
                         
-                        // 设置X轴标签
-                        chart.getXAxis().setValueFormatter(new IndexAxisValueFormatter(xAxisLabels));
+                        // 设置X轴
+                        XAxis xAxis = chart.getXAxis();
+                        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+                        xAxis.setGranularity(1f);
+                        xAxis.setValueFormatter(new IndexAxisValueFormatter() {
+                            @Override
+                            public String getFormattedValue(float value) {
+                                int index = (int) value;
+                                if (index >= 0 && index < xAxisLabels.size()) {
+                                    return xAxisLabels.get(index);
+                                }
+                                return "";
+                            }
+                        });
+                        
+                        // 恢复标签倾斜显示
+                        xAxis.setLabelRotationAngle(45f);
+                        
+                        // 其他X轴设置
+                        xAxis.setTextSize(10f);
+                        xAxis.setTextColor(getResources().getColor(R.color.text_primary));
+                        xAxis.setDrawGridLines(false);
+                        xAxis.setLabelCount(7, true);
                         
                         // 创建数据集
                         if (!entries.isEmpty()) {
+                            LogUtils.d(TAG, "创建LineDataSet，数据点数量: " + entries.size());
+                            
                             LineDataSet dataSet = new LineDataSet(entries, "支出趋势");
+                            
+                            // 设置线条样式
                             dataSet.setColor(ContextCompat.getColor(requireContext(), R.color.expense));
+                            dataSet.setLineWidth(2f);
+                            
+                            // 设置数据点样式
                             dataSet.setDrawCircles(true);
                             dataSet.setCircleColor(ContextCompat.getColor(requireContext(), R.color.expense));
                             dataSet.setCircleRadius(4f);
                             dataSet.setCircleHoleRadius(2f);
                             dataSet.setCircleHoleColor(Color.WHITE);
-                            dataSet.setLineWidth(2f);
-                            dataSet.setDrawValues(false);
+                            
+                            // 设置数值显示
+                            dataSet.setDrawValues(true);  // 启用数值显示
+                            dataSet.setValueTextSize(9f);
+                            dataSet.setValueTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
+                            
+                            // 设置曲线模式和填充
                             dataSet.setMode(LineDataSet.Mode.CUBIC_BEZIER);
                             dataSet.setDrawFilled(true);
                             dataSet.setFillColor(ContextCompat.getColor(requireContext(), R.color.expense_light));
@@ -576,13 +689,20 @@ public class DashboardFragment extends Fragment {
                             
                             // 使用简短的动画，避免过长的动画影响用户体验
                             chart.animateX(300); // 使用300毫秒的短动画
-                            chart.setVisibleXRangeMaximum(entries.size());
+                            chart.setVisibleXRangeMaximum(7); // 最多同时显示7个月
                             
                             // 刷新图表
+                            chart.invalidate();
+                            LogUtils.d(TAG, "图表已刷新");
+                        } else {
+                            LogUtils.w(TAG, "没有有效的趋势数据点");
+                            chart.setNoDataText("暂无趋势数据");
                             chart.invalidate();
                         }
                     } catch (Exception e) {
                         LogUtils.e(TAG, "设置消费趋势数据失败", e);
+                        binding.lineChart.setNoDataText("加载趋势数据失败");
+                        binding.lineChart.invalidate();
                     }
                 });
             }
@@ -590,8 +710,94 @@ public class DashboardFragment extends Fragment {
             @Override
             public void onError(String error) {
                 LogUtils.e(TAG, "获取消费趋势失败: " + error);
+                
+                if (getActivity() == null || !isAdded()) return;
+                
+                requireActivity().runOnUiThread(() -> {
+                    binding.lineChart.setNoDataText("获取趋势数据失败");
+                    binding.lineChart.invalidate();
+                });
             }
         });
+    }
+    
+    /**
+     * 生成包含前后额外月份的完整时间序列
+     * @param dataPoints 原始数据点
+     * @param monthsBefore 添加前面的月份数
+     * @param monthsAfter 添加后面的月份数
+     * @return 完整的数据序列
+     */
+    private List<Pair<String, Float>> generateFullTimeRange(List<Pair<String, Float>> dataPoints, int monthsBefore, int monthsAfter) {
+        List<Pair<String, Float>> result = new ArrayList<>();
+        
+        if (dataPoints.isEmpty()) {
+            return result;
+        }
+        
+        try {
+            // 解析最早的日期
+            String firstMonth = dataPoints.get(0).first;
+            
+            // 添加前面的月份
+            for (int i = monthsBefore; i > 0; i--) {
+                String prevMonth = getRelativeYearMonth(firstMonth, -i);
+                result.add(new Pair<>(prevMonth, 0f));
+            }
+            
+            // 添加原有数据点
+            result.addAll(dataPoints);
+            
+            // 解析最晚的日期
+            String lastMonth = dataPoints.get(dataPoints.size() - 1).first;
+            
+            // 添加后面的月份
+            for (int i = 1; i <= monthsAfter; i++) {
+                String nextMonth = getRelativeYearMonth(lastMonth, i);
+                result.add(new Pair<>(nextMonth, 0f));
+            }
+            
+        } catch (Exception e) {
+            LogUtils.e(TAG, "生成完整时间序列失败: " + e.getMessage(), e);
+        }
+        
+        return result;
+    }
+    
+    /**
+     * 获取相对于指定年月的偏移月份
+     * @param yearMonth 格式为"yyyy-MM"的年月字符串
+     * @param monthOffset 月份偏移量，正数表示之后，负数表示之前
+     * @return 偏移后的年月字符串，格式为"yyyy-MM"
+     */
+    private String getRelativeYearMonth(String yearMonth, int monthOffset) {
+        try {
+            // 解析年月
+            String[] parts = yearMonth.split("-");
+            int year = Integer.parseInt(parts[0]);
+            int month = Integer.parseInt(parts[1]);
+            
+            // 计算新月份
+            month += monthOffset;
+            
+            // 处理年份变化
+            while (month < 1) {
+                month += 12;
+                year--;
+            }
+            
+            while (month > 12) {
+                month -= 12;
+                year++;
+            }
+            
+            // 格式化为yyyy-MM
+            return String.format("%d-%02d", year, month);
+            
+        } catch (Exception e) {
+            LogUtils.e(TAG, "计算相对月份失败: " + e.getMessage(), e);
+            return yearMonth;
+        }
     }
     
     /**

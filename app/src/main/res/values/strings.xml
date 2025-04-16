@@ -255,6 +255,9 @@
     <string name="operation_success">操作成功</string>
     <string name="confirm_delete">确认删除</string>
     <string name="confirm_delete_message">确定要删除吗？此操作不可恢复。</string>
+    <string name="username_format_error">用户名必须为5-20位字母、数字、下划线组合，不能为纯数字</string>
+    <string name="phone_format_error">手机号格式不正确，请输入有效的11位手机号</string>
+    <string name="email_format_error">邮箱格式不正确，请输入有效的邮箱地址</string>
     
     <!-- 关于 -->
     <string name="version">版本</string>
@@ -273,4 +276,8 @@
     <string name="transaction_note">备注</string>
     <string name="transaction_description">交易描述</string>
     <string name="transaction_image">交易凭证</string>
+    <string name="transaction_location">交易地点</string>
+    <string name="create_time">创建时间</string>
+    <string name="create_by">创建者</string>
+    <string name="sync_state">同步状态</string>
 </resources>

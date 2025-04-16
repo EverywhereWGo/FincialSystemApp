@@ -314,25 +314,60 @@ public class DateUtils {
     }
 
     /**
-     * 将yyyy-MM-dd格式的日期字符串转换为M/d格式
+     * 处理日期字符串格式化
      *
-     * @param dateStr 日期字符串，格式为yyyy-MM-dd
-     * @return M/d格式的日期字符串
+     * @param dateStr 日期字符串
+     * @return 格式化后的日期字符串，保持YYYY-MM格式
      */
     public static String formatShortDate(String dateStr) {
         if (dateStr == null || dateStr.isEmpty()) {
             return "";
         }
+
         try {
+            // 对于数字月份格式，转换为标准格式
+            if (dateStr.matches("\\d+")) {
+                try {
+                    int month = Integer.parseInt(dateStr);
+                    if (month >= 1 && month <= 12) {
+                        // 获取当前年份
+                        Calendar cal = Calendar.getInstance();
+                        int year = cal.get(Calendar.YEAR);
+                        // 返回YYYY-MM格式
+                        return String.format("%d-%02d", year, month);
+                    }
+                } catch (NumberFormatException e) {
+                    // 忽略解析错误
+                }
+            }
+
+            // 对于"yyyy年MM月"格式，转换为YYYY-MM
+            if (dateStr.matches("\\d{4}年\\d{1,2}月")) {
+                String year = dateStr.substring(0, 4);
+                String month = dateStr.substring(5, dateStr.length() - 1);
+                int monthInt = Integer.parseInt(month);
+                return String.format("%s-%02d", year, monthInt);
+            }
+
+            // 已经是YYYY-MM格式，直接返回
+            if (dateStr.matches("\\d{4}-\\d{2}")) {
+                return dateStr;
+            }
+
+            // 对于YYYY-MM-DD格式，截取前7个字符
+            if (dateStr.matches("\\d{4}-\\d{2}-\\d{2}")) {
+                return dateStr.substring(0, 7);
+            }
+
+            // 其他格式尝试解析为日期后格式化
             Date date = DATE_FORMAT.parse(dateStr);
-            SimpleDateFormat shortFormat = new SimpleDateFormat("M/d", Locale.getDefault());
-            return shortFormat.format(date);
-        } catch (ParseException e) {
+            SimpleDateFormat yearMonthFormat = new SimpleDateFormat("yyyy-MM", Locale.getDefault());
+            return yearMonthFormat.format(date);
+        } catch (Exception e) {
             LogUtils.e("解析日期失败：" + e.getMessage());
             return dateStr;
         }
     }
-
 
     /**
      * 获取年
@@ -365,4 +400,4 @@ public class DateUtils {
         Calendar cd = Calendar.getInstance();
         return cd.get(Calendar.HOUR);
     }
-} 
+}

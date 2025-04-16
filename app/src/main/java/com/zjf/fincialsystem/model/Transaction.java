@@ -29,6 +29,12 @@ public class Transaction implements Serializable {
     private long createdAt;
     private long updatedAt;
     
+    // 新增字段
+    private String location; // 交易地点
+    private String createTime; // 创建时间
+    private String createBy; // 创建者
+    private int syncState; // 同步状态：0-未同步，1-已同步，2-同步失败
+    
     // 关联对象
     private Category category;
     
@@ -181,6 +187,38 @@ public class Transaction implements Serializable {
     
     public void setRemark(String remark) {
         this.remark = remark;
+    }
+    
+    public String getLocation() {
+        return location;
+    }
+    
+    public void setLocation(String location) {
+        this.location = location;
+    }
+    
+    public String getCreateTime() {
+        return createTime;
+    }
+    
+    public void setCreateTime(String createTime) {
+        this.createTime = createTime;
+    }
+    
+    public String getCreateBy() {
+        return createBy;
+    }
+    
+    public void setCreateBy(String createBy) {
+        this.createBy = createBy;
+    }
+    
+    public int getSyncState() {
+        return syncState;
+    }
+    
+    public void setSyncState(int syncState) {
+        this.syncState = syncState;
     }
     
     @Override

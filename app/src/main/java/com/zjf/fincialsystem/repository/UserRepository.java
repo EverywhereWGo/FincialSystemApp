@@ -361,29 +361,18 @@ public class UserRepository {
             return;
         }
         
-        // 实际项目中应调用真实API，这里模拟一个成功的响应
-        // 模拟网络延迟
-        new android.os.Handler().postDelayed(() -> {
-            try {
-                // 模拟成功响应
-                callback.onSuccess(true);
-                
-                // 注销成功后清除token
-                tokenManager.clearToken();
-            } catch (Exception e) {
-                LogUtils.e(TAG, "注销账户失败", e);
-                callback.onError("注销账户失败: " + e.getMessage());
-            }
-        }, 1500); // 1.5秒延迟模拟网络请求
+        // 根据接口文档 /finance/auth/unregister 参数要求
+        Map<String, Object> accountData = new HashMap<>();
+        accountData.put("userId", userId);
         
-        /* 实际API调用应该类似这样：
-        apiService.deleteAccount(userId).enqueue(new Callback<ApiResponse<Boolean>>() {
+        // 调用API注销账户
+        apiService.deleteAccount(accountData).enqueue(new Callback<ApiResponse<Boolean>>() {
             @Override
             public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     ApiResponse<Boolean> apiResponse = response.body();
                     if (apiResponse.isSuccess()) {
-                        // 清除Token
+                        // 注销成功后清除token
                         tokenManager.clearToken();
                         callback.onSuccess(true);
                     } else {
@@ -397,10 +386,17 @@ public class UserRepository {
             @Override
             public void onFailure(Call<ApiResponse<Boolean>> call, Throwable t) {
                 LogUtils.e(TAG, "注销账户失败", t);
-                callback.onError("注销账户失败: " + t.getMessage());
+                String errorMessage = "网络请求失败: " + t.getMessage();
+                
+                if (t instanceof JsonSyntaxException) {
+                    errorMessage = "服务器返回数据格式错误";
+                } else if (!NetworkUtils.isNetworkAvailable(context)) {
+                    errorMessage = "网络连接已断开，请检查网络设置";
+                }
+                
+                callback.onError(errorMessage);
             }
         });
-        */
     }
 
     /**

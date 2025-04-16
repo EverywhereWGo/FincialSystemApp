@@ -54,7 +54,9 @@
                 app:boxStrokeColor="@color/text_input_box_stroke"
                 app:hintTextColor="@color/text_input_hint_color"
                 app:startIconDrawable="@drawable/ic_person"
-                app:startIconTint="@color/dark_gray">
+                app:startIconTint="@color/dark_gray"
+                app:errorIconDrawable="@null"
+                app:errorEnabled="true">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_username"
@@ -78,7 +80,9 @@
                 app:endIconMode="password_toggle"
                 app:endIconTint="@color/dark_gray"
                 app:startIconDrawable="@drawable/ic_password"
-                app:startIconTint="@color/dark_gray">
+                app:startIconTint="@color/dark_gray"
+                app:errorIconDrawable="@null"
+                app:errorEnabled="true">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_password"
@@ -102,7 +106,9 @@
                 app:endIconMode="password_toggle"
                 app:endIconTint="@color/dark_gray"
                 app:startIconDrawable="@drawable/ic_password"
-                app:startIconTint="@color/dark_gray">
+                app:startIconTint="@color/dark_gray"
+                app:errorIconDrawable="@null"
+                app:errorEnabled="true">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_confirm_password"
@@ -124,7 +130,9 @@
                 app:boxStrokeColor="@color/text_input_box_stroke"
                 app:hintTextColor="@color/text_input_hint_color"
                 app:startIconDrawable="@drawable/ic_badge"
-                app:startIconTint="@color/dark_gray">
+                app:startIconTint="@color/dark_gray"
+                app:errorIconDrawable="@null"
+                app:errorEnabled="true">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_name"
@@ -146,7 +154,9 @@
                 app:boxStrokeColor="@color/text_input_box_stroke"
                 app:hintTextColor="@color/text_input_hint_color"
                 app:startIconDrawable="@drawable/ic_email"
-                app:startIconTint="@color/dark_gray">
+                app:startIconTint="@color/dark_gray"
+                app:errorIconDrawable="@null"
+                app:errorEnabled="true">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_email"
@@ -168,7 +178,9 @@
                 app:boxStrokeColor="@color/text_input_box_stroke"
                 app:hintTextColor="@color/text_input_hint_color"
                 app:startIconDrawable="@drawable/ic_phone"
-                app:startIconTint="@color/dark_gray">
+                app:startIconTint="@color/dark_gray"
+                app:errorIconDrawable="@null"
+                app:errorEnabled="true">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_phone"

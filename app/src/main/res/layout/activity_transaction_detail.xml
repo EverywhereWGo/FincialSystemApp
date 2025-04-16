@@ -228,6 +228,110 @@
                             app:layout_constraintTop_toTopOf="@id/tv_payment_label"
                             tools:text="微信支付" />
 
+                        <!-- 地点 -->
+                        <TextView
+                            android:id="@+id/tv_location_label"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="@string/transaction_location"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="14sp"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toBottomOf="@id/tv_payment_label" />
+
+                        <TextView
+                            android:id="@+id/tv_location"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="16dp"
+                            android:gravity="end"
+                            android:textColor="@color/text_primary"
+                            android:textSize="14sp"
+                            app:layout_constraintBottom_toBottomOf="@id/tv_location_label"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintStart_toEndOf="@id/tv_location_label"
+                            app:layout_constraintTop_toTopOf="@id/tv_location_label"
+                            tools:text="广州市天河区" />
+
+                        <!-- 创建时间 -->
+                        <TextView
+                            android:id="@+id/tv_create_time_label"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="@string/create_time"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="14sp"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toBottomOf="@id/tv_location_label" />
+
+                        <TextView
+                            android:id="@+id/tv_create_time"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="16dp"
+                            android:gravity="end"
+                            android:textColor="@color/text_primary"
+                            android:textSize="14sp"
+                            app:layout_constraintBottom_toBottomOf="@id/tv_create_time_label"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintStart_toEndOf="@id/tv_create_time_label"
+                            app:layout_constraintTop_toTopOf="@id/tv_create_time_label"
+                            tools:text="2025-04-16 10:29:31" />
+
+                        <!-- 创建者 -->
+                        <TextView
+                            android:id="@+id/tv_create_by_label"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="@string/create_by"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="14sp"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toBottomOf="@id/tv_create_time_label" />
+
+                        <TextView
+                            android:id="@+id/tv_create_by"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="16dp"
+                            android:gravity="end"
+                            android:textColor="@color/text_primary"
+                            android:textSize="14sp"
+                            app:layout_constraintBottom_toBottomOf="@id/tv_create_by_label"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintStart_toEndOf="@id/tv_create_by_label"
+                            app:layout_constraintTop_toTopOf="@id/tv_create_by_label"
+                            tools:text="lmh123" />
+
+                        <!-- 同步状态 -->
+                        <TextView
+                            android:id="@+id/tv_sync_state_label"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="@string/sync_state"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="14sp"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toBottomOf="@id/tv_create_by_label" />
+
+                        <TextView
+                            android:id="@+id/tv_sync_state"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="16dp"
+                            android:gravity="end"
+                            android:textColor="@color/text_primary"
+                            android:textSize="14sp"
+                            app:layout_constraintBottom_toBottomOf="@id/tv_sync_state_label"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintStart_toEndOf="@id/tv_sync_state_label"
+                            app:layout_constraintTop_toTopOf="@id/tv_sync_state_label"
+                            tools:text="已同步" />
+
                     </androidx.constraintlayout.widget.ConstraintLayout>
                 </androidx.cardview.widget.CardView>
 

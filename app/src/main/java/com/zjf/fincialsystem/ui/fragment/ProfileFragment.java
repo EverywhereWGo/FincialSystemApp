@@ -255,19 +255,62 @@ public class ProfileFragment extends Fragment {
      */
     private void performLogout() {
         try {
+            // A/新的实现：使用真实的API接口
             // 显示加载中
             showLoading(true);
             
-            // 调用UserRepository的logout方法
-            userRepository.logout();
+            // 获取用户ID和Token
+            long userId = TokenManager.getInstance().getUserId();
+            String token = TokenManager.getInstance().getToken();
             
-            // 延迟一下，显示退出登录的效果
-            binding.getRoot().postDelayed(this::handleLogout, 800);
+            // 如果用户ID为-1（无效ID），设置为临时ID用于模拟
+            if (userId == -1) {
+                userId = 1; // 使用默认ID进行模拟
+                LogUtils.w(TAG, "未获取到有效的用户ID，使用默认ID: " + userId);
+            }
+            
+            // 调用真实的退出登录API
+            userRepository.logout(userId, token, new RepositoryCallback<String>() {
+                @Override
+                public void onSuccess(String result) {
+                    // 在主线程中处理成功响应
+                    if (getActivity() == null) return;
+                    
+                    getActivity().runOnUiThread(() -> {
+                        // 显示成功消息
+                        Toast.makeText(requireContext(), result, Toast.LENGTH_SHORT).show();
+                        
+                        // 延迟一下，显示退出登录的效果
+                        binding.getRoot().postDelayed(ProfileFragment.this::handleLogout, 800);
+                    });
+                }
+                
+                @Override
+                public void onError(String error) {
+                    // 在主线程中处理错误响应
+                    if (getActivity() == null) return;
+                    
+                    getActivity().runOnUiThread(() -> {
+                        LogUtils.e(TAG, "退出登录失败：" + error);
+                        showLoading(false);
+                        
+                        // 即使API调用失败，也应该清除本地状态并退出
+                        Toast.makeText(requireContext(), "退出登录：" + error, Toast.LENGTH_SHORT).show();
+                        
+                        // 延迟一下，显示退出登录的效果
+                        binding.getRoot().postDelayed(ProfileFragment.this::handleLogout, 800);
+                    });
+                }
+            });
             
         } catch (Exception e) {
             LogUtils.e(TAG, "退出登录失败：" + e.getMessage(), e);
             showLoading(false);
             Toast.makeText(requireContext(), "退出登录失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+            
+            // 即使出现异常，也尝试清除本地状态并退出
+            userRepository.logout();
+            binding.getRoot().postDelayed(this::handleLogout, 800);
         }
     }
     

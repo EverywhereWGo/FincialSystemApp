@@ -39,9 +39,7 @@ public interface TransactionApiService {
      * 获取交易记录详情
      */
     @GET("finance/transaction/{id}")
-    Call<ApiResponse<Transaction>> getTransactionDetail(
-            @Query("userId") Long userId,
-            @Path("id") long id);
+    Call<ApiResponse<Transaction>> getTransactionDetail(@Path("id") long id);
     
     /**
      * 按月获取交易记录
@@ -113,7 +111,7 @@ public interface TransactionApiService {
      * @return API响应
      */
     @GET("finance/category/list")
-    Call<ApiResponse<List<Category>>> getCategories(
+    Call<ApiResponse<Category>> getCategories(
             @Query("pageNum") Integer pageNum, 
             @Query("pageSize") Integer pageSize,
             @Query("name") String name,

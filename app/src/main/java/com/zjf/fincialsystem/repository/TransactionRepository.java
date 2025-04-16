@@ -707,7 +707,7 @@ public class TransactionRepository {
         // 检查网络状态
         if (NetworkUtils.isNetworkAvailable(context)) {
             // 有网络连接，从网络获取数据
-            apiService.getTransactionDetail(userId, transactionId).enqueue(new Callback<ApiResponse<Transaction>>() {
+            apiService.getTransactionDetail(transactionId).enqueue(new Callback<ApiResponse<Transaction>>() {
                 @Override
                 public void onResponse(Call<ApiResponse<Transaction>> call, Response<ApiResponse<Transaction>> response) {
                     if (response.isSuccessful() && response.body() != null) {
@@ -951,12 +951,12 @@ public class TransactionRepository {
         
         // 从API获取
         try {
-            ApiResponse<List<Category>> response = apiService.getCategories(1, 100, null, type).execute().body();
+            ApiResponse<Category> response = apiService.getCategories(1, 100, null, type).execute().body();
             if (response != null && response.isSuccess()) {
                 List<Category> categories = new ArrayList<>();
                 
                 // 优先使用data字段，如果为空则使用rows字段
-                List<Category> categoriesData = response.getDataSafe(new ArrayList<>());
+                List<Category> categoriesData = response.getRows();
                 if (!categoriesData.isEmpty()) {
                     categories.addAll(categoriesData);
                 } else {

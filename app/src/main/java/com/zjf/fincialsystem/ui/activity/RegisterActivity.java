@@ -15,6 +15,8 @@ import com.zjf.fincialsystem.network.model.RegisterRequest;
 import com.zjf.fincialsystem.repository.RepositoryCallback;
 import com.zjf.fincialsystem.repository.UserRepository;
 import com.zjf.fincialsystem.utils.LogUtils;
+import com.zjf.fincialsystem.utils.ValidationUtils;
+import com.zjf.fincialsystem.utils.SecurityUtils;
 
 /**
  * 注册Activity
@@ -61,6 +63,14 @@ public class RegisterActivity extends AppCompatActivity {
      */
     private void register() {
         try {
+            // 清除所有错误
+            binding.tilUsername.setError(null);
+            binding.tilPassword.setError(null);
+            binding.tilConfirmPassword.setError(null);
+            binding.tilName.setError(null);
+            binding.tilEmail.setError(null);
+            binding.tilPhone.setError(null);
+            
             // 获取用户输入
             String username = binding.etUsername.getText().toString().trim();
             String password = binding.etPassword.getText().toString().trim();
@@ -71,22 +81,46 @@ public class RegisterActivity extends AppCompatActivity {
             
             // 验证输入
             if (TextUtils.isEmpty(username)) {
-                binding.etUsername.setError(getString(R.string.username_empty));
+                binding.tilUsername.setError(getString(R.string.username_empty));
+                return;
+            }
+            
+            // 验证用户名格式
+            if (!ValidationUtils.isValidUsername(username)) {
+                binding.tilUsername.setError(getString(R.string.username_format_error));
                 return;
             }
             
             if (TextUtils.isEmpty(password)) {
-                binding.etPassword.setError(getString(R.string.password_empty));
+                binding.tilPassword.setError(getString(R.string.password_empty));
+                return;
+            }
+            
+            // 验证密码强度
+            if (!ValidationUtils.isValidPassword(password)) {
+                binding.tilPassword.setError(getString(R.string.password_too_simple));
                 return;
             }
             
             if (!password.equals(confirmPassword)) {
-                binding.etConfirmPassword.setError(getString(R.string.password_not_match));
+                binding.tilConfirmPassword.setError(getString(R.string.password_not_match));
                 return;
             }
             
             if (TextUtils.isEmpty(name)) {
-                binding.etName.setError(getString(R.string.field_required));
+                binding.tilName.setError(getString(R.string.field_required));
+                return;
+            }
+            
+            // 验证手机号格式
+            if (!TextUtils.isEmpty(phone) && !ValidationUtils.isValidPhoneNumber(phone)) {
+                binding.tilPhone.setError(getString(R.string.phone_format_error));
+                return;
+            }
+            
+            // 验证邮箱格式
+            if (!TextUtils.isEmpty(email) && !ValidationUtils.isValidEmail(email)) {
+                binding.tilEmail.setError(getString(R.string.email_format_error));
                 return;
             }
             

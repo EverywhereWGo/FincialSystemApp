@@ -55,4 +55,11 @@ public interface UserApiService {
      */
     @POST("finance/auth/logout")
     Call<ApiResponse<String>> logout(@Body Map<String, Object> logoutRequest);
+    
+    /**
+     * 注销账户
+     * 按照接口文档使用finance/auth/unregister接口
+     */
+    @POST("finance/auth/unregister")
+    Call<ApiResponse<Boolean>> deleteAccount(@Body Map<String, Object> accountData);
 } 

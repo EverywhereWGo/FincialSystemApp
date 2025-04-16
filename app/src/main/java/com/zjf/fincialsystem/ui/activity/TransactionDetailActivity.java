@@ -221,26 +221,85 @@ public class TransactionDetailActivity extends AppCompatActivity {
                 binding.tvPayment.setVisibility(View.GONE);
             }
             
-            // 设置描述（优先显示备注信息）
-            String remark = transaction.getRemark();
-            String note = transaction.getNote();
+            // 获取交易详情中的数据
+            String remark = transaction.getRemark(); // 备注字段
+            String note = transaction.getNote();     // 交易说明字段
+            String description = transaction.getDescription(); // 描述字段
             
-            if (remark != null && !remark.isEmpty()) {
-                binding.tvDescription.setText(remark);
-                // 如果有备注，则隐藏备注字段
-                binding.tvNoteLabel.setVisibility(View.GONE);
-                binding.tvNote.setVisibility(View.GONE);
-            } else if (note != null && !note.isEmpty()) {
+            // 处理描述卡片 - 显示note字段
+            if (note != null && !note.isEmpty()) {
                 binding.tvDescription.setText(note);
-                // 如果只有描述，同样隐藏备注字段
-                binding.tvNoteLabel.setVisibility(View.GONE);
-                binding.tvNote.setVisibility(View.GONE);
+                binding.cardDescription.setVisibility(View.VISIBLE);
+            } else if (description != null && !description.isEmpty()) {
+                binding.tvDescription.setText(description);
+                binding.cardDescription.setVisibility(View.VISIBLE);
             } else {
                 binding.tvDescription.setText("无描述");
-                // 隐藏备注字段
-                binding.tvNoteLabel.setVisibility(View.GONE);
-                binding.tvNote.setVisibility(View.GONE);
+                binding.cardDescription.setVisibility(View.VISIBLE);
             }
+            
+            // 处理备注卡片 - 显示remark字段
+            if (remark != null && !remark.isEmpty()) {
+                binding.tvNote.setText(remark);
+                binding.cardNote.setVisibility(View.VISIBLE);
+            } else {
+                binding.cardNote.setVisibility(View.GONE);
+            }
+            
+            // 记录调试日志
+            LogUtils.d(TAG, "交易数据: note=" + note + ", remark=" + remark + ", description=" + description);
+            
+            // 设置地点（如果有）
+            String location = transaction.getLocation();
+            if (location != null && !location.isEmpty()) {
+                binding.tvLocation.setText(location);
+                binding.tvLocationLabel.setVisibility(View.VISIBLE);
+                binding.tvLocation.setVisibility(View.VISIBLE);
+            } else {
+                binding.tvLocationLabel.setVisibility(View.GONE);
+                binding.tvLocation.setVisibility(View.GONE);
+            }
+            
+            // 设置创建时间（如果有）
+            String createTime = transaction.getCreateTime();
+            if (createTime != null && !createTime.isEmpty()) {
+                binding.tvCreateTime.setText(createTime);
+                binding.tvCreateTimeLabel.setVisibility(View.VISIBLE);
+                binding.tvCreateTime.setVisibility(View.VISIBLE);
+            } else {
+                binding.tvCreateTimeLabel.setVisibility(View.GONE);
+                binding.tvCreateTime.setVisibility(View.GONE);
+            }
+            
+            // 设置创建者（如果有）
+            String createBy = transaction.getCreateBy();
+            if (createBy != null && !createBy.isEmpty()) {
+                binding.tvCreateBy.setText(createBy);
+                binding.tvCreateByLabel.setVisibility(View.VISIBLE);
+                binding.tvCreateBy.setVisibility(View.VISIBLE);
+            } else {
+                binding.tvCreateByLabel.setVisibility(View.GONE);
+                binding.tvCreateBy.setVisibility(View.GONE);
+            }
+            
+            // 设置同步状态（如果有）
+            int syncState = transaction.getSyncState();
+            String syncStateText;
+            switch (syncState) {
+                case 0:
+                    syncStateText = "未同步";
+                    break;
+                case 1:
+                    syncStateText = "已同步";
+                    break;
+                case 2:
+                    syncStateText = "同步失败";
+                    break;
+                default:
+                    syncStateText = "未知状态: " + syncState;
+                    break;
+            }
+            binding.tvSyncState.setText(syncStateText);
             
             // 设置图片（如果有）
             String imagePath = transaction.getImagePath();
@@ -283,6 +342,7 @@ public class TransactionDetailActivity extends AppCompatActivity {
                 public void onSuccess(Boolean result) {
                     runOnUiThread(() -> {
                         Toast.makeText(TransactionDetailActivity.this, "交易已删除", Toast.LENGTH_SHORT).show();
+                        // 设置结果码为RESULT_OK，通知MainActivity刷新数据
                         setResult(RESULT_OK);
                         finish();
                     });
@@ -293,12 +353,15 @@ public class TransactionDetailActivity extends AppCompatActivity {
                     LogUtils.e(TAG, "删除交易失败：" + error);
                     runOnUiThread(() -> {
                         Toast.makeText(TransactionDetailActivity.this, "删除交易失败", Toast.LENGTH_SHORT).show();
+                        // 即使删除失败，也设置结果为RESULT_CANCELED，表示操作未完成
+                        setResult(RESULT_CANCELED);
                     });
                 }
             });
         } catch (Exception e) {
             LogUtils.e(TAG, "删除交易异常：" + e.getMessage(), e);
             Toast.makeText(this, "删除交易失败", Toast.LENGTH_SHORT).show();
+            setResult(RESULT_CANCELED);
         }
     }
     
@@ -324,6 +387,10 @@ public class TransactionDetailActivity extends AppCompatActivity {
         if (requestCode == REQUEST_EDIT_TRANSACTION && resultCode == RESULT_OK) {
             // 交易编辑成功，重新加载数据
             loadTransactionData();
+            
+            // 同时设置结果码，通知MainActivity刷新首页数据
+            setResult(RESULT_OK);
+            LogUtils.d(TAG, "编辑交易成功，设置结果码RESULT_OK以通知MainActivity刷新数据");
         }
     }
 } 
