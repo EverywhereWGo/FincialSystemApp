@@ -15,6 +15,9 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.zjf.fincialsystem.R;
 import com.zjf.fincialsystem.model.Budget;
+import com.zjf.fincialsystem.model.Category;
+import com.zjf.fincialsystem.repository.CategoryRepository;
+import com.zjf.fincialsystem.repository.RepositoryCallback;
 import com.zjf.fincialsystem.utils.IconUtil;
 import com.zjf.fincialsystem.utils.NumberUtils;
 
@@ -28,8 +31,11 @@ public class BudgetAdapter extends RecyclerView.Adapter<BudgetAdapter.BudgetView
 
     private final List<Budget> budgetList;
     private OnBudgetClickListener listener;
+    private Context context;
+    private CategoryRepository categoryRepository;
 
-    public BudgetAdapter() {
+    public BudgetAdapter(Context context) {
+        categoryRepository = new CategoryRepository(context);
         this.budgetList = new ArrayList<>();
     }
 
@@ -43,26 +49,27 @@ public class BudgetAdapter extends RecyclerView.Adapter<BudgetAdapter.BudgetView
 
     /**
      * 平滑更新数据，避免闪烁
+     *
      * @param newBudgetList 新的预算列表
      */
     public void updateDataSmoothly(List<Budget> newBudgetList) {
         if (newBudgetList == null) {
             return;
         }
-        
+
         // 如果当前列表为空，直接设置数据
         if (budgetList.isEmpty()) {
             setData(newBudgetList);
             return;
         }
-        
+
         // 保留原始大小供后续比较
         int originalSize = budgetList.size();
-        
+
         // 清空原始数据但不通知UI更新
         budgetList.clear();
         budgetList.addAll(newBudgetList);
-        
+
         // 如果数据条数相同，使用notifyItemRangeChanged避免全局刷新
         if (originalSize == newBudgetList.size()) {
             notifyItemRangeChanged(0, newBudgetList.size());
@@ -167,30 +174,37 @@ public class BudgetAdapter extends RecyclerView.Adapter<BudgetAdapter.BudgetView
             Context context = itemView.getContext();
 
             // 设置分类图标
-            if (budget.getCategory() != null && budget.getCategory().getIcon() != null) {
-                int iconResId = IconUtil.getIconResourceId(budget.getCategory().getIcon());
-                imgCategory.setImageResource(iconResId);
-                
-                // 设置图标背景颜色
-                if (budget.getCategory().getColor() != null) {
-                    try {
-                        int color = android.graphics.Color.parseColor(budget.getCategory().getColor());
-                        imgCategory.getBackground().setTint(color);
-                    } catch (Exception e) {
-                        // 颜色解析错误，使用默认颜色
-                        imgCategory.getBackground().setTint(ContextCompat.getColor(context, R.color.colorPrimaryLight));
+            categoryRepository.getCategoryById(budget.getCategoryId(), new RepositoryCallback<Category>() {
+                @Override
+                public void onSuccess(Category category) {
+                    if (category != null) {
+                        if (category.getIcon() != null) {
+                            int iconResId = IconUtil.getIconResourceId(category.getIcon());
+                            imgCategory.setImageResource(iconResId);
+                        }
+
+                        // 设置图标背景颜色
+                        if (category.getColor() != null) {
+                            try {
+                                int color = android.graphics.Color.parseColor(category.getColor());
+                                imgCategory.getBackground().setTint(color);
+                            } catch (Exception e) {
+                                // 颜色解析错误，使用默认颜色
+                                imgCategory.getBackground().setTint(ContextCompat.getColor(context, R.color.colorPrimaryLight));
+                            }
+                        }
+                        tvCategoryName.setText(category.getName());
+                    } else {
+                        imgCategory.setImageResource(R.drawable.ic_category);
+                        tvCategoryName.setText(R.string.unknown);
                     }
                 }
-            } else {
-                imgCategory.setImageResource(R.drawable.ic_category);
-            }
 
-            // 设置分类名称
-            if (budget.getCategory() != null) {
-                tvCategoryName.setText(budget.getCategory().getName());
-            } else {
-                tvCategoryName.setText(R.string.unknown);
-            }
+                @Override
+                public void onError(String error) {
+
+                }
+            });
 
             // 设置金额
             tvUsedAmount.setText(NumberUtils.formatAmountWithCurrency(budget.getUsedAmount()));
@@ -219,7 +233,9 @@ public class BudgetAdapter extends RecyclerView.Adapter<BudgetAdapter.BudgetView
 
     public interface OnBudgetClickListener {
         void onBudgetClick(Budget budget);
+
         void onEditClick(Budget budget);
+
         void onDeleteClick(Budget budget);
     }
 } 

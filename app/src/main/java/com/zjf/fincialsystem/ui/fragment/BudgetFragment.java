@@ -143,7 +143,7 @@ public class BudgetFragment extends Fragment implements BudgetAdapter.OnBudgetCl
             binding.btnRetry.setOnClickListener(v -> loadBudgetData());
             
             // 设置列表
-            adapter = new BudgetAdapter();
+            adapter = new BudgetAdapter(getContext());
             adapter.setOnBudgetClickListener(this);
             binding.recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
             binding.recyclerView.setAdapter(adapter);

@@ -58,10 +58,6 @@ public class LoginActivity extends AppCompatActivity {
      * 初始化视图
      */
     private void initViews() {
-        // 如果布局中存在验证码部分，设置为不可见
-        if (binding.layoutCaptcha != null) {
-            binding.layoutCaptcha.setVisibility(View.GONE);
-        }
         
         // 登录按钮点击事件
         binding.btnLogin.setOnClickListener(v -> {
@@ -121,18 +117,7 @@ public class LoginActivity extends AppCompatActivity {
             // TODO: 实现忘记密码功能
             Toast.makeText(this, "忘记密码功能待实现", Toast.LENGTH_SHORT).show();
         });
-        
-        // 微信登录点击事件
-        binding.btnWechatLogin.setOnClickListener(v -> {
-            // TODO: 实现微信登录功能
-            Toast.makeText(this, "微信登录功能待实现", Toast.LENGTH_SHORT).show();
-        });
-        
-        // 指纹登录点击事件
-        binding.btnFingerprintLogin.setOnClickListener(v -> {
-            // TODO: 实现指纹登录功能
-            Toast.makeText(this, "指纹登录功能待实现", Toast.LENGTH_SHORT).show();
-        });
+
     }
     
     /**

@@ -206,7 +206,7 @@ public class DashboardFragment extends Fragment {
         });
         
         // 初始化交易记录列表
-        transactionAdapter = new TransactionAdapter();
+        transactionAdapter = new TransactionAdapter(getContext());
         binding.rvTransactions.setAdapter(transactionAdapter);
         
         // 设置交易记录点击事件

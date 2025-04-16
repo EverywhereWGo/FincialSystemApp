@@ -144,7 +144,45 @@ public class CategoryRepository {
             callback.onError("获取分类列表失败: " + e.getMessage());
         }
     }
-    
+
+    /**
+     * 获取分类详情
+     * @param categoryId 要删查询的分类ID
+     * @param callback 回调
+     */
+    public void getCategoryById(long categoryId, final RepositoryCallback<Category> callback) {
+        // 检查网络状态
+        if (!NetworkUtils.isNetworkAvailable(context)) {
+            callback.onError("无网络连接，无法删除分类");
+            return;
+        }
+
+        apiService.getCategoryById(categoryId).enqueue(new Callback<ApiResponse<Category>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<Category>> call, Response<ApiResponse<Category>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    ApiResponse<Category> apiResponse = response.body();
+                    if (apiResponse.isSuccess()) {
+                        Category category = apiResponse.getData();
+                        // 返回数据
+                        callback.onSuccess(category);
+                    } else {
+                        callback.onError(apiResponse.getMsg());
+                    }
+                } else {
+                    callback.onError("网络请求失败");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ApiResponse<Category>> call, Throwable t) {
+                LogUtils.e(TAG, "获取分类失败", t);
+                callback.onError("获取分类失败: " + t.getMessage());
+            }
+        });
+    }
+
+
     /**
      * 添加分类
      * @param request 添加分类请求参数

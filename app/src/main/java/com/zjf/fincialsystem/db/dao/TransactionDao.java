@@ -60,8 +60,7 @@ public class TransactionDao extends BaseDao {
             values.put("description", transaction.getDescription());
             values.put("note", transaction.getNote());
             values.put("image_path", transaction.getImagePath());
-            values.put("created_at", transaction.getCreatedAt());
-            values.put("updated_at", transaction.getUpdatedAt());
+
             
             LogUtils.d(TAG, "准备插入数据，ContentValues: " + values.toString());
             
@@ -538,8 +537,7 @@ public class TransactionDao extends BaseDao {
         transaction.setDescription(cursor.getString(cursor.getColumnIndex("description")));
         transaction.setNote(cursor.getString(cursor.getColumnIndex("note")));
         transaction.setImagePath(cursor.getString(cursor.getColumnIndex("image_path")));
-        transaction.setCreatedAt(cursor.getLong(cursor.getColumnIndex("created_at")));
-        transaction.setUpdatedAt(cursor.getLong(cursor.getColumnIndex("updated_at")));
+
         
         return transaction;
     }

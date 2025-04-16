@@ -68,30 +68,7 @@ public class TransactionRepository {
                         ApiResponse<Transaction> apiResponse = response.body();
                         if (apiResponse.isSuccess()) {
                             List<Transaction> transactions = new ArrayList<>();
-                            
-                            // 处理Transaction对象
-                            Transaction transaction = apiResponse.getData();
-                            if (transaction != null) {
-                                transactions.add(transaction);
-                            }
-                            
-                            // 尝试从rows获取更多数据
-                            List<?> rowsData = apiResponse.getRowsSafe();
-                            if (rowsData != null && !rowsData.isEmpty()) {
-                                for (Object item : rowsData) {
-                                    if (item instanceof Transaction) {
-                                        transactions.add((Transaction) item);
-                                    } else if (item instanceof List) {
-                                        // 处理嵌套列表情况
-                                        List<?> itemList = (List<?>) item;
-                                        for (Object subItem : itemList) {
-                                            if (subItem instanceof Transaction) {
-                                                transactions.add((Transaction) subItem);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            transactions = apiResponse.getRows();
                             
                             if (!transactions.isEmpty()) {
                                 // 保存到缓存

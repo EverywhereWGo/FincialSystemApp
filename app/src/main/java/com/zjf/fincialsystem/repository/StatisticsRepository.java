@@ -670,10 +670,10 @@ public class StatisticsRepository {
                 LogUtils.d(TAG, "使用计算的时间范围: " + new Date(monthStartTime) + " - " + new Date(monthEndTime));
                 
                 // 使用标准API，传入计算出的时间范围
-                call = apiService.getCategoryStatistics(userId, monthStartTime, monthEndTime, 2);
+                call = apiService.getCategoryStatistics(userId, monthStartTime, monthEndTime, 1);
             } else {
                 // 使用传入的开始和结束时间
-                call = apiService.getCategoryStatistics(userId, startDate, endDate, 2);
+                call = apiService.getCategoryStatistics(userId, startDate, endDate, 1);
             }
             
             call.enqueue(new Callback<ApiResponse<List<Map<String, Object>>>>() {

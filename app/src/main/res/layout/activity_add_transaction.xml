@@ -13,19 +13,19 @@
         android:layout_width="match_parent"
         android:layout_height="120dp"
         android:background="@drawable/status_bar_gradient"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintTop_toTopOf="parent" />
 
     <!-- 内容区域 - 叠加在渐变背景上 -->
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:fillViewport="true"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent">
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -37,7 +37,7 @@
             <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="5dp"
+                android:layout_marginTop="15dp"
                 android:layout_marginBottom="16dp">
 
                 <ImageButton
@@ -93,7 +93,8 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:checked="false"
-                    android:text="@string/income" />
+                    android:text="@string/income"
+                    android:textColor="@color/gray" />
 
                 <RadioButton
                     android:id="@+id/rb_expense"
@@ -101,7 +102,8 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:checked="true"
-                    android:text="@string/expense" />
+                    android:text="@string/expense"
+                    android:textColor="@color/gray" />
             </RadioGroup>
 
             <!-- 分类 -->
@@ -496,24 +498,24 @@
                 <FrameLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content">
-                
+
                     <ImageView
                         android:id="@+id/iv_image"
                         android:layout_width="100dp"
                         android:layout_height="100dp"
                         android:background="@drawable/image_border"
+                        android:contentDescription="@string/attach_photo"
                         android:scaleType="centerCrop"
-                        android:visibility="gone"
-                        android:contentDescription="@string/attach_photo" />
-                        
+                        android:visibility="gone" />
+
                     <ImageButton
                         android:id="@+id/btn_clear_image"
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:layout_gravity="top|end"
                         android:background="@drawable/ic_error"
-                        android:visibility="gone"
-                        android:contentDescription="清除图片" />
+                        android:contentDescription="清除图片"
+                        android:visibility="gone" />
                 </FrameLayout>
 
                 <Button

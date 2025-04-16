@@ -79,7 +79,7 @@ public class TransactionListActivity extends AppCompatActivity {
         
         // 设置RecyclerView
         binding.rvTransactions.setLayoutManager(new LinearLayoutManager(this));
-        adapter = new TransactionAdapter();
+        adapter = new TransactionAdapter(this);
         binding.rvTransactions.setAdapter(adapter);
         
         // 设置点击事件

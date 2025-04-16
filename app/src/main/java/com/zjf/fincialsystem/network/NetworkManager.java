@@ -39,7 +39,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public class NetworkManager {
     
     private static final String TAG = "NetworkManager";
-    private static final String BASE_URL = "http://172.15.32.34:80/dev-api/"; // 开发环境URL
+    private static final String BASE_URL = "http://192.168.2.51:80/dev-api/"; // 开发环境URL
     private static final long CONNECT_TIMEOUT = 15L;
     private static final long READ_TIMEOUT = 15L;
     private static final long WRITE_TIMEOUT = 15L;
@@ -287,7 +287,7 @@ public class NetworkManager {
             return BASE_URL;
         } else {
             // 如果BASE_URL不是以http开头，添加协议前缀
-            return "http://172.15.32.34:80/dev-api/";
+            return "http://192.168.2.51:80/dev-api/";
         }
     }
 } 

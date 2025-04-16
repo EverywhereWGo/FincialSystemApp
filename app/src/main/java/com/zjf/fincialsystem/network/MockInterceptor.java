@@ -958,8 +958,6 @@ public class MockInterceptor implements Interceptor {
         transaction.setAmount(amount);
         transaction.setDescription(description);
         transaction.setDate(date);
-        transaction.setCreatedAt(System.currentTimeMillis());
-        transaction.setUpdatedAt(System.currentTimeMillis());
         return transaction;
     }
 
