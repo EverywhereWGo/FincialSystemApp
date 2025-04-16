@@ -788,36 +788,38 @@ public class StatisticsRepository {
      */
     public Observable<List<TrendData>> getTrendData(PeriodType periodType, int statisticType) {
         return Observable.create(emitter -> {
+            // 转换周期类型为API参数
+            String periodString;
+            switch (periodType) {
+                case YEARLY:
+                    periodString = "yearly";
+                    break;
+                case MONTHLY:
+                    periodString = "monthly";
+                    break;
+                case WEEKLY:
+                    periodString = "weekly";
+                    break;
+                case DAILY:
+                default:
+                    periodString = "daily";
+                    break;
+            }
+            
+            // 调用原有的getTrend方法获取数据
             try {
-                // 转换周期类型为API参数
-                String periodString;
-                switch (periodType) {
-                    case YEARLY:
-                        periodString = "yearly";
-                        break;
-                    case MONTHLY:
-                        periodString = "monthly";
-                        break;
-                    case WEEKLY:
-                        periodString = "weekly";
-                        break;
-                    case DAILY:
-                    default:
-                        periodString = "daily";
-                        break;
-                }
-                
-                // 调用原有的getTrend方法获取数据
                 getTrend(statisticType, periodString, new RepositoryCallback<Map<String, Object>>() {
                     @Override
                     public void onSuccess(Map<String, Object> data) {
+                        List<TrendData> result = new ArrayList<>();
+                        List<TrendData> parsedDataList = new ArrayList<>();
+                        
                         try {
-                            List<TrendData> result = new ArrayList<>();
-                            
                             // 处理API返回的趋势数据
                             if (data.containsKey("trendData") && data.get("trendData") instanceof List) {
                                 List<?> trendDataList = (List<?>) data.get("trendData");
                                 
+                                // 解析原始数据
                                 for (Object item : trendDataList) {
                                     if (item instanceof Map) {
                                         Map<?, ?> itemMap = (Map<?, ?>) item;
@@ -917,8 +919,120 @@ public class StatisticsRepository {
                                             }
                                         }
                                         
-                                        result.add(trendData);
+                                        parsedDataList.add(trendData);
                                     }
+                                }
+                            }
+                            
+                            // 如果有数据，在前后各添加3个月
+                            if (!parsedDataList.isEmpty()) {
+                                // 按年月排序
+                                Collections.sort(parsedDataList, (a, b) -> {
+                                    int yearCompare = Integer.compare(a.getYear(), b.getYear());
+                                    if (yearCompare != 0) return yearCompare;
+                                    return Integer.compare(a.getMonth(), b.getMonth());
+                                });
+                                
+                                // 获取第一个月和最后一个月
+                                TrendData firstData = parsedDataList.get(0);
+                                TrendData lastData = parsedDataList.get(parsedDataList.size() - 1);
+                                
+                                // 添加前3个月的空数据
+                                for (int i = 3; i > 0; i--) {
+                                    TrendData emptyData = new TrendData();
+                                    
+                                    // 设置前i个月的年月
+                                    int targetMonth = firstData.getMonth() - i;
+                                    int targetYear = firstData.getYear();
+                                    
+                                    // 处理月份溢出
+                                    while (targetMonth <= 0) {
+                                        targetMonth += 12;
+                                        targetYear--;
+                                    }
+                                    
+                                    emptyData.setYear(targetYear);
+                                    emptyData.setMonth(targetMonth);
+                                    emptyData.setAmount(0.0);
+                                    emptyData.setCount(0);
+                                    result.add(emptyData);
+                                }
+                                
+                                // 添加原有数据
+                                result.addAll(parsedDataList);
+                                
+                                // 添加后3个月的空数据
+                                for (int i = 1; i <= 3; i++) {
+                                    TrendData emptyData = new TrendData();
+                                    
+                                    // 设置后i个月的年月
+                                    int targetMonth = lastData.getMonth() + i;
+                                    int targetYear = lastData.getYear();
+                                    
+                                    // 处理月份溢出
+                                    while (targetMonth > 12) {
+                                        targetMonth -= 12;
+                                        targetYear++;
+                                    }
+                                    
+                                    emptyData.setYear(targetYear);
+                                    emptyData.setMonth(targetMonth);
+                                    emptyData.setAmount(0.0);
+                                    emptyData.setCount(0);
+                                    result.add(emptyData);
+                                }
+                            } else {
+                                // 无数据时，添加当前月份及前后3个月
+                                Calendar calendar = Calendar.getInstance();
+                                int currentYear = calendar.get(Calendar.YEAR);
+                                int currentMonth = calendar.get(Calendar.MONTH) + 1; // Calendar月份从0开始
+                                
+                                // 添加当前月份前3个月
+                                for (int i = 3; i > 0; i--) {
+                                    TrendData emptyData = new TrendData();
+                                    
+                                    int targetMonth = currentMonth - i;
+                                    int targetYear = currentYear;
+                                    
+                                    // 处理月份溢出
+                                    while (targetMonth <= 0) {
+                                        targetMonth += 12;
+                                        targetYear--;
+                                    }
+                                    
+                                    emptyData.setYear(targetYear);
+                                    emptyData.setMonth(targetMonth);
+                                    emptyData.setAmount(0.0);
+                                    emptyData.setCount(0);
+                                    result.add(emptyData);
+                                }
+                                
+                                // 添加当前月份
+                                TrendData currentData = new TrendData();
+                                currentData.setYear(currentYear);
+                                currentData.setMonth(currentMonth);
+                                currentData.setAmount(0.0);
+                                currentData.setCount(0);
+                                result.add(currentData);
+                                
+                                // 添加当前月份后3个月
+                                for (int i = 1; i <= 3; i++) {
+                                    TrendData emptyData = new TrendData();
+                                    
+                                    int targetMonth = currentMonth + i;
+                                    int targetYear = currentYear;
+                                    
+                                    // 处理月份溢出
+                                    while (targetMonth > 12) {
+                                        targetMonth -= 12;
+                                        targetYear++;
+                                    }
+                                    
+                                    emptyData.setYear(targetYear);
+                                    emptyData.setMonth(targetMonth);
+                                    emptyData.setAmount(0.0);
+                                    emptyData.setCount(0);
+                                    result.add(emptyData);
                                 }
                             }
                             
