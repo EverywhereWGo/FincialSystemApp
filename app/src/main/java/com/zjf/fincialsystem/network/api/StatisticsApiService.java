@@ -41,6 +41,15 @@ public interface StatisticsApiService {
             @Query("months") Integer months);
     
     /**
+     * 获取指定月份的收支趋势
+     */
+    @GET("finance/statistic/monthTrend")
+    Call<ApiResponse<List<Map<String, Object>>>> getMonthTrend(
+            @Query("userId") Long userId,
+            @Query("year") Integer year,
+            @Query("month") Integer month);
+    
+    /**
      * 获取预算执行情况
      */
     @GET("finance/statistic/budget")

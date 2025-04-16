@@ -262,8 +262,33 @@ public class ReportActivity extends AppCompatActivity {
      * 加载收入支出概览
      */
     private void loadOverview() {
-        String period = "monthly";
-        statisticsRepository.getOverview(period, new RepositoryCallback<Map<String, Object>>() {
+        // 获取当前月份的开始和结束日期
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(currentDate);
+        calendar.set(Calendar.DAY_OF_MONTH, 1);
+        calendar.set(Calendar.HOUR_OF_DAY, 0);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        long startTime = calendar.getTimeInMillis();
+        
+        calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH));
+        calendar.set(Calendar.HOUR_OF_DAY, 23);
+        calendar.set(Calendar.MINUTE, 59);
+        calendar.set(Calendar.SECOND, 59);
+        long endTime = calendar.getTimeInMillis();
+        
+        LogUtils.d(TAG, "加载概览数据: startTime=" + startTime + ", endTime=" + endTime);
+        
+        // 获取概览数据
+        // 从currentDate中提取年月，而不是使用固定的"monthly"
+        String yearMonth = String.format("%d-%02d", calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH) + 1);
+        
+        // 使用自定义键标识特定月份的数据
+        String cacheKey = "monthly_" + yearMonth;
+        
+        LogUtils.d(TAG, "加载月度概览数据: " + yearMonth);
+        
+        statisticsRepository.getOverview(cacheKey, new RepositoryCallback<Map<String, Object>>() {
             @Override
             public void onSuccess(Map<String, Object> data) {
                 runOnUiThread(() -> {
@@ -324,27 +349,42 @@ public class ReportActivity extends AppCompatActivity {
      * 加载支出分类统计
      */
     private void loadExpenseByCategory(long startDate, long endDate) {
+        LogUtils.d(TAG, "开始加载支出分类数据: startDate=" + startDate + ", endDate=" + endDate);
+        
+        // 记录当前请求的年月
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(startDate);
+        String yearMonth = String.format("%d-%02d", calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH) + 1);
+        LogUtils.d(TAG, "加载支出分类数据，年月: " + yearMonth);
+        
         statisticsRepository.getExpenseByCategory(startDate, endDate, new RepositoryCallback<Map<String, Object>>() {
             @Override
             public void onSuccess(Map<String, Object> data) {
                 runOnUiThread(() -> {
                     try {
+                        LogUtils.d(TAG, "支出分类数据加载成功，原始数据: " + data.keySet());
+                        
                         // 解析数据 - 支持多种可能的数据格式
                         List<Map<String, Object>> categoryStats = null;
                         
                         // 尝试获取标准格式
                         if (data.containsKey("categoryStats")) {
                             categoryStats = (List<Map<String, Object>>) data.get("categoryStats");
+                            LogUtils.d(TAG, "从categoryStats字段获取数据");
                         } else if (data.containsKey("categories")) {
                             // 备选格式 1
                             categoryStats = (List<Map<String, Object>>) data.get("categories");
+                            LogUtils.d(TAG, "从categories字段获取数据");
                         } else if (data.containsKey("data")) {
                             // 备选格式 2
                             Object dataObj = data.get("data");
+                            LogUtils.d(TAG, "从data字段获取数据, 类型: " + (dataObj != null ? dataObj.getClass().getSimpleName() : "null"));
                             if (dataObj instanceof List) {
                                 categoryStats = (List<Map<String, Object>>) dataObj;
+                                LogUtils.d(TAG, "data字段是List类型");
                             } else if (dataObj instanceof Map) {
                                 Map<String, Object> dataMap = (Map<String, Object>) dataObj;
+                                LogUtils.d(TAG, "data字段是Map类型，包含: " + dataMap.keySet());
                                 if (dataMap.containsKey("categoryStats")) {
                                     categoryStats = (List<Map<String, Object>>) dataMap.get("categoryStats");
                                 } else if (dataMap.containsKey("categories")) {
@@ -355,6 +395,7 @@ public class ReportActivity extends AppCompatActivity {
                         
                         // 如果仍然没有找到数据，尝试在顶层中查找list类型的值
                         if (categoryStats == null) {
+                            LogUtils.d(TAG, "没有找到标准数据字段，尝试查找List类型的字段");
                             for (Map.Entry<String, Object> entry : data.entrySet()) {
                                 if (entry.getValue() instanceof List) {
                                     categoryStats = (List<Map<String, Object>>) entry.getValue();
@@ -364,8 +405,19 @@ public class ReportActivity extends AppCompatActivity {
                             }
                         }
                         
+                        // 如果categoryStats不为空，但为空列表，记录这种情况
+                        if (categoryStats != null && categoryStats.isEmpty()) {
+                            LogUtils.d(TAG, "categoryStats是空列表");
+                        }
+                        
                         if (categoryStats != null && !categoryStats.isEmpty()) {
                             LogUtils.d(TAG, "支出分类数据数量: " + categoryStats.size());
+                            
+                            // 记录所有分类项
+                            for (Map<String, Object> stat : categoryStats) {
+                                LogUtils.d(TAG, "分类项: " + stat);
+                            }
+                            
                             List<PieEntry> entries = new ArrayList<>();
                             
                             // 遍历分类统计数据
@@ -388,14 +440,18 @@ public class ReportActivity extends AppCompatActivity {
                                 if (!categoryName.isEmpty() && amount > 0) {
                                     entries.add(new PieEntry((float) amount, categoryName, stat));
                                     LogUtils.d(TAG, "添加饼图数据: " + categoryName + " = " + amount);
+                                } else {
+                                    LogUtils.d(TAG, "跳过无效的分类数据: categoryName=" + categoryName + ", amount=" + amount);
                                 }
                             }
                             
                             // 设置饼图数据
                             if (!entries.isEmpty()) {
+                                LogUtils.d(TAG, "最终饼图数据项数量: " + entries.size());
                                 setPieChartData(entries);
                             } else {
                                 // 解析到类别但没有有效数据
+                                LogUtils.d(TAG, "没有有效的饼图数据项");
                                 binding.pieChart.setNoDataText(getString(R.string.no_data));
                                 binding.pieChart.invalidate();
                             }
@@ -470,12 +526,21 @@ public class ReportActivity extends AppCompatActivity {
      * 加载每日交易统计
      */
     private void loadDailyTransactions(long startDate, long endDate) {
+        // 提取当前年月
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(startDate);
+        String yearMonth = String.format("%d-%02d", calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH) + 1);
+        LogUtils.d(TAG, "加载每日交易数据，年月: " + yearMonth);
+        
+        // 创建自定义period
+        String customPeriod = "monthly_" + yearMonth;
+        
         // 获取支出数据
-        statisticsRepository.getTrend(1, "monthly", new RepositoryCallback<Map<String, Object>>() {
+        statisticsRepository.getTrend(1, customPeriod, new RepositoryCallback<Map<String, Object>>() {
             @Override
             public void onSuccess(Map<String, Object> expenseData) {
                 // 获取收入数据
-                statisticsRepository.getTrend(2, "monthly", new RepositoryCallback<Map<String, Object>>() {
+                statisticsRepository.getTrend(2, customPeriod, new RepositoryCallback<Map<String, Object>>() {
                     @Override
                     public void onSuccess(Map<String, Object> incomeData) {
                         runOnUiThread(() -> {

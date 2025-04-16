@@ -18,6 +18,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -79,10 +80,49 @@ public class StatisticsRepository {
     
     /**
      * 获取概览统计
-     * @param period 统计周期：daily, weekly, monthly, yearly
+     * @param period 统计周期：daily, weekly, monthly, yearly，也可以是带有年月信息的字符串，如 "monthly_2024-05"
      * @param callback 回调
      */
     public void getOverview(String period, final RepositoryCallback<Map<String, Object>> callback) {
+        // 解析period参数，检查是否包含特定年月
+        String periodType = period;
+        long customStartTime = 0;
+        long customEndTime = 0;
+        
+        // 检查是否是带有特定年月的请求格式 (如 "monthly_2024-05")
+        if (period.contains("_")) {
+            String[] parts = period.split("_");
+            periodType = parts[0]; // 提取周期类型 (如 "monthly")
+            
+            if (parts.length > 1 && parts[1].matches("\\d{4}-\\d{2}")) {
+                String yearMonth = parts[1]; // 提取年月 (如 "2024-05")
+                
+                try {
+                    // 解析年月
+                    String[] dateParts = yearMonth.split("-");
+                    int year = Integer.parseInt(dateParts[0]);
+                    int month = Integer.parseInt(dateParts[1]) - 1; // Calendar月份从0开始
+                    
+                    // 创建指定月份的起始和结束时间
+                    Calendar calendar = Calendar.getInstance();
+                    calendar.set(year, month, 1, 0, 0, 0);
+                    calendar.set(Calendar.MILLISECOND, 0);
+                    customStartTime = calendar.getTimeInMillis();
+                    
+                    calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH));
+                    calendar.set(Calendar.HOUR_OF_DAY, 23);
+                    calendar.set(Calendar.MINUTE, 59);
+                    calendar.set(Calendar.SECOND, 59);
+                    calendar.set(Calendar.MILLISECOND, 999);
+                    customEndTime = calendar.getTimeInMillis();
+                    
+                    LogUtils.d(TAG, "解析自定义时间范围: " + yearMonth + ", 开始: " + customStartTime + ", 结束: " + customEndTime);
+                } catch (Exception e) {
+                    LogUtils.e(TAG, "解析年月失败: " + yearMonth, e);
+                }
+            }
+        }
+        
         // 先检查缓存
         String cacheKey = "overview_" + period;
         Map<String, Object> cachedData = cacheManager.getStatistics(cacheKey);
@@ -115,138 +155,147 @@ public class StatisticsRepository {
             // 从API获取数据
             long userId = TokenManager.getInstance().getUserId();
             
-            // 根据period计算时间范围
-            long now = System.currentTimeMillis();
-            Calendar calendar = Calendar.getInstance();
-            calendar.setTimeInMillis(now);
-            
             long startTime, endTime;
             
-            // 设置时间范围
-            if ("daily".equals(period)) {
-                // 日统计 - 今天的数据
-                calendar.set(Calendar.HOUR_OF_DAY, 0);
-                calendar.set(Calendar.MINUTE, 0);
-                calendar.set(Calendar.SECOND, 0);
-                calendar.set(Calendar.MILLISECOND, 0);
-                startTime = calendar.getTimeInMillis();
-                endTime = now;
-            } else if ("weekly".equals(period)) {
-                // 周统计 - 本周数据
-                calendar.set(Calendar.DAY_OF_WEEK, calendar.getFirstDayOfWeek());
-                calendar.set(Calendar.HOUR_OF_DAY, 0);
-                calendar.set(Calendar.MINUTE, 0);
-                calendar.set(Calendar.SECOND, 0);
-                calendar.set(Calendar.MILLISECOND, 0);
-                startTime = calendar.getTimeInMillis();
-                endTime = now;
-            } else if ("yearly".equals(period)) {
-                // 年统计 - 使用年度统计接口
-                int year = calendar.get(Calendar.YEAR);
+            // 如果有自定义时间范围，则使用它
+            if (customStartTime > 0 && customEndTime > 0) {
+                startTime = customStartTime;
+                endTime = customEndTime;
+                LogUtils.d(TAG, "使用自定义时间范围: " + startTime + " - " + endTime);
+            } else {
+                // 否则根据periodType计算时间范围
+                long now = System.currentTimeMillis();
+                Calendar calendar = Calendar.getInstance();
+                calendar.setTimeInMillis(now);
                 
-                // 调用年度统计接口
-                Call<ApiResponse<List<Map<String, Object>>>> call = apiService.getYearStatistics(userId, year);
-                
-                call.enqueue(new Callback<ApiResponse<List<Map<String, Object>>>>() {
-                    @Override
-                    public void onResponse(Call<ApiResponse<List<Map<String, Object>>>> call, Response<ApiResponse<List<Map<String, Object>>>> response) {
-                        if (response.isSuccessful() && response.body() != null) {
-                            List<Map<String, Object>> listData = response.body().getData();
-                            
-                            if (listData == null || listData.isEmpty()) {
-                                LogUtils.d(TAG, "API返回的数据为空，将显示为零");
-                                // 创建空结果并返回
-                                Map<String, Object> emptyData = new HashMap<>();
-                                emptyData.put("totalIncome", 0.0);
-                                emptyData.put("totalExpense", 0.0);
-                                emptyData.put("totalBalance", 0.0);
+                // 设置时间范围
+                if ("daily".equals(periodType)) {
+                    // 日统计 - 今天的数据
+                    calendar.set(Calendar.HOUR_OF_DAY, 0);
+                    calendar.set(Calendar.MINUTE, 0);
+                    calendar.set(Calendar.SECOND, 0);
+                    calendar.set(Calendar.MILLISECOND, 0);
+                    startTime = calendar.getTimeInMillis();
+                    endTime = now;
+                } else if ("weekly".equals(periodType)) {
+                    // 周统计 - 本周数据
+                    calendar.set(Calendar.DAY_OF_WEEK, calendar.getFirstDayOfWeek());
+                    calendar.set(Calendar.HOUR_OF_DAY, 0);
+                    calendar.set(Calendar.MINUTE, 0);
+                    calendar.set(Calendar.SECOND, 0);
+                    calendar.set(Calendar.MILLISECOND, 0);
+                    startTime = calendar.getTimeInMillis();
+                    endTime = now;
+                } else if ("yearly".equals(periodType)) {
+                    // 年统计 - 使用年度统计接口
+                    int year = calendar.get(Calendar.YEAR);
+                    
+                    // 调用年度统计接口
+                    Call<ApiResponse<List<Map<String, Object>>>> call = apiService.getYearStatistics(userId, year);
+                    
+                    call.enqueue(new Callback<ApiResponse<List<Map<String, Object>>>>() {
+                        @Override
+                        public void onResponse(Call<ApiResponse<List<Map<String, Object>>>> call, Response<ApiResponse<List<Map<String, Object>>>> response) {
+                            if (response.isSuccessful() && response.body() != null) {
+                                List<Map<String, Object>> listData = response.body().getData();
+                                
+                                if (listData == null || listData.isEmpty()) {
+                                    LogUtils.d(TAG, "API返回的数据为空，将显示为零");
+                                    // 创建空结果并返回
+                                    Map<String, Object> emptyData = new HashMap<>();
+                                    emptyData.put("totalIncome", 0.0);
+                                    emptyData.put("totalExpense", 0.0);
+                                    emptyData.put("totalBalance", 0.0);
+                                    
+                                    // 保存到缓存
+                                    cacheManager.saveStatistics(cacheKey, emptyData);
+                                    
+                                    if (callback != null) {
+                                        callback.onSuccess(emptyData);
+                                        callback.isCacheData(false);
+                                    }
+                                    return;
+                                }
+                                
+                                // 汇总数据
+                                Map<String, Object> data = new HashMap<>();
+                                double totalIncome = 0;
+                                double totalExpense = 0;
+                                
+                                for (Map<String, Object> item : listData) {
+                                    // 年度统计接口返回的是按月汇总的数据
+                                    double income = getDoubleValue(item, "income", 0);
+                                    double expense = getDoubleValue(item, "expense", 0);
+                                    
+                                    totalIncome += income;
+                                    totalExpense += expense;
+                                }
+                                
+                                double totalBalance = totalIncome - totalExpense;
+                                
+                                data.put("totalIncome", totalIncome);
+                                data.put("totalExpense", totalExpense);
+                                data.put("totalBalance", totalBalance);
                                 
                                 // 保存到缓存
-                                cacheManager.saveStatistics(cacheKey, emptyData);
+                                cacheManager.saveStatistics(cacheKey, data);
+                                
+                                LogUtils.d(TAG, "成功获取年度概览数据：" + data);
                                 
                                 if (callback != null) {
-                                    callback.onSuccess(emptyData);
+                                    callback.onSuccess(data);
                                     callback.isCacheData(false);
                                 }
-                                return;
-                            }
-                            
-                            // 汇总数据
-                            Map<String, Object> data = new HashMap<>();
-                            double totalIncome = 0;
-                            double totalExpense = 0;
-                            
-                            for (Map<String, Object> item : listData) {
-                                // 年度统计接口返回的是按月汇总的数据
-                                double income = getDoubleValue(item, "income", 0);
-                                double expense = getDoubleValue(item, "expense", 0);
-                                
-                                totalIncome += income;
-                                totalExpense += expense;
-                            }
-                            
-                            double totalBalance = totalIncome - totalExpense;
-                            
-                            data.put("totalIncome", totalIncome);
-                            data.put("totalExpense", totalExpense);
-                            data.put("totalBalance", totalBalance);
-                            
-                            // 保存到缓存
-                            cacheManager.saveStatistics(cacheKey, data);
-                            
-                            LogUtils.d(TAG, "成功获取年度概览数据：" + data);
-                            
-                            if (callback != null) {
-                                callback.onSuccess(data);
-                                callback.isCacheData(false);
-                            }
-                        } else {
-                            String errorMessage = "获取年度概览数据失败：";
-                            if (response.body() != null) {
-                                errorMessage += response.body().getMsg();
                             } else {
-                                errorMessage += "网络请求失败，状态码: " + response.code();
-                            }
-                            
-                            LogUtils.e(TAG, errorMessage);
-                            if (callback != null) {
-                                callback.onError(errorMessage);
+                                String errorMessage = "获取年度概览数据失败：";
+                                if (response.body() != null) {
+                                    errorMessage += response.body().getMsg();
+                                } else {
+                                    errorMessage += "网络请求失败，状态码: " + response.code();
+                                }
+                                
+                                LogUtils.e(TAG, errorMessage);
+                                if (callback != null) {
+                                    callback.onError(errorMessage);
+                                }
                             }
                         }
-                    }
-                    
-                    @Override
-                    public void onFailure(Call<ApiResponse<List<Map<String, Object>>>> call, Throwable t) {
-                        String errorMessage = "网络请求失败：" + t.getMessage();
-                        LogUtils.e(TAG, errorMessage, t);
                         
-                        // 如果有缓存数据，即使过期也返回
-                        Map<String, Object> expiredData = cacheManager.getStatistics(cacheKey);
-                        if (expiredData != null) {
-                            LogUtils.w(TAG, "使用过期的缓存数据");
-                            if (callback != null) {
-                                callback.onSuccess(expiredData);
-                                callback.isCacheData(true);
-                            }
-                        } else {
-                            if (callback != null) {
-                                callback.onError(errorMessage);
+                        @Override
+                        public void onFailure(Call<ApiResponse<List<Map<String, Object>>>> call, Throwable t) {
+                            String errorMessage = "网络请求失败：" + t.getMessage();
+                            LogUtils.e(TAG, errorMessage, t);
+                            
+                            // 如果有缓存数据，即使过期也返回
+                            Map<String, Object> expiredData = cacheManager.getStatistics(cacheKey);
+                            if (expiredData != null) {
+                                LogUtils.w(TAG, "使用过期的缓存数据");
+                                if (callback != null) {
+                                    callback.onSuccess(expiredData);
+                                    callback.isCacheData(true);
+                                }
+                            } else {
+                                if (callback != null) {
+                                    callback.onError(errorMessage);
+                                }
                             }
                         }
-                    }
-                });
-                
-                return; // 异步调用，此处返回
-            } else {
-                // 月统计(默认) - 本月数据
-                calendar.set(Calendar.DAY_OF_MONTH, 1);
-                calendar.set(Calendar.HOUR_OF_DAY, 0);
-                calendar.set(Calendar.MINUTE, 0);
-                calendar.set(Calendar.SECOND, 0);
-                calendar.set(Calendar.MILLISECOND, 0);
-                startTime = calendar.getTimeInMillis();
-                endTime = now;
+                    });
+                    
+                    return; // 异步调用，此处返回
+                } else {
+                    // 月统计(默认) - 本月数据
+                    calendar.set(Calendar.DAY_OF_MONTH, 1);
+                    calendar.set(Calendar.HOUR_OF_DAY, 0);
+                    calendar.set(Calendar.MINUTE, 0);
+                    calendar.set(Calendar.SECOND, 0);
+                    calendar.set(Calendar.MILLISECOND, 0);
+                    startTime = calendar.getTimeInMillis();
+                    endTime = now;
+                }
             }
+            
+            LogUtils.d(TAG, "请求概览数据，时间范围: " + new Date(startTime) + " - " + new Date(endTime));
             
             // 使用月度收支总额接口获取概览数据
             Call<ApiResponse<Map<String, Object>>> call = NetworkManager.getInstance().getTransactionApiService()
@@ -452,11 +501,19 @@ public class StatisticsRepository {
         if (NetworkUtils.isNetworkAvailable(context)) {
             // 有网络连接，从网络获取数据
             long userId = TokenManager.getInstance().getUserId();
-            apiService.getCategoryStatistics(userId, startDate, endDate, 1).enqueue(new Callback<ApiResponse<List<Map<String, Object>>>>() {
+            
+            // 调试日志
+            LogUtils.d(TAG, "请求支出分类数据: userId=" + userId + ", startTime=" + startDate + ", endTime=" + endDate + ", type=1");
+            
+            apiService.getCategoryStatistics(userId, startDate, endDate, 2).enqueue(new Callback<ApiResponse<List<Map<String, Object>>>>() {
                 @Override
                 public void onResponse(Call<ApiResponse<List<Map<String, Object>>>> call, Response<ApiResponse<List<Map<String, Object>>>> response) {
                     if (response.isSuccessful() && response.body() != null) {
                         ApiResponse<List<Map<String, Object>>> apiResponse = response.body();
+                        
+                        // 调试日志
+                        LogUtils.d(TAG, "支出分类响应: code=" + apiResponse.getCode() + ", msg=" + apiResponse.getMsg());
+                        
                         if (apiResponse.isSuccess()) {
                             List<Map<String, Object>> listData = apiResponse.getData();
                             
@@ -464,6 +521,8 @@ public class StatisticsRepository {
                             if (listData == null) {
                                 LogUtils.d(TAG, "API返回的分类统计数据为空，返回空列表");
                                 listData = new ArrayList<>();
+                            } else {
+                                LogUtils.d(TAG, "API返回的分类统计数据: " + listData.size() + "条");
                             }
                             
                             // 将列表数据转换为所需的单个Map格式
@@ -531,11 +590,30 @@ public class StatisticsRepository {
     /**
      * 获取趋势统计
      * @param type 交易类型：0-支出，1-收入
-     * @param period 统计周期：daily, weekly, monthly, yearly
+     * @param period 统计周期：daily, weekly, monthly, yearly，也可以是带有年月信息的字符串，如 "monthly_2024-05"
      * @param callback 回调
      */
     public void getTrend(int type, String period, final RepositoryCallback<Map<String, Object>> callback) {
         final String cacheKey = "trend_" + type + "_" + period;
+        
+        // 解析period参数，检查是否有特定月份
+        String periodType = period;
+        final String yearMonth;
+        
+        // 检查是否是带有特定年月的请求格式 (如 "monthly_2024-05")
+        if (period.contains("_")) {
+            String[] parts = period.split("_");
+            periodType = parts[0]; // 提取周期类型 (如 "monthly")
+            
+            if (parts.length > 1 && parts[1].matches("\\d{4}-\\d{2}")) {
+                yearMonth = parts[1]; // 提取年月 (如 "2024-05")
+                LogUtils.d(TAG, "趋势统计使用特定年月: " + yearMonth);
+            } else {
+                yearMonth = null;
+            }
+        } else {
+            yearMonth = null;
+        }
         
         // 检查网络状态
         if (NetworkUtils.isNetworkAvailable(context)) {
@@ -543,15 +621,39 @@ public class StatisticsRepository {
             long userId = TokenManager.getInstance().getUserId();
             int months = 12; // 默认获取12个月的数据
             
-            if ("weekly".equals(period)) {
+            if ("weekly".equals(periodType)) {
                 months = 3; // 周趋势显示3个月数据
-            } else if ("daily".equals(period)) {
+            } else if ("daily".equals(periodType)) {
                 months = 1; // 日趋势显示1个月数据
             }
             
-            LogUtils.d(TAG, "请求趋势数据, userId=" + userId + ", months=" + months);
+            LogUtils.d(TAG, "请求趋势数据, userId=" + userId + ", months=" + months + (yearMonth != null ? ", 特定年月=" + yearMonth : ""));
             
-            apiService.getTrend(userId, months).enqueue(new Callback<ApiResponse<List<Map<String, Object>>>>() {
+            // 构建API请求参数
+            Call<ApiResponse<List<Map<String, Object>>>> call;
+            
+            // 如果有特定年月，创建自定义请求
+            if (yearMonth != null) {
+                try {
+                    // 解析年月
+                    String[] dateParts = yearMonth.split("-");
+                    int year = Integer.parseInt(dateParts[0]);
+                    int month = Integer.parseInt(dateParts[1]);
+                    
+                    // 使用特定年月的API调用
+                    call = apiService.getMonthTrend(userId, year, month);
+                    LogUtils.d(TAG, "请求特定月份趋势数据: year=" + year + ", month=" + month);
+                } catch (Exception e) {
+                    LogUtils.e(TAG, "解析年月失败，使用默认请求: " + e.getMessage(), e);
+                    // 解析失败则使用默认请求
+                    call = apiService.getTrend(userId, months);
+                }
+            } else {
+                // 使用默认请求
+                call = apiService.getTrend(userId, months);
+            }
+            
+            call.enqueue(new Callback<ApiResponse<List<Map<String, Object>>>>() {
                 @Override
                 public void onResponse(Call<ApiResponse<List<Map<String, Object>>>> call, Response<ApiResponse<List<Map<String, Object>>>> response) {
                     LogUtils.d(TAG, "趋势数据响应状态码: " + response.code());
@@ -587,6 +689,45 @@ public class StatisticsRepository {
                         if (allData == null) {
                             LogUtils.w(TAG, "趋势数据为空，创建空列表");
                             allData = new ArrayList<>();
+                        }
+                        
+                        // 如果有特定年月，过滤数据只保留该月的数据
+                        if (yearMonth != null) {
+                            LogUtils.d(TAG, "过滤特定年月(" + yearMonth + ")的趋势数据");
+                            List<Map<String, Object>> filteredByMonth = new ArrayList<>();
+                            
+                            for (Map<String, Object> item : allData) {
+                                // 检查数据是否匹配请求的年月
+                                boolean matches = false;
+                                
+                                // 检查month字段
+                                if (item.containsKey("month") && item.get("month") != null) {
+                                    String monthValue = String.valueOf(item.get("month"));
+                                    if (monthValue.contains(yearMonth) || yearMonth.contains(monthValue)) {
+                                        matches = true;
+                                    }
+                                }
+                                
+                                // 检查date字段
+                                if (!matches && item.containsKey("date") && item.get("date") != null) {
+                                    String dateValue = String.valueOf(item.get("date"));
+                                    if (dateValue.startsWith(yearMonth)) {
+                                        matches = true;
+                                    }
+                                }
+                                
+                                if (matches) {
+                                    filteredByMonth.add(item);
+                                }
+                            }
+                            
+                            // 使用过滤后的数据
+                            if (!filteredByMonth.isEmpty()) {
+                                LogUtils.d(TAG, "成功过滤出特定月份数据: " + filteredByMonth.size() + "条");
+                                allData = filteredByMonth;
+                            } else {
+                                LogUtils.w(TAG, "特定月份没有数据，保留所有数据");
+                            }
                         }
                         
                         // 直接使用原始数据，不做过滤，因为API已经按要求返回了正确格式的数据
