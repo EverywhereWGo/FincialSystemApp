@@ -58,4 +58,13 @@ public interface StatisticsApiService {
             @Query("startTime") Long startTime,
             @Query("endTime") Long endTime,
             @Query("limit") Integer limit);
+
+    /**
+     * 获取特定月份每日交易记录（7.6 API）
+     */
+    @GET("finance/transaction/daily")
+    Call<ApiResponse<List<Map<String, Object>>>> getDailyTransactions(
+            @Query("userId") Long userId,
+            @Query("year") Integer year,
+            @Query("month") Integer month);
 } 

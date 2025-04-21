@@ -503,7 +503,7 @@ public class StatisticsRepository {
             long userId = TokenManager.getInstance().getUserId();
             
             // 调试日志
-            LogUtils.d(TAG, "请求支出分类数据: userId=" + userId + ", startTime=" + startDate + ", endTime=" + endDate + ", type=1");
+            LogUtils.d(TAG, "请求支出分类数据: userId=" + userId + ", startTime=" + startDate + ", endTime=" + endDate + ", type=2(支出)");
             
             apiService.getCategoryStatistics(userId, startDate, endDate, 2).enqueue(new Callback<ApiResponse<List<Map<String, Object>>>>() {
                 @Override
@@ -523,6 +523,14 @@ public class StatisticsRepository {
                                 listData = new ArrayList<>();
                             } else {
                                 LogUtils.d(TAG, "API返回的分类统计数据: " + listData.size() + "条");
+                                for (Map<String, Object> item : listData) {
+                                    LogUtils.d(TAG, "分类数据: " + item.toString());
+                                    // 添加更详细的日志，特别关注分类名称
+                                    String categoryName = (String) item.get("categoryName");
+                                    if (categoryName == null) categoryName = (String) item.get("name");
+                                    double amount = getDoubleValue(item, "amount", 0);
+                                    LogUtils.d(TAG, "分类: [" + categoryName + "], 金额: " + amount);
+                                }
                             }
                             
                             // 将列表数据转换为所需的单个Map格式
@@ -532,9 +540,23 @@ public class StatisticsRepository {
                             // 计算总和
                             double total = 0;
                             for (Map<String, Object> item : listData) {
-                                total += getDoubleValue(item, "amount", 0);
+                                double amount = getDoubleValue(item, "amount", 0);
+                                total += amount;
+                                
+                                // 确保分类有名称字段
+                                if (!item.containsKey("name") && item.containsKey("categoryName")) {
+                                    item.put("name", item.get("categoryName"));
+                                }
+                                
+                                // 如果没有分类名称，设置为"未知"
+                                if (!item.containsKey("name") || item.get("name") == null) {
+                                    item.put("name", "未知");
+                                }
                             }
                             data.put("total", total);
+                            data.put("totalExpense", total);  // 额外添加一个键，确保ReportActivity可以读取
+                            
+                            LogUtils.d(TAG, "计算的总支出金额: " + total);
                             
                             // 保存到缓存
                             cacheManager.saveStatistics(cacheKey, data);
@@ -670,10 +692,10 @@ public class StatisticsRepository {
                 LogUtils.d(TAG, "使用计算的时间范围: " + new Date(monthStartTime) + " - " + new Date(monthEndTime));
                 
                 // 使用标准API，传入计算出的时间范围
-                call = apiService.getCategoryStatistics(userId, monthStartTime, monthEndTime, 1);
+                call = apiService.getCategoryStatistics(userId, monthStartTime, monthEndTime, 2);
             } else {
                 // 使用传入的开始和结束时间
-                call = apiService.getCategoryStatistics(userId, startDate, endDate, 1);
+                call = apiService.getCategoryStatistics(userId, startDate, endDate, 2);
             }
             
             call.enqueue(new Callback<ApiResponse<List<Map<String, Object>>>>() {
@@ -1348,6 +1370,105 @@ public class StatisticsRepository {
             } catch (Exception e) {
                 LogUtils.e(TAG, "创建趋势数据Observable失败", e);
                 emitter.onError(e);
+            }
+        });
+    }
+
+    /**
+     * 获取每日交易记录
+     * 
+     * @param year 年份，例如2023
+     * @param month 月份，1-12
+     * @param callback 回调
+     */
+    public void getDailyTransactions(int year, int month, final RepositoryCallback<List<Map<String, Object>>> callback) {
+        // 检查网络状态
+        if (!NetworkUtils.isNetworkAvailable(context)) {
+            if (callback != null) {
+                callback.onError("无网络连接，无法获取每日交易数据");
+            }
+            return;
+        }
+        
+        // 确保用户已登录
+        if (!TokenManager.getInstance().isLoggedIn()) {
+            LogUtils.e(TAG, "用户未登录，无法获取每日交易数据");
+            if (callback != null) {
+                callback.onError("用户未登录，请重新登录");
+            }
+            return;
+        }
+        
+        // 获取用户ID
+        long userId = TokenManager.getInstance().getUserId();
+        if (userId <= 0) {
+            if (callback != null) {
+                callback.onError("无效的用户ID");
+            }
+            return;
+        }
+        
+        // 构建缓存键
+        String cacheKey = "daily_transactions_" + year + "_" + month;
+        
+        // 检查缓存
+        List<Map<String, Object>> cachedData = cacheManager.getDailyTransactions(cacheKey);
+        if (cachedData != null && cacheManager.isCacheValid(cacheKey)) {
+            LogUtils.d(TAG, "使用缓存的每日交易数据: " + cacheKey);
+            if (callback != null) {
+                callback.onSuccess(cachedData);
+                callback.isCacheData(true);
+            }
+            return;
+        }
+        
+        LogUtils.d(TAG, "请求每日交易数据: 用户ID=" + userId + ", 年=" + year + ", 月=" + month);
+        
+        // 调用API获取每日交易数据
+        apiService.getDailyTransactions(userId, year, month).enqueue(new Callback<ApiResponse<List<Map<String, Object>>>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<List<Map<String, Object>>>> call, Response<ApiResponse<List<Map<String, Object>>>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    ApiResponse<List<Map<String, Object>>> apiResponse = response.body();
+                    
+                    if (apiResponse.isSuccess()) {
+                        List<Map<String, Object>> dailyData = apiResponse.getData();
+                        if (dailyData != null && !dailyData.isEmpty()) {
+                            LogUtils.d(TAG, "成功获取每日交易数据，共 " + dailyData.size() + " 条记录");
+                            
+                            // 保存到缓存
+                            cacheManager.saveDailyTransactions(cacheKey, dailyData);
+                            
+                            if (callback != null) {
+                                callback.onSuccess(dailyData);
+                            }
+                        } else {
+                            LogUtils.w(TAG, "每日交易数据为空");
+                            if (callback != null) {
+                                callback.onSuccess(new ArrayList<>()); // 返回空列表而不是错误
+                            }
+                        }
+                    } else {
+                        LogUtils.e(TAG, "获取每日交易数据失败: " + apiResponse.getMsg());
+                        if (callback != null) {
+                            callback.onError(apiResponse.getMsg());
+                        }
+                    }
+                } else {
+                    String errorMsg = response.isSuccessful() ? "响应体为空" : "请求失败，状态码: " + response.code();
+                    LogUtils.e(TAG, "获取每日交易数据失败: " + errorMsg);
+                    if (callback != null) {
+                        callback.onError("获取每日交易数据失败: " + errorMsg);
+                    }
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<ApiResponse<List<Map<String, Object>>>> call, Throwable t) {
+                LogUtils.e(TAG, "获取每日交易数据网络请求失败", t);
+                if (callback != null) {
+                    callback.onError("网络请求失败: " + t.getMessage());
+                }
             }
         });
     }

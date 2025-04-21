@@ -67,17 +67,16 @@ public class TransactionRepository {
                     if (response.isSuccessful() && response.body() != null) {
                         ApiResponse<Transaction> apiResponse = response.body();
                         if (apiResponse.isSuccess()) {
-                            List<Transaction> transactions = new ArrayList<>();
-                            transactions = apiResponse.getRows();
-                            
-                            if (!transactions.isEmpty()) {
+                            // 提取所有交易记录
+                            List<Transaction> transactions = apiResponse.getRows();
+                            if (transactions != null && !transactions.isEmpty()) {
                                 // 保存到缓存
                                 cacheManager.saveTransactions(transactions);
                                 
                                 // 返回数据
                                 callback.onSuccess(transactions);
                             } else {
-                                callback.onError("返回数据为空");
+                                callback.onError("未找到交易记录数据");
                             }
                         } else {
                             callback.onError(apiResponse.getMsg());
@@ -91,22 +90,12 @@ public class TransactionRepository {
                 public void onFailure(Call<ApiResponse<Transaction>> call, Throwable t) {
                     LogUtils.e(TAG, "获取交易记录列表失败", t);
                     
-                    // 处理JSON解析异常，可能是服务端返回格式不一致导致的
+                    // 处理JSON解析异常
                     if (t instanceof com.google.gson.JsonSyntaxException) {
-                        LogUtils.w(TAG, "服务端可能返回了非预期格式，尝试使用备用方案获取数据");
-                        // 如果有缓存数据，先使用缓存数据
-                        if (cacheManager.isCacheValid("transactions")) {
-                            List<Transaction> cachedTransactions = cacheManager.getTransactions();
-                            if (cachedTransactions != null && !cachedTransactions.isEmpty()) {
-                                callback.onSuccess(cachedTransactions);
-                                // 标记为从缓存获取
-                                callback.isCacheData(true);
-                                return;
-                            }
-                        }
+                        LogUtils.w(TAG, "服务端返回了非预期JSON格式，尝试备用方案");
+                        // 这里可以添加备用解析方案
                     }
                     
-                    // 常规错误处理，尝试从缓存获取
                     if (cacheManager.isCacheValid("transactions")) {
                         List<Transaction> cachedTransactions = cacheManager.getTransactions();
                         if (cachedTransactions != null && !cachedTransactions.isEmpty()) {
@@ -164,35 +153,18 @@ public class TransactionRepository {
                         if (apiResponse.isSuccess()) {
                             List<Transaction> transactions = new ArrayList<>();
                             
-                            // 处理Transaction对象
-                            Transaction transaction = apiResponse.getData();
-                            if (transaction != null) {
-                                transactions.add(transaction);
-                            }
-                            
-                            // 尝试从rows获取更多数据
-                            List<?> rowsData = apiResponse.getRowsSafe();
-                            if (rowsData != null && !rowsData.isEmpty()) {
-                                for (Object item : rowsData) {
-                                    if (item instanceof Transaction) {
-                                        transactions.add((Transaction) item);
-                                    } else if (item instanceof List) {
-                                        // 处理嵌套列表情况
-                                        List<?> itemList = (List<?>) item;
-                                        for (Object subItem : itemList) {
-                                            if (subItem instanceof Transaction) {
-                                                transactions.add((Transaction) subItem);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            if (!transactions.isEmpty()) {
+                            // 提取所有交易记录
+                            List<Transaction> rowsTransactions = apiResponse.getRows();
+                            if (rowsTransactions != null && !rowsTransactions.isEmpty()) {
+                                transactions = rowsTransactions;
+                                
+                                // 保存到缓存
+                                cacheManager.saveTransactions(transactions);
+                                
                                 // 返回数据
                                 callback.onSuccess(transactions);
                             } else {
-                                callback.onError("返回数据为空");
+                                callback.onError("未找到交易记录数据");
                             }
                         } else {
                             callback.onError(apiResponse.getMsg());
@@ -206,30 +178,13 @@ public class TransactionRepository {
                 public void onFailure(Call<ApiResponse<Transaction>> call, Throwable t) {
                     LogUtils.e(TAG, "获取交易记录列表失败", t);
                     
-                    // 处理JSON解析异常，可能是服务端返回格式不一致导致的
+                    // 处理JSON解析异常
                     if (t instanceof com.google.gson.JsonSyntaxException) {
-                        LogUtils.w(TAG, "服务端可能返回了非预期格式，尝试使用备用方案获取数据");
-                        // 如果有缓存数据，先使用缓存数据
-                        if (cacheManager.isCacheValid("transactions")) {
-                            List<Transaction> cachedTransactions = cacheManager.getTransactions();
-                            if (cachedTransactions != null && !cachedTransactions.isEmpty()) {
-                                // 过滤交易类型
-                                List<Transaction> filteredTransactions = new ArrayList<>();
-                                for (Transaction transaction : cachedTransactions) {
-                                    if (transaction.getType() == type) {
-                                        filteredTransactions.add(transaction);
-                                    }
-                                }
-                                
-                                callback.onSuccess(filteredTransactions);
-                                // 标记为从缓存获取
-                                callback.isCacheData(true);
-                                return;
-                            }
-                        }
+                        LogUtils.w(TAG, "服务端返回了非预期JSON格式，尝试备用方案");
+                        // 这里可以添加备用解析方案
                     }
                     
-                    // 常规错误处理，尝试从缓存获取
+                    // 从缓存获取数据
                     if (cacheManager.isCacheValid("transactions")) {
                         List<Transaction> allTransactions = cacheManager.getTransactions();
                         if (allTransactions != null && !allTransactions.isEmpty()) {
@@ -831,12 +786,13 @@ public class TransactionRepository {
                         if (cacheManager.isCacheValid("transactions")) {
                             List<Transaction> cachedTransactions = cacheManager.getTransactions();
                             if (cachedTransactions != null && !cachedTransactions.isEmpty()) {
-                                // 过滤日期范围
+                                // 过滤日期范围和用户ID
                                 List<Transaction> filteredTransactions = new ArrayList<>();
                                 for (Transaction transaction : cachedTransactions) {
                                     if (transaction.getDate() != null && 
                                         !transaction.getDate().before(startDate) && 
-                                        !transaction.getDate().after(endDate)) {
+                                        !transaction.getDate().after(endDate) &&
+                                        transaction.getUserId() == userId) {
                                         filteredTransactions.add(transaction);
                                     }
                                 }
@@ -855,12 +811,13 @@ public class TransactionRepository {
                     if (cacheManager.isCacheValid("transactions")) {
                         List<Transaction> allTransactions = cacheManager.getTransactions();
                         if (allTransactions != null && !allTransactions.isEmpty()) {
-                            // 过滤日期范围
+                            // 过滤日期范围和用户ID
                             List<Transaction> filteredTransactions = new ArrayList<>();
                             for (Transaction transaction : allTransactions) {
                                 if (transaction.getDate() != null && 
                                     !transaction.getDate().before(startDate) && 
-                                    !transaction.getDate().after(endDate)) {
+                                    !transaction.getDate().after(endDate) &&
+                                    transaction.getUserId() == userId) {
                                     filteredTransactions.add(transaction);
                                 }
                             }
@@ -885,12 +842,13 @@ public class TransactionRepository {
             if (cacheManager.isCacheValid("transactions")) {
                 List<Transaction> allTransactions = cacheManager.getTransactions();
                 if (allTransactions != null && !allTransactions.isEmpty()) {
-                    // 过滤日期范围
+                    // 过滤日期范围和用户ID
                     List<Transaction> filteredTransactions = new ArrayList<>();
                     for (Transaction transaction : allTransactions) {
                         if (transaction.getDate() != null && 
                             !transaction.getDate().before(startDate) && 
-                            !transaction.getDate().after(endDate)) {
+                            !transaction.getDate().after(endDate) &&
+                            transaction.getUserId() == userId) {
                             filteredTransactions.add(transaction);
                         }
                     }

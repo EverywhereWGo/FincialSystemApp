@@ -116,7 +116,7 @@
                 android:orientation="horizontal">
 
                 <Button
-                    android:id="@+id/btn_previous"
+                    android:id="@+id/btn_previous_month"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
@@ -128,7 +128,7 @@
                     app:iconPadding="0dp" />
 
                 <TextView
-                    android:id="@+id/tv_period"
+                    android:id="@+id/tv_period_selection"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
@@ -136,10 +136,14 @@
                     android:textColor="@color/text_primary"
                     android:textSize="16sp"
                     android:textStyle="bold"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackground"
+                    android:padding="8dp"
                     tools:text="2023年5月" />
 
                 <Button
-                    android:id="@+id/btn_next"
+                    android:id="@+id/btn_next_month"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="48dp"
                     android:layout_height="48dp"

@@ -3,11 +3,18 @@ package com.zjf.fincialsystem.ui.activity;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.MotionEvent;
+import android.view.ViewGroup;
+import android.widget.NumberPicker;
 import android.widget.TextView;
+import android.widget.Button;
+import android.widget.LinearLayout;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
@@ -27,6 +34,8 @@ import com.github.mikephil.charting.data.PieEntry;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
 import com.github.mikephil.charting.formatter.PercentFormatter;
 import com.github.mikephil.charting.utils.ColorTemplate;
+import com.github.mikephil.charting.listener.ChartTouchListener;
+import com.github.mikephil.charting.listener.OnChartGestureListener;
 
 import com.zjf.fincialsystem.R;
 import com.zjf.fincialsystem.databinding.ActivityReportBinding;
@@ -43,6 +52,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Collections;
+import java.text.SimpleDateFormat;
+import java.util.Locale;
 
 /**
  * 报表Activity
@@ -67,6 +79,9 @@ public class ReportActivity extends AppCompatActivity {
         // 初始化仓库
         statisticsRepository = new StatisticsRepository(this);
         
+        // 修复UI中的重复ID问题
+        fixDuplicateIds();
+        
         // 初始化视图
         initViews();
         
@@ -88,6 +103,50 @@ public class ReportActivity extends AppCompatActivity {
     }
     
     /**
+     * 修复UI中的重复ID问题
+     * 由于布局中存在重复的ID，需要在代码中修复
+     */
+    private void fixDuplicateIds() {
+        try {
+            // 找到所有LinearLayout，检查是否有重复的选择时间段布局
+            LinearLayout parentLayout = (LinearLayout) binding.getRoot().findViewById(R.id.content_layout).findViewById(android.R.id.content);
+            if (parentLayout != null) {
+                // 遍历子视图找到重复的布局并移除
+                for (int i = 0; i < parentLayout.getChildCount(); i++) {
+                    View child = parentLayout.getChildAt(i);
+                    if (child instanceof LinearLayout) {
+                        LinearLayout childLayout = (LinearLayout) child;
+                        // 检查是否包含相似的子视图，表明这是一个选择时间段布局
+                        if (childLayout.getChildCount() >= 3) {
+                            boolean hasButton = false;
+                            boolean hasTextView = false;
+                            for (int j = 0; j < childLayout.getChildCount(); j++) {
+                                View subChild = childLayout.getChildAt(j);
+                                if (subChild instanceof Button) {
+                                    hasButton = true;
+                                } else if (subChild instanceof TextView) {
+                                    hasTextView = true;
+                                }
+                            }
+                            
+                            // 如果是选择时间段布局但不是第一个，则移除
+                            if (hasButton && hasTextView && i > 0) {
+                                LogUtils.d(TAG, "检测到重复的选择时间段布局，移除");
+                                parentLayout.removeViewAt(i);
+                                break;
+                            }
+                        }
+                    }
+                }
+            } else {
+                LogUtils.e(TAG, "找不到内容布局，无法修复重复ID问题");
+            }
+        } catch (Exception e) {
+            LogUtils.e(TAG, "修复重复ID问题失败: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
      * 初始化视图
      */
     private void initViews() {
@@ -99,7 +158,7 @@ public class ReportActivity extends AppCompatActivity {
             updatePeriodText();
             
             // 设置上一个月点击事件
-            binding.btnPrevious.setOnClickListener(v -> {
+            binding.btnPreviousMonth.setOnClickListener(v -> {
                 Calendar calendar = Calendar.getInstance();
                 calendar.setTime(currentDate);
                 calendar.add(Calendar.MONTH, -1);
@@ -109,7 +168,7 @@ public class ReportActivity extends AppCompatActivity {
             });
             
             // 设置下一个月点击事件
-            binding.btnNext.setOnClickListener(v -> {
+            binding.btnNextMonth.setOnClickListener(v -> {
                 Calendar calendar = Calendar.getInstance();
                 calendar.setTime(currentDate);
                 calendar.add(Calendar.MONTH, 1);
@@ -117,6 +176,9 @@ public class ReportActivity extends AppCompatActivity {
                 updatePeriodText();
                 loadData();
             });
+            
+            // 设置月份文本点击事件，弹出日期选择器
+            binding.tvPeriodSelection.setOnClickListener(v -> showMonthYearPicker());
             
             // 设置重试按钮点击事件
             binding.btnRetry.setOnClickListener(v -> loadData());
@@ -129,6 +191,74 @@ public class ReportActivity extends AppCompatActivity {
         } catch (Exception e) {
             LogUtils.e(TAG, "初始化视图失败: " + e.getMessage(), e);
         }
+    }
+    
+    /**
+     * 显示月份年份选择器对话框
+     */
+    private void showMonthYearPicker() {
+        // 创建一个对话框
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_month_year_picker, null);
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setView(dialogView);
+        
+        // 获取对话框中的年份和月份选择器
+        NumberPicker monthPicker = dialogView.findViewById(R.id.month_picker);
+        NumberPicker yearPicker = dialogView.findViewById(R.id.year_picker);
+        
+        // 配置月份选择器
+        String[] months = new String[]{"1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"};
+        monthPicker.setMinValue(1);
+        monthPicker.setMaxValue(12);
+        monthPicker.setDisplayedValues(months);
+        
+        // 配置年份选择器
+        int currentYear = Calendar.getInstance().get(Calendar.YEAR);
+        yearPicker.setMinValue(currentYear - 5); // 允许选择从5年前到5年后的年份
+        yearPicker.setMaxValue(currentYear + 5);
+        
+        // 获取当前选中的年月
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(currentDate);
+        int year = calendar.get(Calendar.YEAR);
+        int month = calendar.get(Calendar.MONTH) + 1; // 月份从0开始，展示时+1
+        
+        // 设置初始选中的年份和月份
+        yearPicker.setValue(year);
+        monthPicker.setValue(month);
+        
+        // 创建并显示对话框
+        AlertDialog dialog = builder.create();
+        
+        // 设置确定按钮
+        dialogView.findViewById(R.id.btn_ok).setOnClickListener(v -> {
+            // 获取选中的年月
+            int selectedYear = yearPicker.getValue();
+            int selectedMonth = monthPicker.getValue() - 1; // 月份从0开始，所以-1
+            
+            // 记录日志
+            LogUtils.d(TAG, "用户选择了日期: " + selectedYear + "年" + (selectedMonth + 1) + "月");
+            
+            // 更新日期
+            calendar.set(Calendar.YEAR, selectedYear);
+            calendar.set(Calendar.MONTH, selectedMonth);
+            calendar.set(Calendar.DAY_OF_MONTH, 1); // 设置为当月第一天
+            currentDate = calendar.getTime();
+            
+            // 更新UI
+            updatePeriodText();
+            loadData();
+            
+            // 关闭对话框
+            dialog.dismiss();
+        });
+        
+        // 设置取消按钮
+        dialogView.findViewById(R.id.btn_cancel).setOnClickListener(v -> {
+            dialog.dismiss();
+        });
+        
+        dialog.show();
     }
     
     /**
@@ -153,6 +283,10 @@ public class ReportActivity extends AppCompatActivity {
         binding.pieChart.setHighlightPerTapEnabled(true);
         binding.pieChart.setEntryLabelColor(Color.WHITE);
         binding.pieChart.setEntryLabelTextSize(12f);
+        
+        // 设置无数据文本的样式
+        binding.pieChart.setNoDataText(getString(R.string.no_data));
+        binding.pieChart.setNoDataTextColor(ContextCompat.getColor(this, R.color.text_secondary));
         
         Legend l = binding.pieChart.getLegend();
         l.setVerticalAlignment(Legend.LegendVerticalAlignment.BOTTOM);
@@ -209,7 +343,7 @@ public class ReportActivity extends AppCompatActivity {
      * 更新期间文本
      */
     private void updatePeriodText() {
-        binding.tvPeriod.setText(DateUtils.formatMonth(currentDate));
+        binding.tvPeriodSelection.setText(DateUtils.formatMonth(currentDate));
     }
     
     /**
@@ -228,6 +362,14 @@ public class ReportActivity extends AppCompatActivity {
                 // 这里可以添加一个小的进度指示器或轻微降低内容透明度
             }
             
+            // 清除图表数据，避免显示旧数据
+            binding.pieChart.clear();
+            binding.barChart.clear();
+            binding.pieChart.setNoDataText(getString(R.string.loading));
+            binding.barChart.setNoDataText(getString(R.string.loading));
+            binding.pieChart.invalidate();
+            binding.barChart.invalidate();
+            
             // 获取当前月份的开始和结束日期
             Calendar calendar = Calendar.getInstance();
             calendar.setTime(currentDate);
@@ -242,6 +384,10 @@ public class ReportActivity extends AppCompatActivity {
             calendar.set(Calendar.MINUTE, 59);
             calendar.set(Calendar.SECOND, 59);
             Date endDate = calendar.getTime();
+            
+            LogUtils.d(TAG, "加载数据：当前选择的月份为 " + DateUtils.formatMonth(currentDate) + 
+                      ", 开始日期=" + DateUtils.formatDate(startDate) + 
+                      ", 结束日期=" + DateUtils.formatDate(endDate));
             
             // 加载收入支出概览
             loadOverview();
@@ -262,7 +408,7 @@ public class ReportActivity extends AppCompatActivity {
      * 加载收入支出概览
      */
     private void loadOverview() {
-        // 获取当前月份的开始和结束日期
+        // 获取当前选择的月份的开始和结束日期
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(currentDate);
         calendar.set(Calendar.DAY_OF_MONTH, 1);
@@ -349,125 +495,109 @@ public class ReportActivity extends AppCompatActivity {
      * 加载支出分类统计
      */
     private void loadExpenseByCategory(long startDate, long endDate) {
-        LogUtils.d(TAG, "开始加载支出分类数据: startDate=" + startDate + ", endDate=" + endDate);
+        LogUtils.d(TAG, "加载支出分类统计: startDate=" + startDate + ", endDate=" + endDate);
         
-        // 提取当前年月
+        // 重要：先显示加载中状态
+        binding.pieChart.setNoDataText(getString(R.string.loading));
+        binding.pieChart.invalidate();
+        
+        // 先清除旧数据
+        binding.pieChart.clear();
+        
+        // 基于年月创建缓存键
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeInMillis(startDate);
         String yearMonth = String.format("%d-%02d", calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH) + 1);
-        LogUtils.d(TAG, "加载支出分类数据，年月: " + yearMonth);
+        String cacheKey = "category_expense_" + yearMonth;
         
-        // 创建自定义period
-        String customPeriod = "monthly_" + yearMonth;
+        LogUtils.d(TAG, "使用缓存键请求支出分类数据: " + cacheKey);
         
-        // 使用特定月份标识符获取支出分类数据，而不是直接使用起止时间
-        statisticsRepository.getExpenseByCategoryForMonth(customPeriod, startDate, endDate, new RepositoryCallback<Map<String, Object>>() {
+        statisticsRepository.getExpenseByCategory(startDate, endDate, new RepositoryCallback<Map<String, Object>>() {
             @Override
             public void onSuccess(Map<String, Object> data) {
                 runOnUiThread(() -> {
                     try {
-                        LogUtils.d(TAG, "支出分类数据加载成功，原始数据: " + data.keySet());
+                        LogUtils.d(TAG, "收到支出分类数据: " + data);
                         
-                        // 解析数据 - 支持多种可能的数据格式
-                        List<Map<String, Object>> categoryStats = null;
-                        
-                        // 尝试获取标准格式
-                        if (data.containsKey("categoryStats")) {
-                            categoryStats = (List<Map<String, Object>>) data.get("categoryStats");
-                            LogUtils.d(TAG, "从categoryStats字段获取数据");
-                        } else if (data.containsKey("categories")) {
-                            // 备选格式 1
-                            categoryStats = (List<Map<String, Object>>) data.get("categories");
-                            LogUtils.d(TAG, "从categories字段获取数据");
-                        } else if (data.containsKey("data")) {
-                            // 备选格式 2
-                            Object dataObj = data.get("data");
-                            LogUtils.d(TAG, "从data字段获取数据, 类型: " + (dataObj != null ? dataObj.getClass().getSimpleName() : "null"));
-                            if (dataObj instanceof List) {
-                                categoryStats = (List<Map<String, Object>>) dataObj;
-                                LogUtils.d(TAG, "data字段是List类型");
-                            } else if (dataObj instanceof Map) {
-                                Map<String, Object> dataMap = (Map<String, Object>) dataObj;
-                                LogUtils.d(TAG, "data字段是Map类型，包含: " + dataMap.keySet());
-                                if (dataMap.containsKey("categoryStats")) {
-                                    categoryStats = (List<Map<String, Object>>) dataMap.get("categoryStats");
-                                } else if (dataMap.containsKey("categories")) {
-                                    categoryStats = (List<Map<String, Object>>) dataMap.get("categories");
-                                }
-                            }
-                        }
-                        
-                        // 如果仍然没有找到数据，尝试在顶层中查找list类型的值
-                        if (categoryStats == null) {
-                            LogUtils.d(TAG, "没有找到标准数据字段，尝试查找List类型的字段");
-                            for (Map.Entry<String, Object> entry : data.entrySet()) {
-                                if (entry.getValue() instanceof List) {
-                                    categoryStats = (List<Map<String, Object>>) entry.getValue();
-                                    LogUtils.d(TAG, "找到备选类别数据在字段: " + entry.getKey());
-                                    break;
-                                }
-                            }
-                        }
-                        
-                        // 如果categoryStats不为空，但为空列表，记录这种情况
-                        if (categoryStats != null && categoryStats.isEmpty()) {
-                            LogUtils.d(TAG, "categoryStats是空列表");
-                        }
-                        
-                        if (categoryStats != null && !categoryStats.isEmpty()) {
-                            LogUtils.d(TAG, "支出分类数据数量: " + categoryStats.size());
-                            
-                            // 记录所有分类项
-                            for (Map<String, Object> stat : categoryStats) {
-                                LogUtils.d(TAG, "分类项: " + stat);
-                            }
-                            
-                            List<PieEntry> entries = new ArrayList<>();
-                            
-                            // 遍历分类统计数据
-                            for (Map<String, Object> stat : categoryStats) {
-                                String categoryName = "";
-                                if (stat.containsKey("categoryName")) {
-                                    categoryName = (String) stat.get("categoryName");
-                                } else if (stat.containsKey("name")) {
-                                    categoryName = (String) stat.get("name");
-                                }
-                                
-                                double amount = 0;
-                                if (stat.containsKey("amount")) {
-                                    amount = statisticsRepository.getDoubleValue(stat, "amount", 0.0);
-                                } else if (stat.containsKey("value")) {
-                                    amount = statisticsRepository.getDoubleValue(stat, "value", 0.0);
-                                }
-                                
-                                // 确保有分类名称和金额大于0
-                                if (!categoryName.isEmpty() && amount > 0) {
-                                    entries.add(new PieEntry((float) amount, categoryName, stat));
-                                    LogUtils.d(TAG, "添加饼图数据: " + categoryName + " = " + amount);
-                                } else {
-                                    LogUtils.d(TAG, "跳过无效的分类数据: categoryName=" + categoryName + ", amount=" + amount);
-                                }
-                            }
-                            
-                            // 设置饼图数据
-                            if (!entries.isEmpty()) {
-                                LogUtils.d(TAG, "最终饼图数据项数量: " + entries.size());
-                                setPieChartData(entries);
-                            } else {
-                                // 解析到类别但没有有效数据
-                                LogUtils.d(TAG, "没有有效的饼图数据项");
-                                binding.pieChart.setNoDataText(getString(R.string.no_data));
-                                binding.pieChart.invalidate();
-                            }
+                        // 确保用正确的键获取分类数据
+                        List<Map<String, Object>> categories;
+                        if (data.containsKey("categories") && data.get("categories") instanceof List) {
+                            categories = (List<Map<String, Object>>) data.get("categories");
+                            LogUtils.d(TAG, "收到分类数据: " + categories.size() + " 个分类");
                         } else {
-                            // 没有数据
-                            LogUtils.d(TAG, "没有支出分类数据");
+                            categories = new ArrayList<>();
+                            LogUtils.d(TAG, "未找到分类数据或格式不正确，查看完整数据: " + data);
+                        }
+                        
+                        // 获取总支出金额
+                        double totalExpense = statisticsRepository.getDoubleValue(data, "totalExpense", 0.0);
+                        if (totalExpense <= 0) {
+                            // 如果API没有返回总额，尝试计算
+                            totalExpense = 0;
+                            for (Map<String, Object> category : categories) {
+                                totalExpense += statisticsRepository.getDoubleValue(category, "amount", 0.0);
+                            }
+                        }
+                        LogUtils.d(TAG, "总支出金额: " + totalExpense);
+                        
+                        // 确保饼图视图可见
+                        binding.pieChart.setVisibility(android.view.View.VISIBLE);
+                        
+                        if (categories.isEmpty() || totalExpense <= 0) {
+                            // 如果没有数据，显示空状态
                             binding.pieChart.setNoDataText(getString(R.string.no_data));
                             binding.pieChart.invalidate();
+                            LogUtils.d(TAG, "分类数据为空或总金额为0，显示无数据提示");
+                            return;
                         }
                         
+                        // 创建饼图条目
+                        List<PieEntry> entries = new ArrayList<>();
+                        for (Map<String, Object> category : categories) {
+                            // 尝试从不同的键获取分类名称
+                            String name = null;
+                            if (category.containsKey("name")) {
+                                name = (String) category.get("name");
+                            } else if (category.containsKey("categoryName")) {
+                                name = (String) category.get("categoryName");
+                            }
+                            
+                            // 如果名称为空，设置为"未知"
+                            if (name == null || name.isEmpty()) {
+                                name = getString(R.string.unknown);
+                            }
+                            
+                            double amount = statisticsRepository.getDoubleValue(category, "amount", 0.0);
+                            float percentage = (float) (amount / totalExpense * 100);
+                            
+                            LogUtils.d(TAG, "处理分类: " + name + ", 金额: " + amount + ", 占比: " + percentage + "%");
+                            
+                            // 即使金额为0也添加条目，但在图表中会将值很小的合并显示
+                            if (amount > 0) {
+                                PieEntry entry = new PieEntry((float) amount, name);
+                                entries.add(entry);
+                                LogUtils.d(TAG, "添加饼图条目: " + name + ", 值: " + amount);
+                            }
+                        }
+                        
+                        if (entries.isEmpty()) {
+                            binding.pieChart.setNoDataText(getString(R.string.no_data));
+                            binding.pieChart.invalidate();
+                            LogUtils.d(TAG, "处理后没有有效的饼图条目，显示无数据提示");
+                            return;
+                        }
+                        
+                        // 按金额降序排序
+                        Collections.sort(entries, (e1, e2) -> Float.compare(e2.getValue(), e1.getValue()));
+                        LogUtils.d(TAG, "排序后的饼图条目数量: " + entries.size());
+                        
+                        // 设置饼图数据
+                        setupPieChartData(entries);
+                        LogUtils.d(TAG, "已设置饼图数据，条目数: " + entries.size());
+                        
                     } catch (Exception e) {
-                        LogUtils.e(TAG, "设置支出分类数据失败：" + e.getMessage(), e);
+                        LogUtils.e(TAG, "设置分类数据失败：" + e.getMessage(), e);
+                        binding.pieChart.setVisibility(android.view.View.VISIBLE);
                         binding.pieChart.setNoDataText(getString(R.string.data_load_failed));
                         binding.pieChart.invalidate();
                     }
@@ -476,327 +606,462 @@ public class ReportActivity extends AppCompatActivity {
             
             @Override
             public void onError(String error) {
-                LogUtils.e(TAG, "获取支出分类数据失败：" + error);
+                LogUtils.e(TAG, "获取分类数据失败：" + error);
                 runOnUiThread(() -> {
+                    binding.pieChart.setVisibility(android.view.View.VISIBLE);
                     binding.pieChart.setNoDataText(getString(R.string.data_load_failed));
                     binding.pieChart.invalidate();
                 });
+            }
+            
+            @Override
+            public void isCacheData(boolean isCache) {
+                if (isCache) {
+                    LogUtils.d(TAG, "使用缓存数据");
+                }
             }
         });
     }
     
     /**
-     * 设置饼图数据
+     * 设置饼图数据 - 完全重写版本
      */
-    private void setPieChartData(List<PieEntry> entries) {
-        // 检查是否已有数据和动画
-        boolean hasExistingData = binding.pieChart.getData() != null && 
-                                 binding.pieChart.getData().getDataSetCount() > 0;
+    private void setupPieChartData(List<PieEntry> entries) {
+        LogUtils.d(TAG, "开始设置饼图数据，条目数: " + entries.size());
         
-        PieDataSet dataSet = new PieDataSet(entries, "");
-        dataSet.setSliceSpace(3f);
-        dataSet.setSelectionShift(5f);
+        // 确保图表可见
+        binding.pieChart.setVisibility(android.view.View.VISIBLE);
         
-        // 设置饼图颜色
-        ArrayList<Integer> colors = new ArrayList<>();
-        for (int c : ColorTemplate.MATERIAL_COLORS)
-            colors.add(c);
-        for (int c : ColorTemplate.VORDIPLOM_COLORS)
-            colors.add(c);
-        colors.add(ColorTemplate.getHoloBlue());
-        dataSet.setColors(colors);
-        
-        PieData data = new PieData(dataSet);
-        data.setValueFormatter(new PercentFormatter());
-        data.setValueTextSize(11f);
-        data.setValueTextColor(Color.WHITE);
-        
-        // 设置数据，如果已有数据则使用更平滑的更新方式
-        binding.pieChart.setData(data);
-        binding.pieChart.highlightValues(null);
-        
-        if (hasExistingData) {
-            // 如果已有数据，使用更短的动画
-            binding.pieChart.animateY(300, Easing.EaseInOutQuad);
-        } else {
-            // 首次加载，使用完整动画
+        try {
+            // 重置图表
+            binding.pieChart.clear();
+            
+            // 创建数据集
+            PieDataSet dataSet = new PieDataSet(entries, "");
+            dataSet.setSliceSpace(3f);
+            dataSet.setSelectionShift(5f);
+            
+            // 设置饼图颜色
+            ArrayList<Integer> colors = new ArrayList<>();
+            for (int c : ColorTemplate.MATERIAL_COLORS)
+                colors.add(c);
+            for (int c : ColorTemplate.VORDIPLOM_COLORS)
+                colors.add(c);
+            colors.add(ColorTemplate.getHoloBlue());
+            dataSet.setColors(colors);
+            
+            // 设置值格式
+            dataSet.setValueFormatter(new PercentFormatter(binding.pieChart));
+            dataSet.setValueTextSize(11f);
+            dataSet.setValueTextColor(Color.WHITE);
+            dataSet.setXValuePosition(PieDataSet.ValuePosition.OUTSIDE_SLICE);
+            dataSet.setYValuePosition(PieDataSet.ValuePosition.INSIDE_SLICE);
+            
+            // 创建饼图数据
+            PieData data = new PieData(dataSet);
+            binding.pieChart.setData(data);
+            
+            // 更新图表
+            binding.pieChart.invalidate();
+            
+            // 应用动画
             binding.pieChart.animateY(1000, Easing.EaseInOutQuad);
+            
+            LogUtils.d(TAG, "饼图数据设置完成");
+        } catch (Exception e) {
+            LogUtils.e(TAG, "设置饼图数据时发生错误: " + e.getMessage(), e);
+            // 出错时显示错误信息
+            binding.pieChart.setNoDataText(getString(R.string.data_load_failed));
+            binding.pieChart.invalidate();
         }
-        
-        binding.pieChart.invalidate();
     }
     
     /**
      * 加载每日交易统计
      */
     private void loadDailyTransactions(long startDate, long endDate) {
-        // 提取当前年月
+        // 提取currentDate的年月
         Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(startDate);
-        String yearMonth = String.format("%d-%02d", calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH) + 1);
-        LogUtils.d(TAG, "加载每日交易数据，年月: " + yearMonth);
+        calendar.setTime(currentDate);
+        int year = calendar.get(Calendar.YEAR);
+        int month = calendar.get(Calendar.MONTH) + 1; // Calendar月份从0开始
         
-        // 创建自定义period
-        String customPeriod = "monthly_" + yearMonth;
+        LogUtils.d(TAG, "加载每日交易数据，年=" + year + "，月=" + month + "，使用的日期=" + 
+                   DateUtils.formatDate(currentDate) + "，传入的startDate=" + 
+                   DateUtils.formatDate(new Date(startDate)));
         
-        // 获取支出数据
-        statisticsRepository.getTrend(1, customPeriod, new RepositoryCallback<Map<String, Object>>() {
+        // 清除当前图表数据并显示加载状态
+        binding.barChart.clear();
+        binding.barChart.setNoDataText(getString(R.string.loading));
+        binding.barChart.invalidate();
+        
+        // 基于年月创建缓存键以确保每个月份有不同的缓存
+        String cacheKey = "daily_transactions_" + year + "-" + month;
+        
+        // 使用新API获取每日交易数据 - 确保传递当前选择的年月
+        statisticsRepository.getDailyTransactions(year, month, new RepositoryCallback<List<Map<String, Object>>>() {
             @Override
-            public void onSuccess(Map<String, Object> expenseData) {
-                // 获取收入数据
-                statisticsRepository.getTrend(2, customPeriod, new RepositoryCallback<Map<String, Object>>() {
-                    @Override
-                    public void onSuccess(Map<String, Object> incomeData) {
-                        runOnUiThread(() -> {
-                            try {
-                                // 解析支出趋势数据
-                                List<Map<String, Object>> expenseTrend = (List<Map<String, Object>>) expenseData.get("trendData");
-                                // 解析收入趋势数据
-                                List<Map<String, Object>> incomeTrend = (List<Map<String, Object>>) incomeData.get("trendData");
-                                
-                                boolean hasData = (expenseTrend != null && !expenseTrend.isEmpty()) || 
-                                                (incomeTrend != null && !incomeTrend.isEmpty());
-                                
-                                if (hasData) {
-                                    // 准备柱状图数据
-                                    List<BarEntry> expenseEntries = new ArrayList<>();
-                                    List<BarEntry> incomeEntries = new ArrayList<>();
-                                    List<String> xLabels = new ArrayList<>();
-                                    
-                                    // 合并日期集合作为X轴标签
-                                    Map<String, Integer> dateIndexMap = new HashMap<>();
-                                    
-                                    // 首先处理支出数据，创建日期索引映射
-                                    if (expenseTrend != null) {
-                                        for (int i = 0; i < expenseTrend.size(); i++) {
-                                            Map<String, Object> item = expenseTrend.get(i);
-                                            String date = "";
-                                            if (item.containsKey("date")) {
-                                                date = (String) item.get("date");
-                                            } else if (item.containsKey("month")) {
-                                                date = (String) item.get("month");
-                                            } else if (item.containsKey("day")) {
-                                                date = (String) item.get("day");
-                                            }
-                                            
-                                            if (!date.isEmpty() && !dateIndexMap.containsKey(date)) {
-                                                dateIndexMap.put(date, xLabels.size());
-                                                xLabels.add(DateUtils.formatShortDate(date));
-                                            }
-                                        }
-                                    }
-                                    
-                                    // 然后处理收入数据，继续构建日期索引映射
-                                    if (incomeTrend != null) {
-                                        for (int i = 0; i < incomeTrend.size(); i++) {
-                                            Map<String, Object> item = incomeTrend.get(i);
-                                            String date = "";
-                                            if (item.containsKey("date")) {
-                                                date = (String) item.get("date");
-                                            } else if (item.containsKey("month")) {
-                                                date = (String) item.get("month");
-                                            } else if (item.containsKey("day")) {
-                                                date = (String) item.get("day");
-                                            }
-                                            
-                                            if (!date.isEmpty() && !dateIndexMap.containsKey(date)) {
-                                                dateIndexMap.put(date, xLabels.size());
-                                                xLabels.add(DateUtils.formatShortDate(date));
-                                            }
-                                        }
-                                    }
-                                    
-                                    // 初始化数据数组，对应每个日期
-                                    for (int i = 0; i < xLabels.size(); i++) {
-                                        expenseEntries.add(new BarEntry(i, 0f));
-                                        incomeEntries.add(new BarEntry(i, 0f));
-                                    }
-                                    
-                                    // 填充支出数据
-                                    if (expenseTrend != null) {
-                                        for (Map<String, Object> item : expenseTrend) {
-                                            String date = "";
-                                            if (item.containsKey("date")) {
-                                                date = (String) item.get("date");
-                                            } else if (item.containsKey("month")) {
-                                                date = (String) item.get("month");
-                                            } else if (item.containsKey("day")) {
-                                                date = (String) item.get("day");
-                                            }
-                                            
-                                            if (!date.isEmpty() && dateIndexMap.containsKey(date)) {
-                                                int index = dateIndexMap.get(date);
-                                                double amount = statisticsRepository.getDoubleValue(item, "amount", 0.0);
-                                                expenseEntries.set(index, new BarEntry(index, (float) amount));
-                                            }
-                                        }
-                                    }
-                                    
-                                    // 填充收入数据
-                                    if (incomeTrend != null) {
-                                        for (Map<String, Object> item : incomeTrend) {
-                                            String date = "";
-                                            if (item.containsKey("date")) {
-                                                date = (String) item.get("date");
-                                            } else if (item.containsKey("month")) {
-                                                date = (String) item.get("month");
-                                            } else if (item.containsKey("day")) {
-                                                date = (String) item.get("day");
-                                            }
-                                            
-                                            if (!date.isEmpty() && dateIndexMap.containsKey(date)) {
-                                                int index = dateIndexMap.get(date);
-                                                double amount = statisticsRepository.getDoubleValue(item, "amount", 0.0);
-                                                incomeEntries.set(index, new BarEntry(index, (float) amount));
-                                            }
-                                        }
-                                    }
-                                    
-                                    // 设置柱状图数据（同时显示收入和支出）
-                                    setBarChartData(expenseEntries, incomeEntries, xLabels);
-                                } else {
-                                    // 没有数据
-                                    binding.barChart.setNoDataText(getString(R.string.no_data));
-                                    binding.barChart.invalidate();
-                                }
-                                
-                            } catch (Exception e) {
-                                LogUtils.e(TAG, "设置每日交易数据失败：" + e.getMessage(), e);
-                                binding.barChart.setNoDataText(getString(R.string.data_load_failed));
-                                binding.barChart.invalidate();
-                            }
-                        });
-                    }
-                    
-                    @Override
-                    public void onError(String error) {
-                        // 如果收入数据获取失败，仍然尝试显示支出数据
-                        runOnUiThread(() -> {
-                            try {
-                                List<Map<String, Object>> expenseTrend = (List<Map<String, Object>>) expenseData.get("trendData");
-                                
-                                if (expenseTrend != null && !expenseTrend.isEmpty()) {
-                                    List<BarEntry> entries = new ArrayList<>();
-                                    List<String> xLabels = new ArrayList<>();
-                                    
-                                    // 遍历趋势数据
-                                    for (int i = 0; i < expenseTrend.size(); i++) {
-                                        Map<String, Object> item = expenseTrend.get(i);
-                                        String date = "";
-                                        if (item.containsKey("date")) {
-                                            date = (String) item.get("date");
-                                        } else if (item.containsKey("month")) {
-                                            date = (String) item.get("month");
-                                        }
-                                        
-                                        double amount = statisticsRepository.getDoubleValue(item, "amount", 0.0);
-                                        
-                                        entries.add(new BarEntry(i, (float) amount));
-                                        // 将日期格式转换为"月/日"的简短形式
-                                        xLabels.add(DateUtils.formatShortDate(date));
-                                    }
-                                    
-                                    // 只设置支出数据
-                                    setBarChartDataSingle(entries, xLabels);
-                                } else {
-                                    binding.barChart.setNoDataText(getString(R.string.no_data));
-                                    binding.barChart.invalidate();
-                                }
-                            } catch (Exception e) {
-                                LogUtils.e(TAG, "设置支出数据失败：" + e.getMessage(), e);
-                                binding.barChart.setNoDataText(getString(R.string.data_load_failed));
-                                binding.barChart.invalidate();
-                            }
-                        });
+            public void onSuccess(List<Map<String, Object>> dailyData) {
+                runOnUiThread(() -> {
+                    try {
+                        if (dailyData != null && !dailyData.isEmpty()) {
+                            LogUtils.d(TAG, "每日交易数据加载成功: " + dailyData.size() + " 条记录");
+                            
+                            // 处理并显示每日交易数据
+                            processAndDisplayDailyData(dailyData, year, month);
+                        } else {
+                            LogUtils.w(TAG, "每日交易数据为空");
+                            binding.barChart.clear();
+                            binding.barChart.setNoDataText(getString(R.string.no_data));
+                            binding.barChart.invalidate();
+                        }
+                    } catch (Exception e) {
+                        LogUtils.e(TAG, "处理每日交易数据失败: " + e.getMessage(), e);
+                        binding.barChart.clear();
+                        binding.barChart.setNoDataText(getString(R.string.data_load_failed));
+                        binding.barChart.invalidate();
                     }
                 });
             }
             
             @Override
             public void onError(String error) {
-                LogUtils.e(TAG, "获取每日交易数据失败：" + error);
+                LogUtils.e(TAG, "获取每日交易数据失败: " + error);
                 runOnUiThread(() -> {
+                    binding.barChart.clear();
                     binding.barChart.setNoDataText(getString(R.string.data_load_failed));
                     binding.barChart.invalidate();
                 });
             }
+            
+            @Override
+            public void isCacheData(boolean isCache) {
+                if (isCache) {
+                    LogUtils.d(TAG, "使用缓存的每日交易数据: " + cacheKey);
+                }
+            }
         });
     }
-
-    private void setBarChartDataSingle(List<BarEntry> entries, List<String> xLabels) {
-        // 检查是否已有数据
-        boolean hasExistingData = binding.barChart.getData() != null &&
-                binding.barChart.getData().getDataSetCount() > 0;
-
-        BarDataSet dataSet = new BarDataSet(entries, getString(R.string.expense));
-        dataSet.setColor(ContextCompat.getColor(this, R.color.expense));
-        dataSet.setValueTextSize(12f); // 增大数值文本大小
-
-        BarData data = new BarData(dataSet);
-        data.setBarWidth(0.7f);
-        data.setValueTextSize(12f);
-
-        // 即使设置了X轴标签，由于X轴已禁用，所以也不会显示
-        binding.barChart.getXAxis().setValueFormatter(new IndexAxisValueFormatter(xLabels));
-        binding.barChart.setData(data);
-        binding.barChart.setFitBars(true);
-
-        if (hasExistingData) {
-            // 已有数据，使用短动画
-            binding.barChart.animateY(300);
-        } else {
-            // 首次加载，使用完整动画
-            binding.barChart.animateY(1000);
+    
+    /**
+     * 处理并显示每日交易数据
+     * 
+     * @param dailyData 每日交易数据列表
+     * @param year 年份
+     * @param month 月份(1-12)
+     */
+    private void processAndDisplayDailyData(List<Map<String, Object>> dailyData, int year, int month) {
+        // 处理API返回的每日交易数据
+        Map<String, Float> expenseByDay = new HashMap<>();
+        Map<String, Float> incomeByDay = new HashMap<>();
+        
+        // 创建日期格式化器
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+        
+        // 先生成该月所有日期
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(year, month - 1, 1); // 月份从0开始
+        int daysInMonth = calendar.getActualMaximum(Calendar.DAY_OF_MONTH);
+        
+        // 初始化所有日期的数据为0
+        for (int day = 1; day <= daysInMonth; day++) {
+            calendar.set(year, month - 1, day);
+            String dateStr = dateFormat.format(calendar.getTime());
+            expenseByDay.put(dateStr, 0f);
+            incomeByDay.put(dateStr, 0f);
         }
-
-        binding.barChart.invalidate();
+        
+        LogUtils.d(TAG, "初始化月份 " + year + "-" + month + " 的" + daysInMonth + "天数据");
+        
+        // 填充有交易记录的日期的数据
+        boolean hasAnyData = false; // 标记整个月是否有任何数据
+        
+        for (Map<String, Object> dayData : dailyData) {
+            try {
+                // 从每日数据中提取日期
+                String day = (String) dayData.get("day");
+                if (day == null) {
+                    continue;
+                }
+                
+                float expense = 0f;
+                float income = 0f;
+                
+                // 获取支出金额
+                if (dayData.containsKey("expense")) {
+                    Object expenseObj = dayData.get("expense");
+                    if (expenseObj instanceof Number) {
+                        expense = ((Number) expenseObj).floatValue();
+                    } else if (expenseObj instanceof String) {
+                        try {
+                            expense = Float.parseFloat((String) expenseObj);
+                        } catch (NumberFormatException e) {
+                            LogUtils.w(TAG, "无法解析支出金额: " + expenseObj);
+                        }
+                    }
+                }
+                
+                // 获取收入金额
+                if (dayData.containsKey("income")) {
+                    Object incomeObj = dayData.get("income");
+                    if (incomeObj instanceof Number) {
+                        income = ((Number) incomeObj).floatValue();
+                    } else if (incomeObj instanceof String) {
+                        try {
+                            income = Float.parseFloat((String) incomeObj);
+                        } catch (NumberFormatException e) {
+                            LogUtils.w(TAG, "无法解析收入金额: " + incomeObj);
+                        }
+                    }
+                }
+                
+                // 更新对应日期的数据
+                expenseByDay.put(day, expense);
+                incomeByDay.put(day, income);
+                
+                // 检查是否有有效数据
+                if (expense > 0 || income > 0) {
+                    hasAnyData = true;
+                }
+                
+                LogUtils.d(TAG, "日期 " + day + " 有交易数据: 支出=" + expense + ", 收入=" + income);
+            } catch (Exception e) {
+                LogUtils.e(TAG, "处理日交易数据失败: " + e.getMessage(), e);
+            }
+        }
+        
+        // 如果整个月都没有任何数据，显示无数据提示
+        if (!hasAnyData) {
+            binding.barChart.setNoDataText(getString(R.string.no_data));
+            binding.barChart.invalidate();
+            LogUtils.d(TAG, "整个月没有任何交易数据，显示无数据提示");
+            return;
+        }
+        
+        // 对日期进行排序
+        List<String> sortedDays = new ArrayList<>(expenseByDay.keySet());
+        Collections.sort(sortedDays); // 按日期排序
+        
+        LogUtils.d(TAG, "排序后的日期数: " + sortedDays.size() + ", 第一天: " + 
+                  (sortedDays.isEmpty() ? "无" : sortedDays.get(0)) + ", 最后一天: " + 
+                  (sortedDays.isEmpty() ? "无" : sortedDays.get(sortedDays.size() - 1)));
+        
+        // 创建图表数据
+        List<BarEntry> expenseEntries = new ArrayList<>();
+        List<BarEntry> incomeEntries = new ArrayList<>();
+        List<String> xLabels = new ArrayList<>();
+        
+        // 为每个有数据的日期创建数据点
+        int index = 0;
+        for (int i = 0; i < sortedDays.size(); i++) {
+            String day = sortedDays.get(i);
+            float expense = expenseByDay.getOrDefault(day, 0f);
+            float income = incomeByDay.getOrDefault(day, 0f);
+            
+            // 跳过支出和收入都为0的日期
+            if (expense <= 0 && income <= 0) {
+                continue;
+            }
+            
+            expenseEntries.add(new BarEntry(index, expense));
+            incomeEntries.add(new BarEntry(index, income));
+            
+            // 格式化日期标签为"日"格式
+            try {
+                SimpleDateFormat inputFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+                SimpleDateFormat outputFormat = new SimpleDateFormat("d", Locale.getDefault()); // 只显示日
+                Date date = inputFormat.parse(day);
+                String dayLabel = outputFormat.format(date);
+                xLabels.add(dayLabel);
+            } catch (Exception e) {
+                // 如果解析失败，使用日期的最后部分
+                String dayLabel = day.substring(day.lastIndexOf("-") + 1);
+                xLabels.add(dayLabel);
+            }
+            
+            index++; // 只为有数据的日期增加索引
+        }
+        
+        // 再次检查处理后是否有数据
+        if (expenseEntries.isEmpty() && incomeEntries.isEmpty()) {
+            binding.barChart.setNoDataText(getString(R.string.no_data));
+            binding.barChart.invalidate();
+            LogUtils.d(TAG, "处理后没有有效的柱状图条目，显示无数据提示");
+            return;
+        }
+        
+        // 设置柱状图数据
+        setBarChartData(expenseEntries, incomeEntries, xLabels);
     }
 
     private void setBarChartData(List<BarEntry> expenseEntries, List<BarEntry> incomeEntries, List<String> xLabels) {
-        // 检查是否已有数据
-        boolean hasExistingData = binding.barChart.getData() != null &&
-                binding.barChart.getData().getDataSetCount() > 0;
-
+        // 配置图表基本设置
+        binding.barChart.getDescription().setEnabled(false);
+        binding.barChart.setTouchEnabled(true); // 确保触摸交互启用
+        binding.barChart.setDragEnabled(true); // 确保可以拖动
+        binding.barChart.setScaleEnabled(true); // 允许缩放
+        binding.barChart.setPinchZoom(true); // 启用双指缩放
+        binding.barChart.setDoubleTapToZoomEnabled(true); // 启用双击缩放
+        binding.barChart.setHighlightPerDragEnabled(true); // 拖动时突出显示
+        binding.barChart.setDrawGridBackground(false);
+        binding.barChart.setDrawBorders(false);
+        
+        // 创建数据集
         BarDataSet expenseDataSet = new BarDataSet(expenseEntries, getString(R.string.expense));
         expenseDataSet.setColor(ContextCompat.getColor(this, R.color.expense));
-        expenseDataSet.setValueTextSize(12f); // 增大数值文本大小
-
+        expenseDataSet.setValueTextSize(12f);
+        expenseDataSet.setValueTextColor(Color.BLACK);
+        
         BarDataSet incomeDataSet = new BarDataSet(incomeEntries, getString(R.string.income));
         incomeDataSet.setColor(ContextCompat.getColor(this, R.color.income));
-        incomeDataSet.setValueTextSize(12f); // 增大数值文本大小
-
-        float groupSpace = 0.08f;
-        float barSpace = 0.03f;
-        float barWidth = 0.4f; // 每个柱宽度
-
+        incomeDataSet.setValueTextSize(12f);
+        incomeDataSet.setValueTextColor(Color.BLACK);
+        
+        // 设置柱状图分组参数 - 调整为更宽松的布局以便更好滑动
+        float groupSpace = 0.25f; // 组间距
+        float barSpace = 0.05f; // 柱间距
+        float barWidth = 0.30f; // 柱宽度
+        
+        // 创建柱状图数据对象
         BarData data = new BarData(expenseDataSet, incomeDataSet);
         data.setBarWidth(barWidth);
-        data.setValueTextSize(12f);
-
-        // 即使设置了X轴标签，由于X轴已禁用，所以也不会显示
-        binding.barChart.getXAxis().setValueFormatter(new IndexAxisValueFormatter(xLabels));
-        binding.barChart.setData(data);
-
-        // 确保X轴可以容纳所有分组
-        binding.barChart.getXAxis().setAxisMinimum(0);
-        binding.barChart.getXAxis().setAxisMaximum(xLabels.size());
-
-        // 设置分组
-        binding.barChart.groupBars(0, groupSpace, barSpace);
-        binding.barChart.setFitBars(true);
-
-        // 设置图例可见
+        
+        // 启用X轴并设置
+        XAxis xAxis = binding.barChart.getXAxis();
+        xAxis.setEnabled(true);
+        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM); // 确保X轴位于底部
+        xAxis.setDrawGridLines(false);
+        xAxis.setGranularity(1f);
+        xAxis.setValueFormatter(new IndexAxisValueFormatter(xLabels));
+        xAxis.setTextSize(12f);
+        xAxis.setLabelRotationAngle(0); // 水平显示标签
+        xAxis.setLabelCount(xLabels.size()); // 确保显示所有标签
+        xAxis.setDrawLabels(true);
+        xAxis.setDrawAxisLine(true);
+        xAxis.setTextColor(getResources().getColor(R.color.text_primary));
+        xAxis.setCenterAxisLabels(true); // 将标签居中显示在柱组下方
+        xAxis.setAvoidFirstLastClipping(true);
+        
+        // 设置左Y轴
+        YAxis leftAxis = binding.barChart.getAxisLeft();
+        leftAxis.setDrawGridLines(true);
+        leftAxis.setAxisMinimum(0f);
+        leftAxis.setTextColor(getResources().getColor(R.color.text_secondary));
+        
+        // 禁用右Y轴
+        binding.barChart.getAxisRight().setEnabled(false);
+        
+        // 设置图例
         binding.barChart.getLegend().setEnabled(true);
-
-        if (hasExistingData) {
-            // 已有数据，使用短动画
-            binding.barChart.animateY(300);
-        } else {
-            // 首次加载，使用完整动画
-            binding.barChart.animateY(1000);
+        binding.barChart.getLegend().setVerticalAlignment(Legend.LegendVerticalAlignment.TOP);
+        binding.barChart.getLegend().setHorizontalAlignment(Legend.LegendHorizontalAlignment.RIGHT);
+        binding.barChart.getLegend().setOrientation(Legend.LegendOrientation.HORIZONTAL);
+        binding.barChart.getLegend().setDrawInside(false);
+        
+        // 如果数据点较多，调整图表宽度使其可以滚动
+        if (xLabels.size() > 5) {
+            // 动态设置图表的布局参数，确保它足够宽以容纳所有数据点
+            ViewGroup.LayoutParams layoutParams = binding.barChart.getLayoutParams();
+            // 每组数据的宽度 = (2个柱子宽度 + 柱子间隔) + 组间距
+            float groupWidth = 2 * barWidth + barSpace + groupSpace;
+            // 计算所需的总宽度 = 数据点数量 * 每组宽度 * 屏幕密度
+            int screenWidth = getResources().getDisplayMetrics().widthPixels;
+            int desiredWidth = Math.max(screenWidth, (int)(xLabels.size() * groupWidth * 100));
+            // 设置最小宽度，确保可以滚动
+            layoutParams.width = desiredWidth;
+            binding.barChart.setLayoutParams(layoutParams);
+            
+            LogUtils.d(TAG, "调整图表宽度: " + desiredWidth + "px，以适应" + xLabels.size() + "组数据");
         }
+        
+        // 设置数据 - 必须在设置轴范围和分组之前
+        binding.barChart.setData(data);
+        
+        // 确保X轴可以容纳所有分组
+        float axisMin = -0.5f;
+        // 特别注意：为了确保可以滑动，X轴最大值必须大于数据点的最大索引
+        float axisMax = xLabels.size() + 0.5f; // 增加右侧空间
+        binding.barChart.getXAxis().setAxisMinimum(axisMin);
+        binding.barChart.getXAxis().setAxisMaximum(axisMax);
+        
+        // 设置分组 - 在设置轴范围后调用
+        binding.barChart.groupBars(0, groupSpace, barSpace);
+        binding.barChart.setFitBars(false); // 不自动调整以适应屏幕
+        
+        // 设置可视范围 - 这对于滚动非常重要
+        int visibleCount = Math.min(5, xLabels.size());
+        float rangeMaximum = visibleCount > 0 ? (visibleCount * (2 * barWidth + barSpace) + groupSpace) : 5;
+        binding.barChart.setVisibleXRangeMaximum(rangeMaximum);
+        binding.barChart.setVisibleXRangeMinimum(2); // 至少显示2组数据
+        
+        // 增加底部和侧边边距，确保有足够空间显示标签
+        binding.barChart.setExtraBottomOffset(35f);
+        binding.barChart.setExtraLeftOffset(10f);
+        binding.barChart.setExtraRightOffset(10f);
+        
+        // 强制启用横向滚动
+        binding.barChart.setDragXEnabled(true);
+        binding.barChart.setScaleXEnabled(true);
+        binding.barChart.setDragYEnabled(false); // 禁用垂直拖动，专注于水平滚动
+        binding.barChart.setScaleYEnabled(false); // 禁用垂直缩放
+        
+        // 根据数据量自动缩放视图
+        if (xLabels.size() <= 5) {
+            binding.barChart.fitScreen(); // 如果数据少，则适应屏幕
+        } else {
+            binding.barChart.moveViewToX(0); // 滚动到开始位置
+        }
+        
+        // 设置滚动监听器
+        binding.barChart.setOnChartGestureListener(new OnChartGestureListener() {
+            @Override
+            public void onChartGestureStart(MotionEvent me, ChartTouchListener.ChartGesture lastPerformedGesture) {
+                LogUtils.d(TAG, "图表手势开始: " + lastPerformedGesture.name());
+            }
 
+            @Override
+            public void onChartGestureEnd(MotionEvent me, ChartTouchListener.ChartGesture lastPerformedGesture) {
+                LogUtils.d(TAG, "图表手势结束: " + lastPerformedGesture.name());
+            }
+
+            @Override
+            public void onChartLongPressed(MotionEvent me) {}
+
+            @Override
+            public void onChartDoubleTapped(MotionEvent me) {}
+
+            @Override
+            public void onChartSingleTapped(MotionEvent me) {}
+
+            @Override
+            public void onChartFling(MotionEvent me1, MotionEvent me2, float velocityX, float velocityY) {
+                LogUtils.d(TAG, "图表飞滑：X速度=" + velocityX + ", Y速度=" + velocityY);
+            }
+
+            @Override
+            public void onChartScale(MotionEvent me, float scaleX, float scaleY) {
+                LogUtils.d(TAG, "图表缩放：X=" + scaleX + ", Y=" + scaleY);
+            }
+
+            @Override
+            public void onChartTranslate(MotionEvent me, float dX, float dY) {
+                // 记录较大的移动
+                if (Math.abs(dX) > 10 || Math.abs(dY) > 10) {
+                    LogUtils.d(TAG, "图表拖动：X=" + dX + ", Y=" + dY);
+                }
+            }
+        });
+        
+        // 应用动画
+        binding.barChart.animateY(1000);
+        
+        // 刷新图表
         binding.barChart.invalidate();
+        
+        // 日志输出当前设置
+        LogUtils.d(TAG, "图表设置：数据点数量=" + xLabels.size() + 
+                  ", 可视范围=" + binding.barChart.getVisibleXRange() + 
+                  ", 当前X轴范围=[" + binding.barChart.getXChartMin() + "," + binding.barChart.getXChartMax() + "]");
     }
     
     /**

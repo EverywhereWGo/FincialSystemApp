@@ -399,4 +399,23 @@ public class DataCacheManager {
             return null;
         }
     }
+
+    /**
+     * 保存每日交易数据缓存
+     * @param key 缓存键
+     * @param dailyTransactions 每日交易数据
+     */
+    public void saveDailyTransactions(String key, List<Map<String, Object>> dailyTransactions) {
+        saveCache(key, dailyTransactions);
+    }
+    
+    /**
+     * 获取每日交易数据缓存
+     * @param key 缓存键
+     * @return 每日交易数据，如无缓存则返回null
+     */
+    public List<Map<String, Object>> getDailyTransactions(String key) {
+        Type type = new TypeToken<List<Map<String, Object>>>(){}.getType();
+        return getCache(key, type, null);
+    }
 } 
