@@ -2,6 +2,7 @@ package com.zjf.fincialsystem.repository;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.text.TextUtils;
 
 import com.zjf.fincialsystem.model.User;
@@ -13,9 +14,11 @@ import com.zjf.fincialsystem.network.model.LoginResponse;
 import com.zjf.fincialsystem.network.model.RegisterRequest;
 import com.zjf.fincialsystem.network.model.UpdateProfileRequest;
 import com.zjf.fincialsystem.utils.DeviceUtils;
+import com.zjf.fincialsystem.utils.FileUtils;
 import com.zjf.fincialsystem.utils.LogUtils;
 import com.zjf.fincialsystem.utils.NetworkUtils;
 import com.zjf.fincialsystem.utils.TokenManager;
+import com.zjf.fincialsystem.utils.UriUtils;
 import com.zjf.fincialsystem.utils.SharedPreferencesUtils;
 import com.zjf.fincialsystem.utils.Constants;
 
@@ -26,12 +29,16 @@ import com.google.gson.JsonSyntaxException;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.json.JSONObject;
-import org.json.JSONArray;
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
 
 /**
  * 用户数据仓库
@@ -528,6 +535,140 @@ public class UserRepository {
         } catch (Exception e) {
             LogUtils.e(TAG, "构建响应JSON失败", e);
             return null;
+        }
+    }
+
+    /**
+     * 上传用户头像
+     * @param userId 用户ID，可为空，为空则使用当前登录用户ID
+     * @param imageUri 图片URI
+     * @param callback 回调
+     */
+    public void uploadAvatar(Long userId, Uri imageUri, final RepositoryCallback<String> callback) {
+        // 检查网络状态
+        if (!NetworkUtils.isNetworkAvailable(context)) {
+            callback.onError("无网络连接，无法上传头像");
+            return;
+        }
+        
+        // 检查Token是否有效
+        if (!tokenManager.isLoggedIn()) {
+            callback.onError("未登录或登录已过期");
+            return;
+        }
+        
+        // 如果userId为空，则使用当前登录用户ID
+        if (userId == null || userId <= 0) {
+            userId = tokenManager.getUserId();
+        }
+        
+        // 如果imageUri为空，则无法上传
+        if (imageUri == null) {
+            callback.onError("请选择需要上传的图片");
+            return;
+        }
+        
+        try {
+            // 从URI创建文件
+            File file = null;
+            String filePath = UriUtils.getPath(context, imageUri);
+            
+            LogUtils.d(TAG, "尝试获取图片路径: " + (filePath != null ? filePath : "路径为空"));
+            
+            if (filePath != null) {
+                file = new File(filePath);
+            } else {
+                // 如果无法从URI获取文件路径，则从输入流创建临时文件
+                try {
+                    InputStream inputStream = context.getContentResolver().openInputStream(imageUri);
+                    if (inputStream != null) {
+                        file = FileUtils.createTempFileFromStream(inputStream, "avatar_", ".jpg");
+                        inputStream.close();
+                        LogUtils.d(TAG, "从输入流创建临时文件成功: " + file.getAbsolutePath());
+                    }
+                } catch (IOException e) {
+                    LogUtils.e(TAG, "无法读取图片文件", e);
+                    callback.onError("无法读取图片文件: " + e.getMessage());
+                    return;
+                }
+            }
+            
+            if (file == null || !file.exists()) {
+                callback.onError("无法获取图片文件");
+                return;
+            }
+            
+            LogUtils.d(TAG, "上传文件准备完成，大小: " + file.length() + "字节，文件存在: " + file.exists());
+            
+            // 创建文件部分，确保使用正确的参数名"avatarfile"
+            RequestBody requestFile = RequestBody.create(MediaType.parse("image/*"), file);
+            
+            // 使用完全按照接口文档的参数名，确保变量名与接口方法中的参数名完全匹配
+            MultipartBody.Part avatarfile = MultipartBody.Part.createFormData("avatarfile", file.getName(), requestFile);
+            
+            final Long finalUserId = userId;
+            LogUtils.d(TAG, "准备上传头像，用户ID: " + finalUserId + ", 文件: " + file.getName() + ", 参数名: avatarfile");
+            
+            // 创建表单字段，使用form-data格式
+            RequestBody userIdPart = RequestBody.create(MediaType.parse("text/plain"), String.valueOf(finalUserId));
+            
+            // 发起上传请求，确保参数名顺序与API接口一致
+            apiService.uploadAvatar(avatarfile, userIdPart).enqueue(new Callback<ApiResponse<Map<String, String>>>() {
+                @Override
+                public void onResponse(Call<ApiResponse<Map<String, String>>> call, Response<ApiResponse<Map<String, String>>> response) {
+                    LogUtils.d(TAG, "头像上传响应码: " + response.code());
+                    LogUtils.d(TAG, "完整请求URL: " + call.request().url());
+                    LogUtils.d(TAG, "请求头: " + call.request().headers());
+                    
+                    if (!response.isSuccessful()) {
+                        LogUtils.e(TAG, "头像上传失败，HTTP错误码: " + response.code());
+                        callback.onError("头像上传失败，服务器返回错误: " + response.code());
+                        return;
+                    }
+                    
+                    if (response.body() == null) {
+                        LogUtils.e(TAG, "头像上传失败，响应体为空");
+                        callback.onError("头像上传失败，服务器返回空响应");
+                        return;
+                    }
+                    
+                    ApiResponse<Map<String, String>> apiResponse = response.body();
+                    LogUtils.d(TAG, "头像上传响应: code=" + apiResponse.getCode() + ", msg=" + apiResponse.getMsg());
+                    
+                    if (apiResponse.isSuccess()) {
+                        Map<String, String> data = apiResponse.getData();
+                        if (data != null && data.containsKey("imgUrl")) {
+                            String imgUrl = data.get("imgUrl");
+                            LogUtils.d(TAG, "头像上传成功，返回URL: " + imgUrl);
+                            callback.onSuccess(imgUrl);
+                        } else {
+                            LogUtils.e(TAG, "头像上传成功但未返回URL");
+                            callback.onError("头像上传成功但服务器未返回图片URL");
+                        }
+                    } else {
+                        LogUtils.e(TAG, "头像上传失败: " + apiResponse.getMsg());
+                        callback.onError(apiResponse.getMsg());
+                    }
+                }
+                
+                @Override
+                public void onFailure(Call<ApiResponse<Map<String, String>>> call, Throwable t) {
+                    LogUtils.e(TAG, "头像上传请求失败", t);
+                    String errorMessage = "网络请求失败: " + t.getMessage();
+                    
+                    if (t instanceof JsonSyntaxException) {
+                        errorMessage = "服务器返回数据格式错误";
+                    } else if (!NetworkUtils.isNetworkAvailable(context)) {
+                        errorMessage = "网络连接已断开，请检查网络设置";
+                    }
+                    
+                    callback.onError(errorMessage);
+                }
+            });
+            
+        } catch (Exception e) {
+            LogUtils.e(TAG, "准备头像上传请求失败", e);
+            callback.onError("准备上传头像失败: " + e.getMessage());
         }
     }
 } 

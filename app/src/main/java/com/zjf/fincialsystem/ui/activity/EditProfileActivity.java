@@ -37,12 +37,15 @@ import com.bumptech.glide.request.transition.Transition;
 import com.zjf.fincialsystem.R;
 import com.zjf.fincialsystem.databinding.ActivityEditProfileBinding;
 import com.zjf.fincialsystem.model.User;
+import com.zjf.fincialsystem.network.NetworkManager;
 import com.zjf.fincialsystem.network.model.UpdateProfileRequest;
 import com.zjf.fincialsystem.repository.RepositoryCallback;
 import com.zjf.fincialsystem.repository.UserRepository;
 import com.zjf.fincialsystem.utils.LogUtils;
 import com.zjf.fincialsystem.utils.StatusBarUtils;
 import com.zjf.fincialsystem.utils.TokenManager;
+import com.zjf.fincialsystem.utils.FileUtils;
+import com.zjf.fincialsystem.utils.UriUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -341,6 +344,9 @@ public class EditProfileActivity extends AppCompatActivity {
         LogUtils.d(TAG, "更新头像预览，图片URI：" + imageUri.toString());
         
         try {
+            // 显示加载中进度
+            binding.progressAvatar.setVisibility(View.VISIBLE);
+            
             // 将头像URI保存到当前用户对象中
             if (currentUser != null) {
                 currentUser.setAvatar(imageUri.toString());
@@ -362,9 +368,11 @@ public class EditProfileActivity extends AppCompatActivity {
                 @Override
                 public void onLoadFailed(@Nullable Drawable errorDrawable) {
                     LogUtils.e(TAG, "Glide加载图片失败");
+                    binding.progressAvatar.setVisibility(View.GONE);
                     if (errorDrawable != null) {
                         binding.ivAvatar.setImageDrawable(errorDrawable);
                     }
+                    Toast.makeText(EditProfileActivity.this, "加载头像失败", Toast.LENGTH_SHORT).show();
                 }
 
                 @Override
@@ -374,8 +382,8 @@ public class EditProfileActivity extends AppCompatActivity {
                     // 直接使用Drawable
                     binding.ivAvatar.setImageDrawable(resource);
                     
-                    // 显示成功消息
-                    Toast.makeText(EditProfileActivity.this, R.string.avatar_updated, Toast.LENGTH_SHORT).show();
+                    // 上传头像到服务器
+                    uploadAvatar(imageUri);
                 }
 
                 @Override
@@ -433,8 +441,62 @@ public class EditProfileActivity extends AppCompatActivity {
             
         } catch (Exception e) {
             LogUtils.e(TAG, "更新头像预览失败: " + e.getMessage(), e);
+            binding.progressAvatar.setVisibility(View.GONE);
             Toast.makeText(this, "头像更新失败", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    /**
+     * 上传头像到服务器
+     * @param imageUri 头像图片URI
+     */
+    private void uploadAvatar(Uri imageUri) {
+        if (imageUri == null) {
+            binding.progressAvatar.setVisibility(View.GONE);
+            Toast.makeText(this, "请选择有效的头像图片", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // 获取用户ID
+        Long userId = currentUser != null && currentUser.getId() > 0 ? 
+                currentUser.getId() : TokenManager.getInstance().getUserId();
+        
+        LogUtils.d(TAG, "开始上传头像，用户ID: " + userId);
+        
+        // 调用Repository上传头像
+        userRepository.uploadAvatar(userId, imageUri, new RepositoryCallback<String>() {
+            @Override
+            public void onSuccess(String imageUrl) {
+                runOnUiThread(() -> {
+                    binding.progressAvatar.setVisibility(View.GONE);
+                    
+                    // 保存返回的图片URL到用户对象
+                    if (currentUser != null && !TextUtils.isEmpty(imageUrl)) {
+                        currentUser.setAvatarUrl(imageUrl);
+                        LogUtils.d(TAG, "头像上传成功，服务器返回URL: " + imageUrl);
+                        
+                        // 显示上传成功消息
+                        Toast.makeText(EditProfileActivity.this, "头像上传成功", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+            
+            @Override
+            public void onError(String error) {
+                runOnUiThread(() -> {
+                    binding.progressAvatar.setVisibility(View.GONE);
+                    LogUtils.e(TAG, "头像上传失败: " + error);
+                    Toast.makeText(EditProfileActivity.this, "头像上传失败: " + error, Toast.LENGTH_SHORT).show();
+                    
+                    // 虽然上传失败，但本地预览已经更新，所以不需要恢复原来的头像
+                });
+            }
+            
+            @Override
+            public void isCacheData(boolean isCache) {
+                // 上传操作不涉及缓存数据
+            }
+        });
     }
 
     /**
@@ -513,6 +575,49 @@ public class EditProfileActivity extends AppCompatActivity {
         // 设置社交账号
         binding.etWechat.setText(user.getWechat());
         binding.etQq.setText(user.getQq());
+        
+        // 加载用户头像
+        if (!TextUtils.isEmpty(user.getAvatarUrl())) {
+            // 优先使用服务器返回的URL
+            LogUtils.d(TAG, "加载用户头像，服务器URL: " + user.getAvatarUrl());
+            String baseUrl = NetworkManager.getInstance().getBaseUrl();
+            // 拼接完整的URL，如果avatarUrl已经是完整URL则不需要拼接
+            String fullAvatarUrl = user.getAvatarUrl().startsWith("http") ? 
+                    user.getAvatarUrl() : baseUrl + user.getAvatarUrl();
+            
+            Glide.with(this)
+                    .load(fullAvatarUrl)
+                    .placeholder(R.drawable.ic_person)
+                    .error(R.drawable.ic_person)
+                    .circleCrop()
+                    .into(binding.ivAvatar);
+        } else if (!TextUtils.isEmpty(user.getAvatar())) {
+            // 如果没有服务器URL，尝试使用本地URI
+            LogUtils.d(TAG, "加载用户头像，本地URI: " + user.getAvatar());
+            try {
+                Uri avatarUri = Uri.parse(user.getAvatar());
+                Glide.with(this)
+                        .load(avatarUri)
+                        .placeholder(R.drawable.ic_person)
+                        .error(R.drawable.ic_person)
+                        .circleCrop()
+                        .into(binding.ivAvatar);
+            } catch (Exception e) {
+                LogUtils.e(TAG, "解析头像URI失败: " + e.getMessage(), e);
+                // 使用默认头像
+                Glide.with(this)
+                        .load(R.drawable.ic_person)
+                        .circleCrop()
+                        .into(binding.ivAvatar);
+            }
+        } else {
+            // 使用默认头像
+            LogUtils.d(TAG, "用户无头像，使用默认头像");
+            Glide.with(this)
+                    .load(R.drawable.ic_person)
+                    .circleCrop()
+                    .into(binding.ivAvatar);
+        }
     }
 
     /**

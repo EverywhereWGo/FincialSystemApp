@@ -27,7 +27,8 @@ public class User implements Serializable {
     private String wechat;
     private String qq;
     private int gender; // 性别 0:未知 1:男 2:女
-    private String avatar; // 头像路径
+    private String avatar; // 头像路径（本地）
+    private String avatarUrl; // 头像服务器URL
     private String signature; // 个性签名
     
     public User() {
@@ -212,6 +213,14 @@ public class User implements Serializable {
         this.avatar = avatar;
     }
     
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+    
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
+    }
+    
     public String getSignature() {
         return signature;
     }
@@ -266,6 +275,7 @@ public class User implements Serializable {
                 ", qq='" + qq + '\'' +
                 ", gender=" + gender +
                 ", avatar='" + avatar + '\'' +
+                ", avatarUrl='" + avatarUrl + '\'' +
                 ", signature='" + signature + '\'' +
                 ", lastLoginTime=" + lastLoginTime +
                 '}';

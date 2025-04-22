@@ -7,12 +7,17 @@ import com.zjf.fincialsystem.network.model.RegisterRequest;
 import com.zjf.fincialsystem.network.model.UpdateProfileRequest;
 import com.zjf.fincialsystem.model.User;
 
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.GET;
 import retrofit2.http.POST;
 import retrofit2.http.Path;
 import retrofit2.http.PUT;
+import retrofit2.http.Multipart;
+import retrofit2.http.Part;
+import retrofit2.http.Query;
 
 import java.util.Map;
 
@@ -50,6 +55,18 @@ public interface UserApiService {
      */
     @PUT("finance/user/profile")
     Call<ApiResponse<Boolean>> updateUserProfile(@Body UpdateProfileRequest request);
+    
+    /**
+     * 上传用户头像
+     * 根据接口文档：'/finance/user/avatar'
+     * 参数: avatarfile - 文件, userId - 用户ID
+     */
+    @Multipart
+    @POST("finance/user/avatar")
+    Call<ApiResponse<Map<String, String>>> uploadAvatar(
+            @Part MultipartBody.Part avatarfile,
+            @Part("userId") RequestBody userId
+    );
     
     /**
      * 财务系统退出登录
