@@ -12,6 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.zjf.fincialsystem.R;
 import com.zjf.fincialsystem.databinding.FragmentBudgetEditBinding;
 import com.zjf.fincialsystem.model.Budget;
@@ -26,6 +27,7 @@ import com.zjf.fincialsystem.utils.StatusBarUtils;
 import com.zjf.fincialsystem.utils.TokenManager;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 
 /**
@@ -168,11 +170,8 @@ public class BudgetEditFragment extends Fragment {
         Context context = getContext();
         if (context == null) return;
 
-        // 设置周期选择
-        String[] periods = {getString(R.string.budget_monthly), getString(R.string.budget_yearly)};
-        ArrayAdapter<String> periodAdapter = new ArrayAdapter<>(context, android.R.layout.simple_dropdown_item_1line, periods);
-        binding.spinnerPeriod.setAdapter(periodAdapter);
-        binding.spinnerPeriod.setText(periods[0], false);
+        // 初始化年月选择器，替换原来的周期选择下拉框
+        setupDatePickers();
 
         // 设置提醒阈值选择
         String[] thresholds = {"50%", "80%", "90%", "100%"};
@@ -213,6 +212,111 @@ public class BudgetEditFragment extends Fragment {
                 }
             }
         });
+    }
+
+    /**
+     * 设置年月选择器
+     */
+    private void setupDatePickers() {
+        // 获取当前年月
+        final Calendar currentDate = Calendar.getInstance();
+        final int currentYear = currentDate.get(Calendar.YEAR);
+        final int currentMonth = currentDate.get(Calendar.MONTH) + 1; // 月份从0开始
+
+        // 默认显示当前年月
+        if (editMode && existingBudget != null) {
+            binding.etYear.setText(String.valueOf(existingBudget.getYear()));
+            binding.etMonth.setText(String.valueOf(existingBudget.getMonth()));
+        } else {
+            binding.etYear.setText(String.valueOf(currentYear));
+            binding.etMonth.setText(String.valueOf(currentMonth));
+        }
+
+        // 年份选择器
+        binding.etYear.setOnClickListener(v -> {
+            showYearPickerDialog(currentYear);
+        });
+
+        // 月份选择器
+        binding.etMonth.setOnClickListener(v -> {
+            int selectedYear = Integer.parseInt(binding.etYear.getText().toString());
+            showMonthPickerDialog(selectedYear, currentYear, currentMonth);
+        });
+    }
+
+    /**
+     * 显示年份选择对话框
+     */
+    private void showYearPickerDialog(int currentYear) {
+        // 创建一个包含未来5年和当前年的选项
+        final String[] years = new String[6];
+        for (int i = 0; i < years.length; i++) {
+            years[i] = String.valueOf(currentYear + i);
+        }
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.select_year)
+                .setItems(years, (dialog, which) -> {
+                    String selectedYear = years[which];
+                    binding.etYear.setText(selectedYear);
+                    
+                    // 检查月份选择是否需要调整
+                    checkAndUpdateMonthSelection();
+                })
+                .show();
+    }
+
+    /**
+     * 显示月份选择对话框
+     */
+    private void showMonthPickerDialog(int selectedYear, int currentYear, int currentMonth) {
+        // 创建1-12月的选项
+        final String[] months = new String[12];
+        for (int i = 0; i < 12; i++) {
+            months[i] = String.valueOf(i + 1);
+        }
+
+        // 如果选择的是当前年，只能选择当前月及之后的月份
+        int startPosition = 0;
+        if (selectedYear == currentYear) {
+            startPosition = currentMonth - 1;
+        }
+
+        final String[] availableMonths = new String[12 - startPosition];
+        System.arraycopy(months, startPosition, availableMonths, 0, availableMonths.length);
+
+        if (availableMonths.length == 0) {
+            Toast.makeText(requireContext(), R.string.cannot_select_past_date, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.select_month)
+                .setItems(availableMonths, (dialog, which) -> {
+                    String selectedMonth = availableMonths[which];
+                    binding.etMonth.setText(selectedMonth);
+                })
+                .show();
+    }
+
+    /**
+     * 检查并更新月份选择
+     */
+    private void checkAndUpdateMonthSelection() {
+        try {
+            int selectedYear = Integer.parseInt(binding.etYear.getText().toString());
+            int selectedMonth = Integer.parseInt(binding.etMonth.getText().toString());
+            int currentYear = Calendar.getInstance().get(Calendar.YEAR);
+            int currentMonth = Calendar.getInstance().get(Calendar.MONTH) + 1;
+
+            // 如果选择的是当前年，且月份早于当前月，则调整为当前月
+            if (selectedYear == currentYear && selectedMonth < currentMonth) {
+                binding.etMonth.setText(String.valueOf(currentMonth));
+                Toast.makeText(requireContext(), R.string.cannot_select_past_date, Toast.LENGTH_SHORT).show();
+            }
+        } catch (NumberFormatException e) {
+            LogUtils.e(TAG, "检查月份选择时出错：" + e.getMessage());
+        }
     }
 
     /**
@@ -342,12 +446,9 @@ public class BudgetEditFragment extends Fragment {
         // 设置金额
         binding.etAmount.setText(String.valueOf(existingBudget.getAmount()));
 
-        // 设置周期
-        if (Budget.PERIOD_YEARLY.equals(existingBudget.getPeriod())) {
-            binding.spinnerPeriod.setText(getString(R.string.budget_yearly), false);
-        } else {
-            binding.spinnerPeriod.setText(getString(R.string.budget_monthly), false);
-        }
+        // 设置年月
+        binding.etYear.setText(String.valueOf(existingBudget.getYear()));
+        binding.etMonth.setText(String.valueOf(existingBudget.getMonth()));
 
         // 设置通知开关
         binding.switchNotify.setChecked(existingBudget.isNotifyEnabled());
@@ -401,11 +502,32 @@ public class BudgetEditFragment extends Fragment {
                 return;
             }
 
-            // 获取周期
-            String periodStr = binding.spinnerPeriod.getText().toString().trim();
-            String period = Budget.PERIOD_MONTHLY;
-            if (getString(R.string.budget_yearly).equals(periodStr)) {
-                period = Budget.PERIOD_YEARLY;
+            // 获取年月
+            String yearStr = binding.etYear.getText().toString().trim();
+            String monthStr = binding.etMonth.getText().toString().trim();
+            
+            if (yearStr.isEmpty() || monthStr.isEmpty()) {
+                Toast.makeText(context, "请选择年份和月份", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            int year, month;
+            try {
+                year = Integer.parseInt(yearStr);
+                month = Integer.parseInt(monthStr);
+            } catch (NumberFormatException e) {
+                Toast.makeText(context, "年份和月份格式不正确", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            // 验证选择的日期不能是过去的日期
+            Calendar currentDate = Calendar.getInstance();
+            int currentYear = currentDate.get(Calendar.YEAR);
+            int currentMonth = currentDate.get(Calendar.MONTH) + 1;
+            
+            if (year < currentYear || (year == currentYear && month < currentMonth)) {
+                Toast.makeText(context, R.string.cannot_select_past_date, Toast.LENGTH_SHORT).show();
+                return;
             }
 
             // 获取分类
@@ -447,7 +569,8 @@ public class BudgetEditFragment extends Fragment {
             if (editMode && existingBudget != null) {
                 // 编辑现有预算
                 existingBudget.setAmount(amount);
-                existingBudget.setPeriod(period);
+                existingBudget.setYear(year);
+                existingBudget.setMonth(month);
                 existingBudget.setCategoryId(selectedCategory.getId());
                 existingBudget.setNotifyPercent(notifyPercent);
                 existingBudget.setNotifyEnabled(notifyEnabled);
@@ -491,12 +614,19 @@ public class BudgetEditFragment extends Fragment {
 
                 AddBudgetRequest request = new AddBudgetRequest();
                 request.setUserId(userId);
-                request.setWarningThreshold(notifyPercent);
                 request.setCategoryId(selectedCategory.getId());
-                request.setCategoryName(selectedCategory.getName());
                 request.setAmount(amount);
-                request.setWarned(false);
+                request.setYear(year);
+                request.setMonth(month);
+                request.setWarningThreshold(notifyPercent);
+                request.setRemark(""); // 使用空字符串，因为布局中不存在etRemark控件
 
+                LogUtils.d(TAG, "创建预算请求: 用户ID=" + userId 
+                        + ", 分类ID=" + selectedCategory.getId() 
+                        + ", 金额=" + amount 
+                        + ", 年份=" + year 
+                        + ", 月份=" + month 
+                        + ", 警告阈值=" + notifyPercent);
 
                 // 保存预算
                 budgetRepository.addBudget(request, new RepositoryCallback<Budget>() {

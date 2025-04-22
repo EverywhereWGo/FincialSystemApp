@@ -297,14 +297,21 @@ public class BudgetFragment extends Fragment implements BudgetAdapter.OnBudgetCl
     }
     
     /**
-     * 显示预算设置对话框
-     * @param budget 要编辑的预算，为null表示新增
+     * 显示预算对话框
+     * @param budget 要编辑的预算，如果为null则创建新预算
      */
     private void showBudgetDialog(Budget budget) {
         try {
             // 创建并显示BudgetEditFragment
             BudgetEditFragment fragment = BudgetEditFragment.newInstance(budget);
             if (getParentFragmentManager() != null) {
+                // 确保修改的预算使用正确的年份和月份
+                if (budget != null) {
+                    budget.setYear(currentDate.get(Calendar.YEAR));
+                    budget.setMonth(currentDate.get(Calendar.MONTH) + 1);
+                    LogUtils.d(TAG, "为预算设置年份: " + budget.getYear() + " 月份: " + budget.getMonth());
+                }
+                
                 getParentFragmentManager().beginTransaction()
                     .replace(R.id.fragment_container, fragment)
                     .addToBackStack(null)
@@ -417,68 +424,69 @@ public class BudgetFragment extends Fragment implements BudgetAdapter.OnBudgetCl
     }
     
     /**
-     * 显示年月选择器
+     * 显示月份年份选择器
      */
     private void showMonthYearPicker() {
-        if (getContext() == null) {
-            return;
+        try {
+            // 使用MaterialAlertDialogBuilder创建一个对话框
+            View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_month_year_picker, null);
+            AlertDialog.Builder builder = new MaterialAlertDialogBuilder(getContext());
+            builder.setView(dialogView);
+            
+            // 获取对话框中的年份和月份选择器
+            NumberPicker monthPicker = dialogView.findViewById(R.id.month_picker);
+            NumberPicker yearPicker = dialogView.findViewById(R.id.year_picker);
+            
+            // 配置月份选择器
+            String[] months = new String[]{"1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"};
+            monthPicker.setMinValue(1);
+            monthPicker.setMaxValue(12);
+            monthPicker.setDisplayedValues(months);
+            
+            // 配置年份选择器 - 允许选择5年前到5年后的年份
+            int currentYear = Calendar.getInstance().get(Calendar.YEAR);
+            yearPicker.setMinValue(currentYear - 5);
+            yearPicker.setMaxValue(currentYear + 5);
+            
+            // 设置当前选中的年份和月份
+            monthPicker.setValue(currentDate.get(Calendar.MONTH) + 1); // 月份索引从0开始，显示时+1
+            yearPicker.setValue(currentDate.get(Calendar.YEAR));
+            
+            // 创建并显示对话框
+            AlertDialog dialog = builder.create();
+            
+            // 设置确定按钮
+            dialogView.findViewById(R.id.btn_ok).setOnClickListener(v -> {
+                // 获取选中的年月
+                int selectedMonth = monthPicker.getValue() - 1; // 月份索引从0开始，所以-1
+                int selectedYear = yearPicker.getValue();
+                
+                // 设置当前选择的日期
+                currentDate.set(Calendar.YEAR, selectedYear);
+                currentDate.set(Calendar.MONTH, selectedMonth);
+                
+                // 更新UI
+                updatePeriodText();
+                
+                // 加载新的预算数据
+                loadBudgetDataWithoutClear();
+                
+                // 关闭对话框
+                dialog.dismiss();
+                
+                LogUtils.d(TAG, "用户选择了预算期间: " + selectedYear + "年" + (selectedMonth + 1) + "月");
+            });
+            
+            // 设置取消按钮
+            dialogView.findViewById(R.id.btn_cancel).setOnClickListener(v -> {
+                dialog.dismiss();
+            });
+            
+            dialog.show();
+        } catch (Exception e) {
+            LogUtils.e(TAG, "显示日期选择器失败: " + e.getMessage(), e);
+            Toast.makeText(getContext(), R.string.error_msg, Toast.LENGTH_SHORT).show();
         }
-        
-        // 创建一个对话框
-        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_month_year_picker, null);
-        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-        builder.setView(dialogView);
-        
-        // 获取对话框中的年份和月份选择器
-        NumberPicker monthPicker = dialogView.findViewById(R.id.month_picker);
-        NumberPicker yearPicker = dialogView.findViewById(R.id.year_picker);
-        
-        // 配置月份选择器
-        String[] months = new String[]{"1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"};
-        monthPicker.setMinValue(1);
-        monthPicker.setMaxValue(12);
-        monthPicker.setDisplayedValues(months);
-        
-        // 配置年份选择器
-        int currentYear = Calendar.getInstance().get(Calendar.YEAR);
-        yearPicker.setMinValue(currentYear - 5); // 允许选择从5年前到5年后的年份
-        yearPicker.setMaxValue(currentYear + 5);
-        
-        // 设置初始选中的年份和月份
-        yearPicker.setValue(currentDate.get(Calendar.YEAR));
-        monthPicker.setValue(currentDate.get(Calendar.MONTH) + 1); // 月份是从0开始的，所以+1
-        
-        // 创建并显示对话框
-        AlertDialog dialog = builder.create();
-        
-        // 设置确定按钮
-        dialogView.findViewById(R.id.btn_ok).setOnClickListener(v -> {
-            // 获取选中的年月
-            int selectedYear = yearPicker.getValue();
-            int selectedMonth = monthPicker.getValue() - 1; // 月份是从0开始的，所以-1
-            
-            // 记录日志
-            LogUtils.d(TAG, "用户选择了日期: " + selectedYear + "年" + (selectedMonth + 1) + "月");
-            
-            // 更新日期
-            currentDate.set(Calendar.YEAR, selectedYear);
-            currentDate.set(Calendar.MONTH, selectedMonth); 
-            currentDate.set(Calendar.DAY_OF_MONTH, 1); // 设置为当月第一天
-            
-            // 更新UI
-            updatePeriodText();
-            loadBudgetDataWithoutClear();
-            
-            // 关闭对话框
-            dialog.dismiss();
-        });
-        
-        // 设置取消按钮
-        dialogView.findViewById(R.id.btn_cancel).setOnClickListener(v -> {
-            dialog.dismiss();
-        });
-        
-        dialog.show();
     }
     
     @Override
@@ -507,7 +515,6 @@ public class BudgetFragment extends Fragment implements BudgetAdapter.OnBudgetCl
 
     @Override
     public void onBudgetSaved(Budget budget) {
-        // 预算保存成功后刷新列表
         loadBudgetData();
         if (getContext() != null) {
             Toast.makeText(getContext(), R.string.budget_save_success, Toast.LENGTH_SHORT).show();

@@ -26,6 +26,9 @@ public class User implements Serializable {
     private String lockedUntil;
     private String wechat;
     private String qq;
+    private int gender; // 性别 0:未知 1:男 2:女
+    private String avatar; // 头像路径
+    private String signature; // 个性签名
     
     public User() {
         // 默认构造函数
@@ -193,6 +196,30 @@ public class User implements Serializable {
         this.qq = qq;
     }
     
+    public int getGender() {
+        return gender;
+    }
+    
+    public void setGender(int gender) {
+        this.gender = gender;
+    }
+    
+    public String getAvatar() {
+        return avatar;
+    }
+    
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
+    }
+    
+    public String getSignature() {
+        return signature;
+    }
+    
+    public void setSignature(String signature) {
+        this.signature = signature;
+    }
+    
     /**
      * 增加登录失败次数
      */
@@ -235,6 +262,11 @@ public class User implements Serializable {
                 ", email='" + email + '\'' +
                 ", phone='" + phone + '\'' +
                 ", role='" + role + '\'' +
+                ", wechat='" + wechat + '\'' +
+                ", qq='" + qq + '\'' +
+                ", gender=" + gender +
+                ", avatar='" + avatar + '\'' +
+                ", signature='" + signature + '\'' +
                 ", lastLoginTime=" + lastLoginTime +
                 '}';
     }

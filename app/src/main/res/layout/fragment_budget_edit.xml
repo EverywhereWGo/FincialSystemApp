@@ -94,30 +94,65 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
-            <!-- 预算周期下拉框 -->
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/tilPeriod"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+            <!-- 预算周期选择布局 - 替换原来的下拉框 -->
+            <LinearLayout
+                android:id="@+id/layoutPeriodSelection"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:hint="@string/budget_period_hint"
-                android:textColorHint="@color/text_secondary"
-                app:boxStrokeColor="@color/colorPrimary"
-                app:hintTextColor="@color/colorPrimary"
+                android:orientation="horizontal"
                 app:layout_constraintTop_toBottomOf="@id/tvPeriodLabel">
 
-                <AutoCompleteTextView
-                    android:id="@+id/spinnerPeriod"
-                    android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:inputType="none"
-                    android:paddingTop="16dp"
-                    android:paddingBottom="16dp"
-                    android:textColor="@color/text_primary"
-                    android:textSize="@dimen/text_size_medium" />
+                <!-- 年份选择 -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilYear"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="4dp"
+                    android:hint="@string/year"
+                    android:textColorHint="@color/text_secondary"
+                    app:boxStrokeColor="@color/colorPrimary"
+                    app:hintTextColor="@color/colorPrimary">
 
-            </com.google.android.material.textfield.TextInputLayout>
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etYear"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:focusable="false"
+                        android:clickable="true"
+                        android:inputType="none"
+                        android:textColor="@color/text_primary"
+                        android:textSize="@dimen/text_size_medium" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- 月份选择 -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilMonth"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="4dp"
+                    android:hint="@string/month"
+                    android:textColorHint="@color/text_secondary"
+                    app:boxStrokeColor="@color/colorPrimary"
+                    app:hintTextColor="@color/colorPrimary">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etMonth"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:focusable="false"
+                        android:clickable="true"
+                        android:inputType="none"
+                        android:textColor="@color/text_primary"
+                        android:textSize="@dimen/text_size_medium" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+            </LinearLayout>
 
             <!-- 分类标签 (现在是第二个) -->
             <TextView
@@ -130,7 +165,7 @@
                 android:textSize="@dimen/text_size_large"
                 android:textStyle="bold"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/tilPeriod" />
+                app:layout_constraintTop_toBottomOf="@id/layoutPeriodSelection" />
 
             <!-- 分类下拉框 -->
             <com.google.android.material.textfield.TextInputLayout

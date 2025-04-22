@@ -155,6 +155,11 @@
     <string name="data_load_error">数据加载错误</string>
     <string name="select_month_year">选择年月</string>
     <string name="confirm">确定</string>
+    <string name="year">年份</string>
+    <string name="month">月份</string>
+    <string name="select_year">选择年份</string>
+    <string name="select_month">选择月份</string>
+    <string name="cannot_select_past_date">不能选择过去的日期</string>
     
     <!-- 统计 -->
     <string name="statistics_income">收入统计</string>
@@ -258,6 +263,7 @@
     <string name="username_format_error">用户名必须为5-20位字母、数字、下划线组合，不能为纯数字</string>
     <string name="phone_format_error">手机号格式不正确，请输入有效的11位手机号</string>
     <string name="email_format_error">邮箱格式不正确，请输入有效的邮箱地址</string>
+    <string name="error_msg">操作出错，请重试</string>
     
     <!-- 关于 -->
     <string name="version">版本</string>

@@ -11,6 +11,7 @@ import com.zjf.fincialsystem.network.api.UserApiService;
 import com.zjf.fincialsystem.network.model.LoginRequest;
 import com.zjf.fincialsystem.network.model.LoginResponse;
 import com.zjf.fincialsystem.network.model.RegisterRequest;
+import com.zjf.fincialsystem.network.model.UpdateProfileRequest;
 import com.zjf.fincialsystem.utils.DeviceUtils;
 import com.zjf.fincialsystem.utils.LogUtils;
 import com.zjf.fincialsystem.utils.NetworkUtils;
@@ -451,10 +452,10 @@ public class UserRepository {
 
     /**
      * 更新用户资料
-     * @param user 用户对象
+     * @param request 更新用户资料请求对象
      * @param callback 回调
      */
-    public void updateUserProfile(User user, final RepositoryCallback<Boolean> callback) {
+    public void updateUserProfile(UpdateProfileRequest request, final RepositoryCallback<Boolean> callback) {
         // 检查网络状态
         if (!NetworkUtils.isNetworkAvailable(context)) {
             callback.onError("无网络连接，无法更新用户资料");
@@ -467,20 +468,10 @@ public class UserRepository {
             return;
         }
         
-        // 实际项目中应调用真实API，这里模拟一个成功的响应
-        // 模拟网络延迟
-        new android.os.Handler().postDelayed(() -> {
-            try {
-                // 模拟成功响应
-                callback.onSuccess(true);
-            } catch (Exception e) {
-                LogUtils.e(TAG, "更新用户资料失败", e);
-                callback.onError("更新用户资料失败: " + e.getMessage());
-            }
-        }, 1500); // 1.5秒延迟模拟网络请求
+        // 调用API更新用户资料
+        LogUtils.d(TAG, "调用接口更新用户资料：/finance/user/profile, 用户ID=" + request.getId());
         
-        /* 实际API调用应该类似这样：
-        apiService.updateUserProfile(user).enqueue(new Callback<ApiResponse<Boolean>>() {
+        apiService.updateUserProfile(request).enqueue(new Callback<ApiResponse<Boolean>>() {
             @Override
             public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
                 if (response.isSuccessful() && response.body() != null) {
@@ -501,7 +492,6 @@ public class UserRepository {
                 callback.onError("更新用户资料失败: " + t.getMessage());
             }
         });
-        */
     }
 
     private String findResponseFromLogs(Response<ApiResponse<LoginResponse>> response) {

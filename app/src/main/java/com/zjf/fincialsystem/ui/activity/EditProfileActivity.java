@@ -37,6 +37,7 @@ import com.bumptech.glide.request.transition.Transition;
 import com.zjf.fincialsystem.R;
 import com.zjf.fincialsystem.databinding.ActivityEditProfileBinding;
 import com.zjf.fincialsystem.model.User;
+import com.zjf.fincialsystem.network.model.UpdateProfileRequest;
 import com.zjf.fincialsystem.repository.RepositoryCallback;
 import com.zjf.fincialsystem.repository.UserRepository;
 import com.zjf.fincialsystem.utils.LogUtils;
@@ -340,6 +341,12 @@ public class EditProfileActivity extends AppCompatActivity {
         LogUtils.d(TAG, "更新头像预览，图片URI：" + imageUri.toString());
         
         try {
+            // 将头像URI保存到当前用户对象中
+            if (currentUser != null) {
+                currentUser.setAvatar(imageUri.toString());
+                LogUtils.d(TAG, "已将头像URI保存到用户对象中：" + imageUri.toString());
+            }
+            
             // 清除ImageView的背景和内边距，它们可能影响图片显示
             binding.ivAvatar.setBackground(null);
             binding.ivAvatar.setPadding(0, 0, 0, 0);
@@ -532,14 +539,41 @@ public class EditProfileActivity extends AppCompatActivity {
             return;
         }
 
-        // 更新用户对象
-        currentUser.setNickname(nickname);
-        currentUser.setEmail(email);
-        currentUser.setPhone(phone);
-        currentUser.setWechat(wechat);
-        currentUser.setQq(qq);
+        // 验证邮箱格式（如果填写了邮箱）
+        if (!TextUtils.isEmpty(email) && !Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            Toast.makeText(this, "邮箱格式不正确", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
-        LogUtils.d(TAG, "保存用户信息: ID=" + currentUser.getId() + 
+        // 验证手机号格式（如果填写了手机号）
+        if (!TextUtils.isEmpty(phone) && phone.length() != 11) {
+            Toast.makeText(this, "手机号必须是11位", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // 创建一个新的用户对象，只包含接口所需的字段
+        UpdateProfileRequest profileUpdateRequest = new UpdateProfileRequest();
+        
+        // 设置必填字段
+        profileUpdateRequest.setId(currentUser.getId() > 0 ?
+                currentUser.getId() : TokenManager.getInstance().getUserId());
+        profileUpdateRequest.setNickname(nickname);
+        profileUpdateRequest.setEmail(email);
+        profileUpdateRequest.setPhone(phone);
+        
+        // 设置选填字段
+        profileUpdateRequest.setWechat(wechat);
+        profileUpdateRequest.setQq(qq);
+        // 保留avatar字段（如果存在）因为接口文档中标明为选填
+        if (currentUser.getAvatar() != null) {
+            profileUpdateRequest.setAvatar(currentUser.getAvatar());
+        }
+        
+        // 设置性别和个性签名为默认值或保留现有值
+        profileUpdateRequest.setGender(currentUser.getGender());
+        profileUpdateRequest.setSignature(currentUser.getSignature());
+
+        LogUtils.d(TAG, "保存用户信息: userId=" + profileUpdateRequest.getId() +
                 ", 昵称=" + nickname + 
                 ", 电话=" + phone + 
                 ", 邮箱=" + email);
@@ -547,7 +581,7 @@ public class EditProfileActivity extends AppCompatActivity {
         showLoading(true);
 
         // 调用API保存用户信息
-        userRepository.updateUserProfile(currentUser, new RepositoryCallback<Boolean>() {
+        userRepository.updateUserProfile(profileUpdateRequest, new RepositoryCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean result) {
                 runOnUiThread(() -> {

@@ -49,14 +49,22 @@ public class BudgetRepository {
             // 有网络连接，从网络获取数据
             // 获取月份作为整数参数 (如果是monthly，使用选定月份数字，否则传null)
             Integer monthParam = null;
+            Integer yearParam = null;
+            
+            // 使用选定的日期，如果没有则使用当前日期
+            Calendar cal = selectedDate != null ? selectedDate : Calendar.getInstance();
+            // 获取年份
+            yearParam = cal.get(Calendar.YEAR);
+            
             if (Budget.PERIOD_MONTHLY.equals(period)) {
-                // 使用选定的日期，如果没有则使用当前日期
-                Calendar cal = selectedDate != null ? selectedDate : Calendar.getInstance();
                 // 获取月份(1-12)
                 monthParam = cal.get(Calendar.MONTH) + 1;
-                LogUtils.d(TAG, "查询预算数据，月份: " + monthParam + "，年份: " + cal.get(Calendar.YEAR));
+                LogUtils.d(TAG, "查询预算数据，月份: " + monthParam + "，年份: " + yearParam);
+            } else {
+                LogUtils.d(TAG, "查询预算数据，年份: " + yearParam);
             }
-            apiService.getBudgets(1, 100, null, monthParam, TokenManager.getInstance().getUserId()).enqueue(new Callback<ApiResponse<Budget>>() {
+            
+            apiService.getBudgets(1, 100, null, monthParam, yearParam, TokenManager.getInstance().getUserId()).enqueue(new Callback<ApiResponse<Budget>>() {
                 @Override
                 public void onResponse(Call<ApiResponse<Budget>> call, Response<ApiResponse<Budget>> response) {
                     if (response.isSuccessful() && response.body() != null) {
@@ -252,7 +260,14 @@ public class BudgetRepository {
             return;
         }
         
-        apiService.deleteBudget(String.valueOf(budgetId)).enqueue(new Callback<ApiResponse<String>>() {
+        // 获取当前登录用户ID
+        long userId = TokenManager.getInstance().getUserId();
+        if (userId <= 0) {
+            callback.onError("用户未登录，无法删除预算");
+            return;
+        }
+        
+        apiService.deleteBudget(String.valueOf(budgetId), userId).enqueue(new Callback<ApiResponse<String>>() {
             @Override
             public void onResponse(Call<ApiResponse<String>> call, Response<ApiResponse<String>> response) {
                 if (response.isSuccessful() && response.body() != null) {
@@ -282,6 +297,49 @@ public class BudgetRepository {
             public void onFailure(Call<ApiResponse<String>> call, Throwable t) {
                 LogUtils.e(TAG, "删除预算失败", t);
                 callback.onError("删除预算失败: " + t.getMessage());
+            }
+        });
+    }
+    
+    /**
+     * 获取预算详情
+     * @param budgetId 预算ID
+     * @param callback 回调
+     */
+    public void getBudgetDetail(long budgetId, final RepositoryCallback<Budget> callback) {
+        // 检查网络状态
+        if (!NetworkUtils.isNetworkAvailable(context)) {
+            callback.onError("无网络连接，无法获取预算详情");
+            return;
+        }
+        
+        // 获取当前登录用户ID
+        long userId = TokenManager.getInstance().getUserId();
+        if (userId <= 0) {
+            callback.onError("用户未登录，无法获取预算详情");
+            return;
+        }
+        
+        apiService.getBudgetDetail(budgetId, userId).enqueue(new Callback<ApiResponse<Budget>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<Budget>> call, Response<ApiResponse<Budget>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    ApiResponse<Budget> apiResponse = response.body();
+                    if (apiResponse.isSuccess()) {
+                        Budget budget = apiResponse.getData();
+                        callback.onSuccess(budget);
+                    } else {
+                        callback.onError(apiResponse.getMsg());
+                    }
+                } else {
+                    callback.onError("网络请求失败");
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<ApiResponse<Budget>> call, Throwable t) {
+                LogUtils.e(TAG, "获取预算详情失败", t);
+                callback.onError("获取预算详情失败: " + t.getMessage());
             }
         });
     }

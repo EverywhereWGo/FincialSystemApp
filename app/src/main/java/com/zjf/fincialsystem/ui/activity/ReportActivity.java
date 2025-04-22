@@ -552,7 +552,7 @@ public class ReportActivity extends AppCompatActivity {
                         }
                         
                         // 创建饼图条目
-                        List<PieEntry> entries = new ArrayList<>();
+                            List<PieEntry> entries = new ArrayList<>();
                         for (Map<String, Object> category : categories) {
                             // 尝试从不同的键获取分类名称
                             String name = null;
@@ -581,8 +581,8 @@ public class ReportActivity extends AppCompatActivity {
                         }
                         
                         if (entries.isEmpty()) {
-                            binding.pieChart.setNoDataText(getString(R.string.no_data));
-                            binding.pieChart.invalidate();
+                                binding.pieChart.setNoDataText(getString(R.string.no_data));
+                                binding.pieChart.invalidate();
                             LogUtils.d(TAG, "处理后没有有效的饼图条目，显示无数据提示");
                             return;
                         }
@@ -637,19 +637,19 @@ public class ReportActivity extends AppCompatActivity {
             binding.pieChart.clear();
             
             // 创建数据集
-            PieDataSet dataSet = new PieDataSet(entries, "");
-            dataSet.setSliceSpace(3f);
-            dataSet.setSelectionShift(5f);
-            
-            // 设置饼图颜色
-            ArrayList<Integer> colors = new ArrayList<>();
-            for (int c : ColorTemplate.MATERIAL_COLORS)
-                colors.add(c);
-            for (int c : ColorTemplate.VORDIPLOM_COLORS)
-                colors.add(c);
-            colors.add(ColorTemplate.getHoloBlue());
-            dataSet.setColors(colors);
-            
+        PieDataSet dataSet = new PieDataSet(entries, "");
+        dataSet.setSliceSpace(3f);
+        dataSet.setSelectionShift(5f);
+        
+        // 设置饼图颜色
+        ArrayList<Integer> colors = new ArrayList<>();
+        for (int c : ColorTemplate.MATERIAL_COLORS)
+            colors.add(c);
+        for (int c : ColorTemplate.VORDIPLOM_COLORS)
+            colors.add(c);
+        colors.add(ColorTemplate.getHoloBlue());
+        dataSet.setColors(colors);
+        
             // 设置值格式
             dataSet.setValueFormatter(new PercentFormatter(binding.pieChart));
             dataSet.setValueTextSize(11f);
@@ -659,20 +659,20 @@ public class ReportActivity extends AppCompatActivity {
             
             // 创建饼图数据
             PieData data = new PieData(dataSet);
-            binding.pieChart.setData(data);
+        binding.pieChart.setData(data);
             
             // 更新图表
             binding.pieChart.invalidate();
             
             // 应用动画
             binding.pieChart.animateY(1000, Easing.EaseInOutQuad);
-            
+        
             LogUtils.d(TAG, "饼图数据设置完成");
         } catch (Exception e) {
             LogUtils.e(TAG, "设置饼图数据时发生错误: " + e.getMessage(), e);
             // 出错时显示错误信息
             binding.pieChart.setNoDataText(getString(R.string.data_load_failed));
-            binding.pieChart.invalidate();
+        binding.pieChart.invalidate();
         }
     }
     
@@ -702,8 +702,8 @@ public class ReportActivity extends AppCompatActivity {
         statisticsRepository.getDailyTransactions(year, month, new RepositoryCallback<List<Map<String, Object>>>() {
             @Override
             public void onSuccess(List<Map<String, Object>> dailyData) {
-                runOnUiThread(() -> {
-                    try {
+                        runOnUiThread(() -> {
+                            try {
                         if (dailyData != null && !dailyData.isEmpty()) {
                             LogUtils.d(TAG, "每日交易数据加载成功: " + dailyData.size() + " 条记录");
                             
@@ -832,8 +832,8 @@ public class ReportActivity extends AppCompatActivity {
         
         // 如果整个月都没有任何数据，显示无数据提示
         if (!hasAnyData) {
-            binding.barChart.setNoDataText(getString(R.string.no_data));
-            binding.barChart.invalidate();
+                                    binding.barChart.setNoDataText(getString(R.string.no_data));
+                                    binding.barChart.invalidate();
             LogUtils.d(TAG, "整个月没有任何交易数据，显示无数据提示");
             return;
         }
@@ -849,8 +849,8 @@ public class ReportActivity extends AppCompatActivity {
         // 创建图表数据
         List<BarEntry> expenseEntries = new ArrayList<>();
         List<BarEntry> incomeEntries = new ArrayList<>();
-        List<String> xLabels = new ArrayList<>();
-        
+                                    List<String> xLabels = new ArrayList<>();
+                                    
         // 为每个有数据的日期创建数据点
         int index = 0;
         for (int i = 0; i < sortedDays.size(); i++) {
@@ -885,7 +885,7 @@ public class ReportActivity extends AppCompatActivity {
         // 再次检查处理后是否有数据
         if (expenseEntries.isEmpty() && incomeEntries.isEmpty()) {
             binding.barChart.setNoDataText(getString(R.string.no_data));
-            binding.barChart.invalidate();
+                    binding.barChart.invalidate();
             LogUtils.d(TAG, "处理后没有有效的柱状图条目，显示无数据提示");
             return;
         }
@@ -911,7 +911,7 @@ public class ReportActivity extends AppCompatActivity {
         expenseDataSet.setColor(ContextCompat.getColor(this, R.color.expense));
         expenseDataSet.setValueTextSize(12f);
         expenseDataSet.setValueTextColor(Color.BLACK);
-        
+
         BarDataSet incomeDataSet = new BarDataSet(incomeEntries, getString(R.string.income));
         incomeDataSet.setColor(ContextCompat.getColor(this, R.color.income));
         incomeDataSet.setValueTextSize(12f);
@@ -976,7 +976,7 @@ public class ReportActivity extends AppCompatActivity {
         
         // 设置数据 - 必须在设置轴范围和分组之前
         binding.barChart.setData(data);
-        
+
         // 确保X轴可以容纳所有分组
         float axisMin = -0.5f;
         // 特别注意：为了确保可以滑动，X轴最大值必须大于数据点的最大索引

@@ -15,7 +15,11 @@ public class Budget implements Serializable {
     public static final String PERIOD_YEARLY = "yearly";
     
     private long id;
+    
+    @SerializedName("userId")
     private long userId;
+    
+    @SerializedName("categoryId")
     private long categoryId;
     
     @SerializedName("categoryName")

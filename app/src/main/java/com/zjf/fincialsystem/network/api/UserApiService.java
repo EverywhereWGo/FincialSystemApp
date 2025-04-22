@@ -4,6 +4,7 @@ import com.zjf.fincialsystem.network.ApiResponse;
 import com.zjf.fincialsystem.network.model.LoginRequest;
 import com.zjf.fincialsystem.network.model.LoginResponse;
 import com.zjf.fincialsystem.network.model.RegisterRequest;
+import com.zjf.fincialsystem.network.model.UpdateProfileRequest;
 import com.zjf.fincialsystem.model.User;
 
 import retrofit2.Call;
@@ -47,8 +48,8 @@ public interface UserApiService {
     /**
      * 更新用户资料
      */
-    @PUT("system/user/profile")
-    Call<ApiResponse<Boolean>> updateUserProfile(@Body User user);
+    @PUT("finance/user/profile")
+    Call<ApiResponse<Boolean>> updateUserProfile(@Body UpdateProfileRequest request);
     
     /**
      * 财务系统退出登录

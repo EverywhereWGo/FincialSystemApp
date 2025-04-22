@@ -30,13 +30,16 @@ public interface BudgetApiService {
             @Query("pageSize") Integer pageSize,
             @Query("categoryId") Long categoryId,
             @Query("month") Integer month,
+            @Query("year") Integer year,
             @Query("userId") Long userId);
 
     /**
      * 获取预算详情
      */
     @GET("finance/budget/{id}")
-    Call<ApiResponse<Budget>> getBudgetDetail(@Path("id") long id);
+    Call<ApiResponse<Budget>> getBudgetDetail(
+            @Path("id") long id,
+            @Query("userId") Long userId);
 
     /**
      * 获取某月的预算
@@ -44,7 +47,8 @@ public interface BudgetApiService {
     @GET("finance/budget/month")
     Call<ApiResponse<List<Map<String, Object>>>> getMonthBudgets(
             @Query("userId") Long userId,
-            @Query("month") String month);
+            @Query("year") Integer year,
+            @Query("month") Integer month);
 
     /**
      * 获取预算警告
@@ -52,7 +56,8 @@ public interface BudgetApiService {
     @GET("finance/budget/warning")
     Call<ApiResponse<List<Map<String, Object>>>> getWarningBudgets(
             @Query("userId") Long userId,
-            @Query("month") String month);
+            @Query("year") Integer year,
+            @Query("month") Integer month);
 
     /**
      * 添加预算
@@ -70,5 +75,7 @@ public interface BudgetApiService {
      * 删除预算
      */
     @DELETE("finance/budget/{ids}")
-    Call<ApiResponse<String>> deleteBudget(@Path("ids") String ids);
+    Call<ApiResponse<String>> deleteBudget(
+            @Path("ids") String ids,
+            @Query("userId") Long userId);
 } 
