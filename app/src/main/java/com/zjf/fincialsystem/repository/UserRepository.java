@@ -633,6 +633,7 @@ public class UserRepository {
                     }
                     
                     ApiResponse<Map<String, String>> apiResponse = response.body();
+                    LogUtils.d(TAG, "头像上传响应: data=" + apiResponse.getData());
                     LogUtils.d(TAG, "头像上传响应: code=" + apiResponse.getCode() + ", msg=" + apiResponse.getMsg());
                     
                     if (apiResponse.isSuccess()) {
@@ -640,6 +641,8 @@ public class UserRepository {
                         if (data != null && data.containsKey("imgUrl")) {
                             String imgUrl = data.get("imgUrl");
                             LogUtils.d(TAG, "头像上传成功，返回URL: " + imgUrl);
+                            // 保存头像URL到TokenManager
+                            tokenManager.saveUserAvatar(imgUrl);
                             callback.onSuccess(imgUrl);
                         } else {
                             LogUtils.e(TAG, "头像上传成功但未返回URL");

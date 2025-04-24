@@ -577,46 +577,67 @@ public class EditProfileActivity extends AppCompatActivity {
         binding.etQq.setText(user.getQq());
         
         // 加载用户头像
-        if (!TextUtils.isEmpty(user.getAvatarUrl())) {
-            // 优先使用服务器返回的URL
-            LogUtils.d(TAG, "加载用户头像，服务器URL: " + user.getAvatarUrl());
-            String baseUrl = NetworkManager.getInstance().getBaseUrl();
-            // 拼接完整的URL，如果avatarUrl已经是完整URL则不需要拼接
-            String fullAvatarUrl = user.getAvatarUrl().startsWith("http") ? 
-                    user.getAvatarUrl() : baseUrl + user.getAvatarUrl();
+        loadUserAvatar(user);
+    }
+    
+    /**
+     * 加载用户头像
+     */
+    private void loadUserAvatar(User user) {
+        // 显示加载指示器
+        binding.progressAvatar.setVisibility(View.VISIBLE);
+
+        try {
+            // 获取最佳头像URL
+            String avatarUrl = user.getBestAvatarUrl();
             
-            Glide.with(this)
-                    .load(fullAvatarUrl)
-                    .placeholder(R.drawable.ic_person)
-                    .error(R.drawable.ic_person)
-                    .circleCrop()
-                    .into(binding.ivAvatar);
-        } else if (!TextUtils.isEmpty(user.getAvatar())) {
-            // 如果没有服务器URL，尝试使用本地URI
-            LogUtils.d(TAG, "加载用户头像，本地URI: " + user.getAvatar());
-            try {
-                Uri avatarUri = Uri.parse(user.getAvatar());
+            if (avatarUrl != null && !avatarUrl.isEmpty()) {
+                // 如果是服务器URL，需要添加BaseUrl
+                if (avatarUrl.startsWith("/") && !avatarUrl.startsWith("//")) {
+                    // 获取基础URL
+                    String baseUrl = com.zjf.fincialsystem.network.NetworkManager.getInstance().getBaseUrl();
+                    avatarUrl = baseUrl + avatarUrl;
+                    LogUtils.d(TAG, "加载头像，完整URL: " + avatarUrl);
+                }
+                
+                // 使用Glide加载图片
                 Glide.with(this)
-                        .load(avatarUri)
+                        .load(avatarUrl)
                         .placeholder(R.drawable.ic_person)
                         .error(R.drawable.ic_person)
                         .circleCrop()
+                        .listener(new RequestListener<Drawable>() {
+                            @Override
+                            public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {
+                                binding.progressAvatar.setVisibility(View.GONE);
+                                LogUtils.e(TAG, "加载头像失败: " + e);
+                                return false;
+                            }
+
+                            @Override
+                            public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource dataSource, boolean isFirstResource) {
+                                binding.progressAvatar.setVisibility(View.GONE);
+                                LogUtils.d(TAG, "头像加载成功");
+                                return false;
+                            }
+                        })
                         .into(binding.ivAvatar);
-            } catch (Exception e) {
-                LogUtils.e(TAG, "解析头像URI失败: " + e.getMessage(), e);
+            } else {
                 // 使用默认头像
                 Glide.with(this)
                         .load(R.drawable.ic_person)
                         .circleCrop()
                         .into(binding.ivAvatar);
+                binding.progressAvatar.setVisibility(View.GONE);
             }
-        } else {
+        } catch (Exception e) {
+            LogUtils.e(TAG, "加载头像失败: " + e.getMessage(), e);
             // 使用默认头像
-            LogUtils.d(TAG, "用户无头像，使用默认头像");
             Glide.with(this)
                     .load(R.drawable.ic_person)
                     .circleCrop()
                     .into(binding.ivAvatar);
+            binding.progressAvatar.setVisibility(View.GONE);
         }
     }
 

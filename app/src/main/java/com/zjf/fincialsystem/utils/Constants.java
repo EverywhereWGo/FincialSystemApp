@@ -6,18 +6,21 @@ package com.zjf.fincialsystem.utils;
 public class Constants {
     
     // SharedPreferences配置
-    public static final String PREF_NAME = "fincialsystem_prefs";
+    public static final String PREF_NAME = "finance_pref";
     
     // Token相关
-    public static final String PREF_KEY_TOKEN = "key_token";
-    public static final String PREF_KEY_TOKEN_EXPIRY = "key_token_expiry";
+    public static final String PREF_KEY_TOKEN = "token";
+    public static final String PREF_KEY_TOKEN_EXPIRY = "token_expiry";
     
     // 用户信息相关
-    public static final String PREF_KEY_USER_ID = "key_user_id";
-    public static final String PREF_KEY_USERNAME = "key_username";
+    public static final String PREF_KEY_USER_ID = "user_id";
+    public static final String PREF_KEY_USER_NICKNAME = "user_nickname";
+    public static final String PREF_KEY_USER_EMAIL = "user_email";
+    public static final String PREF_KEY_USER_PHONE = "user_phone";
+    public static final String PREF_KEY_USER_AVATAR = "user_avatar";
     
     // 主题相关
-    public static final String PREF_KEY_THEME = "key_theme";
+    public static final String PREF_KEY_THEME = "theme";
     
     // 缓存相关
     public static final String PREF_CACHE_DIR = "cache_dir";

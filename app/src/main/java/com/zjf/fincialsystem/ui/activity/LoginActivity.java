@@ -156,7 +156,14 @@ public class LoginActivity extends AppCompatActivity {
             // 保存用户信息到本地数据库
             saveUserToLocalDb(user);
             // 保存用户ID到SharedPreferences
-            SharedPreferencesUtils.saveUserId(this, user.getId());
+            TokenManager.getInstance().saveUserId(user.getId());
+            
+            // 保存用户头像URL到TokenManager
+            if (user.getBestAvatarUrl() != null) {
+                TokenManager.getInstance().saveUserAvatar(user.getBestAvatarUrl());
+                LogUtils.d(TAG, "保存用户头像URL成功: " + user.getBestAvatarUrl());
+            }
+            
             LogUtils.d(TAG, "保存用户信息成功: " + user.toString());
         } else {
             LogUtils.w(TAG, "登录成功但未返回用户信息，将尝试单独获取");

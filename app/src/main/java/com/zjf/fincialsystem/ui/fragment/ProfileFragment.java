@@ -28,6 +28,9 @@ import com.zjf.fincialsystem.ui.activity.EditProfileActivity;
 import com.zjf.fincialsystem.utils.LogUtils;
 import com.zjf.fincialsystem.utils.TokenManager;
 import com.zjf.fincialsystem.utils.SecurityUtils;
+import com.zjf.fincialsystem.utils.NetworkUtils;
+import com.bumptech.glide.Glide;
+import com.zjf.fincialsystem.network.NetworkManager;
 
 /**
  * 个人资料Fragment
@@ -84,8 +87,36 @@ public class ProfileFragment extends Fragment {
             try {
                 // 跳转到图片查看页面
                 Intent intent = new Intent(requireContext(), ImageViewActivity.class);
-                // 传递图像资源ID
-                intent.putExtra(ImageViewActivity.EXTRA_IMAGE_RES_ID, R.drawable.ic_person);
+                
+                // 尝试获取头像URL
+                User currentUser = null;
+                if (userRepository != null) {
+                    // 从UserRepository获取当前用户信息
+                    long userId = TokenManager.getInstance().getUserId();
+                    currentUser = createMockUser(userId); // 先创建一个基本的用户数据作为兜底
+                }
+                
+                // 优先使用当前用户的头像URL
+                String avatarUrl = null;
+                if (currentUser != null) {
+                    avatarUrl = currentUser.getBestAvatarUrl();
+                }
+                
+                // 如果当前用户没有头像URL，尝试从TokenManager获取
+                if (avatarUrl == null || avatarUrl.isEmpty()) {
+                    avatarUrl = TokenManager.getInstance().getUserAvatar();
+                }
+                
+                // 如果有头像URL，则传递给图片查看页面
+                if (avatarUrl != null && !avatarUrl.isEmpty()) {
+                    LogUtils.d(TAG, "打开头像查看，URL: " + avatarUrl);
+                    intent.putExtra(ImageViewActivity.EXTRA_IMAGE_URL, avatarUrl);
+                } else {
+                    // 如果没有URL，则使用默认头像资源ID
+                    LogUtils.d(TAG, "打开头像查看，使用默认资源");
+                    intent.putExtra(ImageViewActivity.EXTRA_IMAGE_RES_ID, R.drawable.ic_person);
+                }
+                
                 startActivity(intent);
             } catch (Exception e) {
                 LogUtils.e(TAG, "打开头像查看失败：" + e.getMessage(), e);
@@ -216,6 +247,14 @@ public class ProfileFragment extends Fragment {
         user.setEmail("user" + userId + "@example.com");
         // 个人资料页面显示掩码格式的手机号，但确保格式与完整手机号一致
         user.setPhone("1380013****" + String.format("%04d", userId).substring(2));
+        
+        // 尝试从TokenManager获取缓存的头像URL
+        String cachedAvatarUrl = TokenManager.getInstance().getUserAvatar();
+        if (cachedAvatarUrl != null && !cachedAvatarUrl.isEmpty()) {
+            LogUtils.d(TAG, "从TokenManager恢复缓存的头像URL: " + cachedAvatarUrl);
+            user.setAvatarUrl(cachedAvatarUrl);
+        }
+        
         return user;
     }
     
@@ -233,6 +272,75 @@ public class ProfileFragment extends Fragment {
         
         // 设置手机号
         binding.tvPhone.setText(user.getPhone());
+        
+        // 加载用户头像
+        loadUserAvatar(user);
+    }
+    
+    /**
+     * 加载用户头像
+     */
+    private void loadUserAvatar(User user) {
+        LogUtils.d(TAG, "开始加载用户头像...");
+        
+        try {
+            // 优先尝试从传入的User对象获取头像URL
+            String avatarUrl = user.getBestAvatarUrl();
+            LogUtils.d(TAG, "从User对象获取的头像URL: " + (avatarUrl != null ? avatarUrl : "null"));
+            
+            // 如果User对象没有头像URL，尝试从TokenManager获取
+            if (avatarUrl == null || avatarUrl.isEmpty()) {
+                avatarUrl = TokenManager.getInstance().getUserAvatar();
+                LogUtils.d(TAG, "从TokenManager获取的头像URL: " + (avatarUrl != null ? avatarUrl : "null"));
+            }
+            
+            if (avatarUrl != null && !avatarUrl.isEmpty()) {
+                // 如果是服务器URL，需要添加BaseUrl
+                if (avatarUrl.startsWith("/") && !avatarUrl.startsWith("//")) {
+                    // 获取基础URL
+                    String baseUrl = com.zjf.fincialsystem.network.NetworkManager.getInstance().getBaseUrl();
+                    avatarUrl = baseUrl + avatarUrl;
+                    LogUtils.d(TAG, "完整头像URL: " + avatarUrl);
+                }
+                
+                // 先显示一个本地占位图，防止闪烁或空白
+                binding.ivAvatar.setImageResource(R.drawable.ic_person);
+                
+                final String finalAvatarUrl = avatarUrl;
+                // 使用Glide加载图片
+                if (isAdded() && getContext() != null) {
+                    Glide.with(getContext())
+                            .load(finalAvatarUrl)
+                            .placeholder(R.drawable.ic_person)
+                            .error(R.drawable.ic_person)
+                            .circleCrop()
+                            .listener(new com.bumptech.glide.request.RequestListener<android.graphics.drawable.Drawable>() {
+                                @Override
+                                public boolean onLoadFailed(@Nullable com.bumptech.glide.load.engine.GlideException e, Object model, com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable> target, boolean isFirstResource) {
+                                    LogUtils.e(TAG, "头像加载失败: " + finalAvatarUrl + ", 错误: " + (e != null ? e.getMessage() : "未知错误"));
+                                    return false;
+                                }
+                                
+                                @Override
+                                public boolean onResourceReady(android.graphics.drawable.Drawable resource, Object model, com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable> target, com.bumptech.glide.load.DataSource dataSource, boolean isFirstResource) {
+                                    LogUtils.d(TAG, "头像加载成功: " + finalAvatarUrl);
+                                    return false;
+                                }
+                            })
+                            .into(binding.ivAvatar);
+                } else {
+                    LogUtils.e(TAG, "Fragment已分离或上下文为空，无法加载头像");
+                }
+            } else {
+                LogUtils.w(TAG, "没有有效的头像URL，使用默认头像");
+                // 使用默认头像
+                binding.ivAvatar.setImageResource(R.drawable.ic_person);
+            }
+        } catch (Exception e) {
+            LogUtils.e(TAG, "加载头像异常: " + e.getMessage(), e);
+            // 使用默认头像
+            binding.ivAvatar.setImageResource(R.drawable.ic_person);
+        }
     }
     
     /**

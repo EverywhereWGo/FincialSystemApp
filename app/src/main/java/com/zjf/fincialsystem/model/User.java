@@ -221,6 +221,19 @@ public class User implements Serializable {
         this.avatarUrl = avatarUrl;
     }
     
+    /**
+     * 获取最佳的头像URL，优先使用服务器URL，如果没有则使用本地路径
+     * @return 最佳的头像URL
+     */
+    public String getBestAvatarUrl() {
+        if (avatarUrl != null && !avatarUrl.isEmpty()) {
+            return avatarUrl;
+        } else if (avatar != null && !avatar.isEmpty()) {
+            return avatar;
+        }
+        return null;
+    }
+    
     public String getSignature() {
         return signature;
     }
