@@ -335,13 +335,13 @@ public class BudgetEditFragment extends Fragment {
                 binding.spinnerCategory.setHint("正在加载分类...");
             }
 
-            LogUtils.d(TAG, "开始加载分类数据");
+            LogUtils.d(TAG, "开始加载分类数据，类型=支出(1)");
             categoryRepository.getCategories(Category.TYPE_EXPENSE, new RepositoryCallback<List<Category>>() {
                 @Override
                 public void onSuccess(List<Category> data) {
                     if (!isAdded() || getContext() == null) return;
 
-                    LogUtils.d(TAG, "成功加载分类数据，数量: " + data.size());
+                    LogUtils.d(TAG, "成功加载分类数据，类型=支出(1)，数量: " + data.size());
                     expenseCategories = data;
 
                     // 确保UI更新在主线程

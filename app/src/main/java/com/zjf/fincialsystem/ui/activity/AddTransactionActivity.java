@@ -15,6 +15,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Toast;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -681,18 +682,30 @@ public class AddTransactionActivity extends AppCompatActivity {
             if (requestCode == REQUEST_IMAGE_CAPTURE) {
                 // 处理拍照结果
                 if (data.getExtras() != null) {
-                    binding.ivImage.setImageBitmap((android.graphics.Bitmap) data.getExtras().get("data"));
-                    binding.ivImage.setVisibility(android.view.View.VISIBLE);
+                    Bitmap bitmap = (Bitmap) data.getExtras().get("data");
+                    binding.ivImage.setImageBitmap(bitmap);
+                    binding.ivImage.setVisibility(View.VISIBLE);
                     binding.btnClearImage.setVisibility(View.VISIBLE);
                     Toast.makeText(this, "照片已添加", Toast.LENGTH_SHORT).show();
+                    
+                    // 如果是编辑模式，立即上传图片
+                    if (existingTransaction != null) {
+                        uploadImageFromBitmap(bitmap, existingTransaction.getId());
+                    }
                 }
             } else if (requestCode == REQUEST_PICK_IMAGE) {
                 // 处理相册选择结果
                 try {
-                    binding.ivImage.setImageURI(data.getData());
-                    binding.ivImage.setVisibility(android.view.View.VISIBLE);
+                    Uri selectedImageUri = data.getData();
+                    binding.ivImage.setImageURI(selectedImageUri);
+                    binding.ivImage.setVisibility(View.VISIBLE);
                     binding.btnClearImage.setVisibility(View.VISIBLE);
                     Toast.makeText(this, "图片已添加", Toast.LENGTH_SHORT).show();
+                    
+                    // 如果是编辑模式，立即上传图片
+                    if (existingTransaction != null) {
+                        uploadImageFromUri(selectedImageUri, existingTransaction.getId());
+                    }
                 } catch (Exception e) {
                     LogUtils.e(TAG, "加载图片失败：" + e.getMessage(), e);
                     Toast.makeText(this, "加载图片失败", Toast.LENGTH_SHORT).show();
@@ -700,6 +713,200 @@ public class AddTransactionActivity extends AppCompatActivity {
             }
         }
     }
+    
+    /**
+     * 从Bitmap上传图片到服务器
+     * @param bitmap 图片Bitmap
+     * @param transactionId 交易ID（可选，编辑模式时传入）
+     */
+    private void uploadImageFromBitmap(Bitmap bitmap, Long transactionId) {
+        try {
+            LogUtils.d(TAG, "开始从Bitmap上传图片");
+            // 显示进度对话框
+            showProgressDialog("正在上传图片...");
+            
+            // 将Bitmap转换为File
+            java.io.File imageFile = com.zjf.fincialsystem.utils.FileUtils.bitmapToFile(this, bitmap, "transaction_receipt_" + System.currentTimeMillis() + ".jpg");
+            
+            // 调用上传方法
+            uploadImageFile(imageFile, transactionId);
+        } catch (Exception e) {
+            LogUtils.e(TAG, "Bitmap转换文件失败：" + e.getMessage(), e);
+            hideProgressDialog();
+            Toast.makeText(this, "图片处理失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    /**
+     * 从Uri上传图片到服务器
+     * @param uri 图片Uri
+     * @param transactionId 交易ID（可选，编辑模式时传入）
+     */
+    private void uploadImageFromUri(Uri uri, Long transactionId) {
+        try {
+            LogUtils.d(TAG, "开始从Uri上传图片");
+            // 显示进度对话框
+            showProgressDialog("正在上传图片...");
+            
+            // 获取文件路径
+            String filePath = com.zjf.fincialsystem.utils.FileUtils.getPathFromUri(this, uri);
+            if (filePath == null) {
+                LogUtils.e(TAG, "无法从Uri获取文件路径");
+                hideProgressDialog();
+                Toast.makeText(this, "无法处理所选图片", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            java.io.File imageFile = new java.io.File(filePath);
+            if (!imageFile.exists()) {
+                LogUtils.e(TAG, "文件不存在：" + filePath);
+                hideProgressDialog();
+                Toast.makeText(this, "文件不存在", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            // 调用上传方法
+            uploadImageFile(imageFile, transactionId);
+        } catch (Exception e) {
+            LogUtils.e(TAG, "Uri处理失败：" + e.getMessage(), e);
+            hideProgressDialog();
+            Toast.makeText(this, "图片处理失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    /**
+     * 上传图片文件到服务器
+     * @param imageFile 图片文件
+     * @param transactionId 交易ID（可选，编辑模式时传入）
+     */
+    private void uploadImageFile(java.io.File imageFile, Long transactionId) {
+        LogUtils.d(TAG, "开始上传图片文件：" + imageFile.getPath() + "，大小：" + imageFile.length());
+        
+        if (imageFile == null || !imageFile.exists()) {
+            LogUtils.e(TAG, "图片文件不存在或为空");
+            Toast.makeText(this, "图片文件不存在", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // 创建文件部分，确保使用正确的参数名"file"
+        okhttp3.RequestBody requestFile = okhttp3.RequestBody.create(
+                okhttp3.MediaType.parse("image/*"),
+                imageFile
+        );
+        
+        // MultipartBody.Part的表单字段名称必须与API接口中的参数名一致，这里修改为"file"
+        okhttp3.MultipartBody.Part filePart = okhttp3.MultipartBody.Part.createFormData(
+                "file", // 修改为服务器端要求的参数名称
+                imageFile.getName(),
+                requestFile
+        );
+        
+        // 创建transactionId部分
+        okhttp3.RequestBody transactionIdPart = null;
+        if (transactionId != null) {
+            transactionIdPart = okhttp3.RequestBody.create(
+                    okhttp3.MediaType.parse("text/plain"),
+                    String.valueOf(transactionId)
+            );
+        }
+        
+        // 调用API上传图片
+        com.zjf.fincialsystem.network.api.TransactionApiService apiService = 
+                com.zjf.fincialsystem.network.NetworkManager.getInstance().getService(
+                        com.zjf.fincialsystem.network.api.TransactionApiService.class);
+        
+        retrofit2.Call<com.zjf.fincialsystem.network.ApiResponse<com.zjf.fincialsystem.network.model.ImageUploadResponse>> call;
+        
+        if (transactionId != null) {
+            call = apiService.uploadTransactionImage(filePart, transactionIdPart);
+        } else {
+            call = apiService.uploadTransactionImage(filePart, null);
+        }
+        
+        LogUtils.d(TAG, "发起图片上传请求：" + call.request().url() + 
+                 ", 文件名：" + imageFile.getName() + 
+                 ", 参数名：file" + 
+                 (transactionId != null ? ", transactionId=" + transactionId : ""));
+        
+        call.enqueue(new retrofit2.Callback<com.zjf.fincialsystem.network.ApiResponse<com.zjf.fincialsystem.network.model.ImageUploadResponse>>() {
+            @Override
+            public void onResponse(retrofit2.Call<com.zjf.fincialsystem.network.ApiResponse<com.zjf.fincialsystem.network.model.ImageUploadResponse>> call,
+                     retrofit2.Response<com.zjf.fincialsystem.network.ApiResponse<com.zjf.fincialsystem.network.model.ImageUploadResponse>> response) {
+                hideProgressDialog();
+                
+                LogUtils.d(TAG, "图片上传响应码：" + response.code());
+                if (!response.isSuccessful()) {
+                    LogUtils.e(TAG, "图片上传失败，HTTP错误码：" + response.code() + ", 错误信息：" + response.message());
+                    Toast.makeText(AddTransactionActivity.this, 
+                        "图片上传失败：" + response.message() + " (" + response.code() + ")", 
+                        Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                
+                if (response.body() == null) {
+                    LogUtils.e(TAG, "图片上传失败，响应体为空");
+                    Toast.makeText(AddTransactionActivity.this, "图片上传失败，服务器返回空响应", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                
+                com.zjf.fincialsystem.network.ApiResponse<com.zjf.fincialsystem.network.model.ImageUploadResponse> apiResponse = response.body();
+                LogUtils.d(TAG, "图片上传响应：" + apiResponse.getCode() + ", " + apiResponse.getMsg());
+                
+                if (apiResponse.isSuccess() && apiResponse.getData() != null) {
+                    // 上传成功，保存返回的图片URL
+                    String imageUrl = apiResponse.getData().getImageUrl();
+                    LogUtils.d(TAG, "图片上传成功，URL：" + imageUrl);
+                    
+                    // 保存图片URL到本地变量，在创建/更新交易时使用
+                    uploadedImageUrl = imageUrl;
+                    
+                    Toast.makeText(AddTransactionActivity.this, "图片上传成功", Toast.LENGTH_SHORT).show();
+                } else {
+                    LogUtils.e(TAG, "图片上传失败：" + apiResponse.getMsg());
+                    Toast.makeText(AddTransactionActivity.this, "图片上传失败：" + apiResponse.getMsg(), Toast.LENGTH_SHORT).show();
+                }
+            }
+            
+            @Override
+            public void onFailure(retrofit2.Call<com.zjf.fincialsystem.network.ApiResponse<com.zjf.fincialsystem.network.model.ImageUploadResponse>> call,
+                            Throwable t) {
+                hideProgressDialog();
+                LogUtils.e(TAG, "图片上传网络错误：" + t.getMessage(), t);
+                Toast.makeText(AddTransactionActivity.this, "网络错误，图片上传失败：" + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+    
+    // 进度对话框
+    private android.app.AlertDialog progressDialog;
+    
+    /**
+     * 显示进度对话框
+     */
+    private void showProgressDialog(String message) {
+        if (progressDialog == null) {
+            android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+            View view = getLayoutInflater().inflate(R.layout.dialog_progress, null);
+            TextView tvMessage = view.findViewById(R.id.tv_message);
+            tvMessage.setText(message);
+            builder.setView(view);
+            builder.setCancelable(false);
+            progressDialog = builder.create();
+        }
+        progressDialog.show();
+    }
+    
+    /**
+     * 隐藏进度对话框
+     */
+    private void hideProgressDialog() {
+        if (progressDialog != null && progressDialog.isShowing()) {
+            progressDialog.dismiss();
+        }
+    }
+    
+    // 存储上传的图片URL
+    private String uploadedImageUrl;
     
     /**
      * 保存交易记录
@@ -773,33 +980,48 @@ public class AddTransactionActivity extends AppCompatActivity {
             // 显示进度提示
             Toast.makeText(this, "正在保存...", Toast.LENGTH_SHORT).show();
             
-            // 判断是新增还是更新
-            if (existingTransaction != null) {
-                // 编辑模式 - 使用ViewModel更新交易记录
-                LogUtils.d(TAG, "编辑模式，调用更新交易接口，交易ID: " + existingTransaction.getId());
-                viewModel.updateTransaction(
-                        existingTransaction.getId(),
-                        type, 
-                        amount, 
-                        selectedCategoryId, 
-                        description, 
-                        selectedDate, 
-                        description,  // 使用description作为note
-                        note         // 使用note作为remark
-                ).observe(this, this::handleUpdateResult);
-            } else {
-                // 新增模式 - 使用ViewModel添加交易记录
-                LogUtils.d(TAG, "新增模式，调用添加交易接口");
-                viewModel.addTransaction(
-                        type, 
-                        amount, 
-                        selectedCategoryId, 
-                        description, 
-                        selectedDate, 
-                        description,  // 使用description作为note
-                        note         // 使用note作为remark
-                ).observe(this, this::handleAddResult);
+            // 如果选择了图片但还没有上传，先上传图片
+            if (binding.ivImage.getVisibility() == View.VISIBLE && 
+                (uploadedImageUrl == null || uploadedImageUrl.isEmpty()) && 
+                binding.ivImage.getDrawable() != null) {
+                    
+                // 获取Bitmap
+                android.graphics.drawable.Drawable drawable = binding.ivImage.getDrawable();
+                if (drawable instanceof android.graphics.drawable.BitmapDrawable) {
+                    Bitmap bitmap = ((android.graphics.drawable.BitmapDrawable) drawable).getBitmap();
+                    
+                    // 显示上传进度对话框
+                    showProgressDialog("正在上传图片...");
+                    
+                    // 上传图片，完成后保存交易
+                    uploadImageFromBitmap(bitmap, null);
+                    
+                    // 设置延迟，等待图片上传完成
+                    binding.getRoot().postDelayed(() -> {
+                        hideProgressDialog();
+                        // 再次检查是否上传成功
+                        if (uploadedImageUrl != null && !uploadedImageUrl.isEmpty()) {
+                            // 图片上传成功，继续保存
+                            saveTransactionToDB(type, amount, selectedCategoryId, description, note);
+                        } else {
+                            // 询问用户是否继续保存
+                            new android.app.AlertDialog.Builder(this)
+                                .setTitle("图片上传")
+                                .setMessage("图片可能尚未上传完成，您想要继续保存交易记录吗？")
+                                .setPositiveButton("继续保存", (dialog, which) -> {
+                                    saveTransactionToDB(type, amount, selectedCategoryId, description, note);
+                                })
+                                .setNegativeButton("取消", null)
+                                .show();
+                        }
+                    }, 3000); // 给3秒时间上传
+                    
+                    return;
+                }
             }
+            
+            // 直接保存到数据库
+            saveTransactionToDB(type, amount, selectedCategoryId, description, note);
             
         } catch (Exception e) {
             LogUtils.e(TAG, "保存交易记录失败：" + e.getClass().getName() + ": " + e.getMessage(), e);
@@ -810,6 +1032,46 @@ public class AddTransactionActivity extends AppCompatActivity {
             LogUtils.e(TAG, "异常堆栈: " + sw.toString());
             
             Toast.makeText(this, R.string.operation_failed, Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    /**
+     * 将交易数据保存到数据库
+     */
+    private void saveTransactionToDB(int type, double amount, long categoryId, String description, String note) {
+        try {
+            // 判断是新增还是更新
+            if (existingTransaction != null) {
+                // 编辑模式 - 使用ViewModel更新交易记录
+                LogUtils.d(TAG, "编辑模式，调用更新交易接口，交易ID: " + existingTransaction.getId());
+                viewModel.updateTransaction(
+                        existingTransaction.getId(),
+                        type, 
+                        amount, 
+                        categoryId, 
+                        description, 
+                        selectedDate, 
+                        note,
+                        "",
+                        uploadedImageUrl  // 添加图片URL
+                ).observe(this, this::handleUpdateResult);
+            } else {
+                // 新增模式 - 使用ViewModel添加交易记录
+                LogUtils.d(TAG, "新增模式，调用添加交易接口");
+                viewModel.addTransaction(
+                        type, 
+                        amount, 
+                        categoryId, 
+                        description, 
+                        selectedDate, 
+                        note,
+                        "",
+                        uploadedImageUrl  // 添加图片URL
+                ).observe(this, this::handleAddResult);
+            }
+        } catch (Exception e) {
+            LogUtils.e(TAG, "保存到数据库失败：" + e.getMessage(), e);
+            Toast.makeText(this, "保存失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 

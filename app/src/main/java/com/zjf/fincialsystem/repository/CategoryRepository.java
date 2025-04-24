@@ -37,7 +37,7 @@ public class CategoryRepository {
     
     /**
      * 获取分类列表
-     * @param type 分类类型：0-支出，1-收入，null-全部
+     * @param type 分类类型：1-支出，2-收入，null-全部
      * @param callback 回调
      */
     public void getCategories(Integer type, final RepositoryCallback<List<Category>> callback) {
@@ -47,9 +47,11 @@ public class CategoryRepository {
                 // 有网络连接，从网络获取数据
                 Call<ApiResponse<Category>> call;
                 if (type != null) {
+                    LogUtils.d(TAG, "从网络获取分类数据，类型: " + type + (type == 1 ? " (支出)" : type == 2 ? " (收入)" : ""));
                     call = apiService.getCategories(1, 100, null, type);
                 } else {
                     // 如果类型为空，获取所有分类
+                    LogUtils.d(TAG, "从网络获取所有分类数据");
                     call = apiService.getCategoriesByType(null);
                 }
                 

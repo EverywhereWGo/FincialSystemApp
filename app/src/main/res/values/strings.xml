@@ -101,6 +101,7 @@
     <string name="please_enter_amount">请输入金额</string>
     <string name="please_select_date">请选择日期</string>
     <string name="please_enter_description">请输入描述</string>
+    <string name="image_description">图片</string>
     
     <!-- 分类 -->
     <string name="category_management">分类管理</string>

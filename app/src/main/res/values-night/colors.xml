@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 夜间模式下调亮的颜色 -->
+    <color name="night_background">#2C2C2C</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="textPrimary">#F5F5F5</color>
+    <color name="textSecondary">#D0D0D0</color>
+    <color name="text_secondary">#D0D0D0</color>
+    <color name="textHint">#B0B0B0</color>
+    <color name="light_gray">#CCCCCC</color>
+    <color name="dark_gray">#A0A0A0</color>
+    
+    <!-- 保持背景色调亮，文本保持对比度 -->
+    <color name="colorPrimary">#536DFE</color>
+    <color name="colorPrimaryDark">#3D5AFE</color>
+    <color name="colorAccent">#FF80AB</color>
+    <color name="colorPrimaryLight">#8C9EFF</color>
+    
+    <!-- 卡片和背景颜色也调亮 -->
+    <color name="background">#3C3C3C</color>
+    <color name="card_background">#383838</color>
+</resources> 

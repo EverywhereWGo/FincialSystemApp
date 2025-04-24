@@ -4,16 +4,21 @@ import com.zjf.fincialsystem.model.Transaction;
 import com.zjf.fincialsystem.network.ApiResponse;
 import com.zjf.fincialsystem.network.model.AddTransactionRequest;
 import com.zjf.fincialsystem.model.Category;
+import com.zjf.fincialsystem.network.model.ImageUploadResponse;
 
 import java.util.List;
 import java.util.Map;
 
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.DELETE;
 import retrofit2.http.GET;
+import retrofit2.http.Multipart;
 import retrofit2.http.POST;
 import retrofit2.http.PUT;
+import retrofit2.http.Part;
 import retrofit2.http.Path;
 import retrofit2.http.Query;
 
@@ -100,7 +105,7 @@ public interface TransactionApiService {
      * 删除交易记录
      */
     @DELETE("finance/transaction/{ids}")
-    Call<ApiResponse<String>> deleteTransaction(@Path("ids") String ids);
+    Call<ApiResponse<String>> deleteTransaction(@Path("id") String ids);
 
     /**
      * 获取交易分类
@@ -116,4 +121,16 @@ public interface TransactionApiService {
             @Query("pageSize") Integer pageSize,
             @Query("name") String name,
             @Query("type") Integer type);
+            
+    /**
+     * 上传交易相关图片
+     * @param file 图片文件
+     * @param transactionId 交易ID（可选）
+     * @return 上传结果
+     */
+    @Multipart
+    @POST("finance/transaction/image")
+    Call<ApiResponse<ImageUploadResponse>> uploadTransactionImage(
+            @Part MultipartBody.Part file,
+            @Part("transactionId") RequestBody transactionId);
 } 

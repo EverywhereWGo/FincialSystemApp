@@ -14,8 +14,8 @@ public class Category implements Serializable {
     private static final long serialVersionUID = 1L;
 
     // 类型常量 - 根据服务器定义调整
-    public static final int TYPE_EXPENSE = 0;  // 支出
-    public static final int TYPE_INCOME = 1;   // 收入
+    public static final int TYPE_EXPENSE = 1;  // 支出
+    public static final int TYPE_INCOME = 2;   // 收入
 
     /**
      * 分类ID

@@ -182,6 +182,7 @@ public class BudgetFragment extends Fragment implements BudgetAdapter.OnBudgetCl
                 @Override
                 public void onSuccess(List<Category> data) {
                     expenseCategories = data;
+                    LogUtils.d(TAG, "成功加载分类数据，类型=支出(1)，数量=" + (data != null ? data.size() : 0));
                 }
                 
                 @Override

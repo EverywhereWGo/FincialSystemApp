@@ -1,8 +1,11 @@
 package com.zjf.fincialsystem.utils;
 
 import android.content.Context;
+import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.net.Uri;
 import android.os.Environment;
+import android.provider.MediaStore;
 
 import com.zjf.fincialsystem.app.FinanceApplication;
 
@@ -126,6 +129,78 @@ public class FileUtils {
                     LogUtils.w(TAG, "无法删除临时文件: " + tempFile.getAbsolutePath());
                 }
             }
+        }
+    }
+    
+    /**
+     * 将Bitmap保存为文件
+     * @param context 上下文
+     * @param bitmap 要保存的Bitmap
+     * @param filename 文件名
+     * @return 保存的文件
+     */
+    public static File bitmapToFile(Context context, Bitmap bitmap, String filename) {
+        File file = new File(context.getCacheDir(), filename);
+        try {
+            file.createNewFile();
+            
+            // 压缩图片并保存到文件
+            FileOutputStream fos = new FileOutputStream(file);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, fos);
+            fos.flush();
+            fos.close();
+            
+            return file;
+        } catch (IOException e) {
+            LogUtils.e(TAG, "保存图片到文件失败: " + e.getMessage(), e);
+            return null;
+        }
+    }
+    
+    /**
+     * 从Uri获取文件路径
+     * @param context 上下文
+     * @param uri 文件Uri
+     * @return 文件路径
+     */
+    public static String getPathFromUri(Context context, Uri uri) {
+        if (uri == null) {
+            return null;
+        }
+        
+        // 直接使用Uri路径
+        if ("file".equalsIgnoreCase(uri.getScheme())) {
+            return uri.getPath();
+        }
+        
+        // MediaStore查询
+        if ("content".equalsIgnoreCase(uri.getScheme())) {
+            String[] projection = {MediaStore.Images.Media.DATA};
+            Cursor cursor = null;
+            try {
+                cursor = context.getContentResolver().query(uri, projection, null, null, null);
+                if (cursor != null && cursor.moveToFirst()) {
+                    int columnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+                    return cursor.getString(columnIndex);
+                }
+            } catch (Exception e) {
+                LogUtils.e(TAG, "获取文件路径失败: " + e.getMessage(), e);
+            } finally {
+                if (cursor != null) {
+                    cursor.close();
+                }
+            }
+        }
+        
+        // 无法获取路径，创建临时文件
+        try {
+            Bitmap bitmap = MediaStore.Images.Media.getBitmap(context.getContentResolver(), uri);
+            String filename = "temp_image_" + System.currentTimeMillis() + ".jpg";
+            File file = bitmapToFile(context, bitmap, filename);
+            return file.getAbsolutePath();
+        } catch (IOException e) {
+            LogUtils.e(TAG, "创建临时文件失败: " + e.getMessage(), e);
+            return null;
         }
     }
 } 

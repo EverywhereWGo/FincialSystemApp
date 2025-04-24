@@ -12,21 +12,21 @@
         android:layout_width="match_parent"
         android:layout_height="120dp"
         android:background="@drawable/status_bar_gradient"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintTop_toTopOf="parent" />
 
     <!-- 标题 -->
     <TextView
         android:id="@+id/tv_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="40dp"
         android:text="@string/profile"
         android:textColor="@color/text_primary"
         android:textSize="20sp"
         android:textStyle="bold"
-        android:layout_marginTop="40dp"
-        android:layout_marginStart="16dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -116,9 +116,9 @@
                         android:id="@+id/iv_avatar"
                         android:layout_width="80dp"
                         android:layout_height="80dp"
+                        android:elevation="5dp"
                         android:background="@drawable/circle_background"
-                        android:padding="16dp"
-                        android:src="@drawable/ic_person"
+                        android:scaleType="centerCrop"
                         app:tint="@color/white" />
 
                     <TextView

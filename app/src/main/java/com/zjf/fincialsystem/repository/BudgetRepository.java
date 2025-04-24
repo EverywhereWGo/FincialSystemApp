@@ -64,31 +64,63 @@ public class BudgetRepository {
                 LogUtils.d(TAG, "查询预算数据，年份: " + yearParam);
             }
             
-            apiService.getBudgets(1, 100, null, monthParam, yearParam, TokenManager.getInstance().getUserId()).enqueue(new Callback<ApiResponse<Budget>>() {
+            // 确保获取当前用户ID
+            Long userId = TokenManager.getInstance().getUserId();
+            if (userId <= 0) {
+                LogUtils.e(TAG, "用户未登录，无法获取预算数据");
+                callback.onError("用户未登录，请先登录");
+                return;
+            }
+            
+            LogUtils.d(TAG, "发起预算列表请求，参数：month=" + monthParam + ", year=" + yearParam + 
+                     ", userId=" + userId);
+            
+            apiService.getBudgets(1, 100, null, monthParam, yearParam, userId).enqueue(new Callback<ApiResponse<Budget>>() {
                 @Override
                 public void onResponse(Call<ApiResponse<Budget>> call, Response<ApiResponse<Budget>> response) {
-                    if (response.isSuccessful() && response.body() != null) {
-                        ApiResponse<Budget> apiResponse = response.body();
-                        if (apiResponse.isSuccess()) {
-                            // 首先尝试从data获取数据
-                            List<Budget> budgets = apiResponse.getRows();
-                            
-                            // 保存到缓存
-                            cacheManager.saveBudgets(budgets);
-                            
-                            // 返回数据
-                            callback.onSuccess(budgets);
-                        } else {
-                            callback.onError(apiResponse.getMsg());
+                    LogUtils.d(TAG, "获取预算列表响应码: " + response.code());
+                    
+                    if (!response.isSuccessful()) {
+                        LogUtils.e(TAG, "获取预算列表失败，HTTP错误码: " + response.code());
+                        callback.onError("获取预算列表失败，服务器返回错误: " + response.code());
+                        return;
+                    }
+                    
+                    if (response.body() == null) {
+                        LogUtils.e(TAG, "获取预算列表失败，响应体为空");
+                        callback.onError("获取预算列表失败，服务器返回空响应");
+                        return;
+                    }
+                    
+                    ApiResponse<Budget> apiResponse = response.body();
+                    LogUtils.d(TAG, "获取预算列表响应: code=" + apiResponse.getCode() + ", msg=" + apiResponse.getMsg());
+                    
+                    if (apiResponse.isSuccess()) {
+                        // 从rows字段获取预算列表
+                        List<Budget> budgets = apiResponse.getRows();
+                        
+                        if (budgets == null || budgets.isEmpty()) {
+                            LogUtils.d(TAG, "预算列表为空");
+                            callback.onSuccess(new ArrayList<>());
+                            return;
                         }
+                        
+                        LogUtils.d(TAG, "成功获取预算列表，数量: " + budgets.size());
+                        
+                        // 保存到缓存
+                        cacheManager.saveBudgets(budgets);
+                        
+                        // 返回数据
+                        callback.onSuccess(budgets);
                     } else {
-                        callback.onError("网络请求失败");
+                        LogUtils.e(TAG, "获取预算列表失败: " + apiResponse.getMsg());
+                        callback.onError(apiResponse.getMsg());
                     }
                 }
 
                 @Override
                 public void onFailure(Call<ApiResponse<Budget>> call, Throwable t) {
-                    LogUtils.e(TAG, "获取预算列表失败", t);
+                    LogUtils.e(TAG, "获取预算列表网络请求失败", t);
                     
                     // 网络请求失败，尝试从缓存获取
                     if (cacheManager.isCacheValid("budgets")) {

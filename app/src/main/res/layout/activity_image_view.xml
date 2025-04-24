@@ -20,12 +20,13 @@
         app:popupTheme="@style/ThemeOverlay.AppCompat.Dark"
         app:titleTextColor="@color/white" />
 
-    <!-- 图片查看区域（使用PhotoView支持手势缩放） -->
-    <com.github.chrisbanes.photoview.PhotoView
+    <!-- 图片查看区域（使用标准ImageView） -->
+    <ImageView
         android:id="@+id/photoView"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:scaleType="fitCenter"
+        android:contentDescription="@string/image_description"
         app:layout_constraintTop_toBottomOf="@id/toolbar"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
