@@ -282,10 +282,10 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/tvNotifyEnabledLabel" />
 
-            <!-- 提醒阈值下拉框 -->
+            <!-- 提醒阈值输入框 -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilNotifyPercent"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
@@ -293,13 +293,15 @@
                 android:textColorHint="@color/text_secondary"
                 app:boxStrokeColor="@color/colorPrimary"
                 app:hintTextColor="@color/colorPrimary"
-                app:layout_constraintTop_toBottomOf="@id/tvNotifyPercentLabel">
+                app:layout_constraintTop_toBottomOf="@id/tvNotifyPercentLabel"
+                app:suffixText="%">
 
-                <AutoCompleteTextView
-                    android:id="@+id/spinnerNotifyPercent"
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etNotifyPercent"
                     android:layout_width="match_parent"
                     android:layout_height="56dp"
-                    android:inputType="none"
+                    android:inputType="number"
+                    android:maxLength="3"
                     android:paddingTop="16dp"
                     android:paddingBottom="16dp"
                     android:textColor="@color/text_primary"

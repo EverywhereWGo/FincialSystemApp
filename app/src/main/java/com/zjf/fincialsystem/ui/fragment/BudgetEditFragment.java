@@ -173,11 +173,8 @@ public class BudgetEditFragment extends Fragment {
         // 初始化年月选择器，替换原来的周期选择下拉框
         setupDatePickers();
 
-        // 设置提醒阈值选择
-        String[] thresholds = {"50%", "80%", "90%", "100%"};
-        ArrayAdapter<String> thresholdAdapter = new ArrayAdapter<>(context, android.R.layout.simple_dropdown_item_1line, thresholds);
-        binding.spinnerNotifyPercent.setAdapter(thresholdAdapter);
-        binding.spinnerNotifyPercent.setText(thresholds[1], false); // 默认80%
+        // 设置提醒阈值输入框默认值
+        binding.etNotifyPercent.setText("80"); // 默认80%
 
         // 确保分类下拉框能够触发下拉菜单
         if (expenseCategories.isEmpty()) {
@@ -323,67 +320,53 @@ public class BudgetEditFragment extends Fragment {
      * 加载分类数据
      */
     private void loadCategories() {
+        loadCategories(false);
+    }
+
+    /**
+     * 加载分类数据
+     * @param forExistingBudget 是否用于加载现有预算的分类
+     */
+    private void loadCategories(boolean forExistingBudget) {
         try {
             if (categoryRepository == null) {
                 LogUtils.e(TAG, "分类仓库为空，无法加载分类数据");
                 return;
             }
-
-            // 显示加载提示
-            if (getContext() != null && expenseCategories.isEmpty()) {
-                binding.spinnerCategory.setEnabled(false);
-                binding.spinnerCategory.setHint("正在加载分类...");
-            }
-
-            LogUtils.d(TAG, "开始加载分类数据，类型=支出(1)");
+            
             categoryRepository.getCategories(Category.TYPE_EXPENSE, new RepositoryCallback<List<Category>>() {
                 @Override
                 public void onSuccess(List<Category> data) {
-                    if (!isAdded() || getContext() == null) return;
-
-                    LogUtils.d(TAG, "成功加载分类数据，类型=支出(1)，数量: " + data.size());
-                    expenseCategories = data;
-
-                    // 确保UI更新在主线程
+                    if (getActivity() == null || !isAdded()) {
+                        return;
+                    }
+                    
                     getActivity().runOnUiThread(() -> {
-                        // 重新启用分类选择器
-                        binding.spinnerCategory.setEnabled(true);
-                        binding.spinnerCategory.setHint(getString(R.string.category_hint));
-
-                        // 更新分类下拉框
+                        expenseCategories = data;
                         updateCategorySpinner();
-
-                        // 如果用户正在查看分类列表，自动显示下拉选项
-                        if (binding.spinnerCategory.hasFocus()) {
-                            binding.spinnerCategory.showDropDown();
+                        LogUtils.d(TAG, "成功加载分类数据，数量=" + (data != null ? data.size() : 0));
+                        
+                        // 如果是为了设置现有预算的分类，则需要调用setCategorySelection
+                        if (forExistingBudget && existingBudget != null) {
+                            setCategorySelection();
                         }
                     });
                 }
-
+                
                 @Override
                 public void onError(String error) {
+                    if (getActivity() == null || !isAdded()) {
+                        return;
+                    }
+                    
                     LogUtils.e(TAG, "加载分类数据失败：" + error);
-                    if (!isAdded() || getContext() == null) return;
-
                     getActivity().runOnUiThread(() -> {
-                        // 重新启用分类选择器，但显示错误提示
-                        binding.spinnerCategory.setEnabled(true);
-                        binding.spinnerCategory.setHint(getString(R.string.category_hint));
-
-                        Toast.makeText(getContext(), "加载分类数据失败，请重试", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(), "加载分类数据失败", Toast.LENGTH_SHORT).show();
                     });
                 }
             });
         } catch (Exception e) {
             LogUtils.e(TAG, "加载分类数据失败：" + e.getMessage(), e);
-
-            if (isAdded() && getContext() != null) {
-                getActivity().runOnUiThread(() -> {
-                    binding.spinnerCategory.setEnabled(true);
-                    binding.spinnerCategory.setHint(getString(R.string.category_hint));
-                    Toast.makeText(getContext(), "加载分类数据失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
-            }
         }
     }
 
@@ -438,11 +421,9 @@ public class BudgetEditFragment extends Fragment {
     }
 
     /**
-     * 填充已有预算数据到表单
+     * 填充现有数据
      */
     private void fillExistingData() {
-        if (existingBudget == null) return;
-
         // 设置金额
         binding.etAmount.setText(String.valueOf(existingBudget.getAmount()));
 
@@ -453,24 +434,30 @@ public class BudgetEditFragment extends Fragment {
         // 设置通知开关
         binding.switchNotify.setChecked(existingBudget.isNotifyEnabled());
 
-        // 设置通知阈值
-        int percentIndex = 1; // 默认是80%
-        switch (existingBudget.getNotifyPercent()) {
-            case 50:
-                percentIndex = 0;
-                break;
-            case 80:
-                percentIndex = 1;
-                break;
-            case 90:
-                percentIndex = 2;
-                break;
-            case 100:
-                percentIndex = 3;
-                break;
+        // 设置通知阈值 - 优先使用warningThreshold，如果没有则使用notifyPercent
+        int threshold;
+        if (existingBudget.getWarningThreshold() > 0) {
+            threshold = (int) existingBudget.getWarningThreshold();
+        } else {
+            threshold = existingBudget.getNotifyPercent();
         }
-        String[] thresholds = {"50%", "80%", "90%", "100%"};
-        binding.spinnerNotifyPercent.setText(thresholds[percentIndex], false);
+        
+        // 确保阈值在合理范围内
+        if (threshold <= 0 || threshold > 100) {
+            threshold = 80; // 默认值
+        }
+        
+        binding.etNotifyPercent.setText(String.valueOf(threshold));
+        LogUtils.d(TAG, "回填预算提醒阈值: " + threshold + "%");
+
+        // 设置分类 - 等待分类数据加载完成后设置
+        if (!expenseCategories.isEmpty()) {
+            // 如果分类已加载，直接设置
+            setCategorySelection();
+        } else {
+            // 如果分类尚未加载，先加载分类
+            loadCategories(true);
+        }
     }
 
     /**
@@ -555,14 +542,19 @@ public class BudgetEditFragment extends Fragment {
             boolean notifyEnabled = binding.switchNotify.isChecked();
 
             // 获取通知阈值
-            String notifyPercentStr = binding.spinnerNotifyPercent.getText().toString().trim();
-            int notifyPercent = 80;
-            if (notifyPercentStr.contains("50")) {
-                notifyPercent = 50;
-            } else if (notifyPercentStr.contains("90")) {
-                notifyPercent = 90;
-            } else if (notifyPercentStr.contains("100")) {
-                notifyPercent = 100;
+            String notifyPercentStr = binding.etNotifyPercent.getText().toString().trim();
+            int notifyPercent = 80; // 默认值
+            if (!notifyPercentStr.isEmpty()) {
+                try {
+                    notifyPercent = Integer.parseInt(notifyPercentStr);
+                    if (notifyPercent < 1 || notifyPercent > 100) {
+                        Toast.makeText(context, "提醒阈值必须在1-100之间", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                } catch (NumberFormatException e) {
+                    Toast.makeText(context, "请输入有效的提醒阈值", Toast.LENGTH_SHORT).show();
+                    return;
+                }
             }
 
             // 根据模式执行添加或编辑操作
@@ -573,8 +565,19 @@ public class BudgetEditFragment extends Fragment {
                 existingBudget.setMonth(month);
                 existingBudget.setCategoryId(selectedCategory.getId());
                 existingBudget.setNotifyPercent(notifyPercent);
+                existingBudget.setWarningThreshold(notifyPercent);
                 existingBudget.setNotifyEnabled(notifyEnabled);
 
+                // 添加调试日志
+                LogUtils.d(TAG, "更新预算: ID=" + existingBudget.getId() 
+                        + ", 分类ID=" + existingBudget.getCategoryId() 
+                        + ", 金额=" + existingBudget.getAmount() 
+                        + ", 年份=" + existingBudget.getYear() 
+                        + ", 月份=" + existingBudget.getMonth() 
+                        + ", 警告阈值=" + notifyPercent
+                        + ", warningThreshold=" + existingBudget.getWarningThreshold()
+                        + ", 启用通知=" + notifyEnabled);
+                
                 // 更新预算
                 budgetRepository.updateBudget(existingBudget.getId(), existingBudget, new RepositoryCallback<Budget>() {
                     @Override
@@ -619,14 +622,18 @@ public class BudgetEditFragment extends Fragment {
                 request.setYear(year);
                 request.setMonth(month);
                 request.setWarningThreshold(notifyPercent);
+                request.setNotifyEnabled(notifyEnabled);
                 request.setRemark(""); // 使用空字符串，因为布局中不存在etRemark控件
 
                 LogUtils.d(TAG, "创建预算请求: 用户ID=" + userId 
                         + ", 分类ID=" + selectedCategory.getId() 
+                        + ", 分类名称=" + selectedCategory.getName()
                         + ", 金额=" + amount 
                         + ", 年份=" + year 
                         + ", 月份=" + month 
-                        + ", 警告阈值=" + notifyPercent);
+                        + ", 警告阈值=" + notifyPercent
+                        + ", warningThreshold=" + request.getWarningThreshold()
+                        + ", 启用通知=" + notifyEnabled);
 
                 // 保存预算
                 budgetRepository.addBudget(request, new RepositoryCallback<Budget>() {
@@ -697,6 +704,20 @@ public class BudgetEditFragment extends Fragment {
             LogUtils.d(TAG, "已调整标题栏布局");
         } catch (Exception e) {
             LogUtils.e(TAG, "调整标题栏内边距时出错: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 设置分类选择
+     */
+    private void setCategorySelection() {
+        if (existingBudget != null && existingBudget.getCategoryId() > 0) {
+            for (Category category : expenseCategories) {
+                if (category.getId() == existingBudget.getCategoryId()) {
+                    binding.spinnerCategory.setText(category.getName(), false);
+                    break;
+                }
+            }
         }
     }
 

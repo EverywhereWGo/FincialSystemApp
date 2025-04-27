@@ -311,6 +311,17 @@ public class BudgetFragment extends Fragment implements BudgetAdapter.OnBudgetCl
                     budget.setYear(currentDate.get(Calendar.YEAR));
                     budget.setMonth(currentDate.get(Calendar.MONTH) + 1);
                     LogUtils.d(TAG, "为预算设置年份: " + budget.getYear() + " 月份: " + budget.getMonth());
+                    
+                    // 添加详细日志，记录预算对象的属性
+                    LogUtils.d(TAG, "准备编辑预算: ID=" + budget.getId() 
+                            + ", 分类ID=" + budget.getCategoryId()
+                            + ", 分类名称=" + budget.getCategoryName()
+                            + ", 金额=" + budget.getAmount() 
+                            + ", 年份=" + budget.getYear() 
+                            + ", 月份=" + budget.getMonth()
+                            + ", warningThreshold=" + budget.getWarningThreshold()
+                            + ", notifyPercent=" + budget.getNotifyPercent()
+                            + ", 通知启用=" + budget.isNotifyEnabled());
                 }
                 
                 getParentFragmentManager().beginTransaction()

@@ -94,17 +94,19 @@
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/til_notify_percent"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            android:hint="@string/notify_threshold">
+            android:hint="@string/notify_threshold"
+            app:suffixText="%">
 
-            <AutoCompleteTextView
-                android:id="@+id/spinner_notify_percent"
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_notify_percent"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="none" />
+                android:inputType="number"
+                android:maxLength="3" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <TextView

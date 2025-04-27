@@ -118,8 +118,7 @@
                         android:layout_height="80dp"
                         android:elevation="5dp"
                         android:background="@drawable/circle_background"
-                        android:scaleType="centerCrop"
-                        app:tint="@color/white" />
+                        android:scaleType="centerCrop" />
 
                     <TextView
                         android:id="@+id/tv_username"
