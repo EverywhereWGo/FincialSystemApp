@@ -11,7 +11,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DataSource;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.load.engine.GlideException;
+import com.bumptech.glide.request.RequestListener;
+import com.bumptech.glide.request.target.Target;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.zjf.fincialsystem.R;
 import com.zjf.fincialsystem.databinding.ActivityTransactionDetailBinding;
@@ -314,14 +318,50 @@ public class TransactionDetailActivity extends AppCompatActivity {
             String imagePath = transaction.getImagePath();
             if (imagePath != null && !imagePath.isEmpty()) {
                 binding.cardImage.setVisibility(View.VISIBLE);
+                LogUtils.d(TAG, "原始凭证图片路径: " + imagePath);
+                
+                // 处理图片路径
+                // 检查图片路径是否是网络URL
+                boolean isNetworkImage = imagePath.startsWith("http://") || imagePath.startsWith("https://");
+                
+                // 如果不是完整URL，需要添加BaseUrl
+                if (!isNetworkImage && !imagePath.startsWith("file://") && !imagePath.startsWith("/storage/")) {
+                    String baseUrl = com.zjf.fincialsystem.network.NetworkManager.getInstance().getBaseUrl();
+                    imagePath = baseUrl + imagePath;
+                    LogUtils.d(TAG, "处理后的完整图片URL: " + imagePath);
+                }
+                
+                // 使用final修饰，确保在匿名内部类中可以访问
+                final String finalImagePath = imagePath;
+                
                 Glide.with(this)
-                        .load(imagePath)
+                        .load(finalImagePath)
                         .diskCacheStrategy(DiskCacheStrategy.ALL)
                         .placeholder(R.drawable.ic_placeholder)
                         .error(R.drawable.ic_error)
+                        .listener(new RequestListener<Drawable>() {
+                            @Override
+                            public boolean onLoadFailed(GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {
+                                LogUtils.e(TAG, "图片加载失败: " + finalImagePath + ", 错误: " + (e != null ? e.getMessage() : "未知错误"));
+                                if (e != null) {
+                                    // 记录详细错误根因
+                                    for (Throwable t : e.getRootCauses()) {
+                                        LogUtils.e(TAG, "图片加载错误根因: " + t.getMessage());
+                                    }
+                                }
+                                return false; // 返回false以显示错误占位图
+                            }
+
+                            @Override
+                            public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource dataSource, boolean isFirstResource) {
+                                LogUtils.d(TAG, "图片加载成功: " + finalImagePath + ", 来源: " + dataSource.name());
+                                return false; // 返回false以显示加载的资源
+                            }
+                        })
                         .into(binding.ivReceipt);
             } else {
                 binding.cardImage.setVisibility(View.GONE);
+                LogUtils.d(TAG, "交易没有凭证图片");
             }
 
         } catch (Exception e) {

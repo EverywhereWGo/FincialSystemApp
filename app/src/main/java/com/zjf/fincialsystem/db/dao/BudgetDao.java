@@ -48,7 +48,7 @@ public class BudgetDao extends BaseDao {
             }
             
             values.put("notify_percent", budget.getNotifyPercent());
-            values.put("notify_enabled", budget.isNotifyEnabled() ? 1 : 0);
+            values.put("notify_enabled", budget.isNotifyEnable() ? 1 : 0);
             
             return database.insert(TABLE_NAME, null, values);
         } catch (Exception e) {
@@ -83,7 +83,7 @@ public class BudgetDao extends BaseDao {
             }
             
             values.put("notify_percent", budget.getNotifyPercent());
-            values.put("notify_enabled", budget.isNotifyEnabled() ? 1 : 0);
+            values.put("notify_enabled", budget.isNotifyEnable() ? 1 : 0);
             
             int rowsAffected = database.update(TABLE_NAME, values, "id = ?", new String[]{String.valueOf(budget.getId())});
             return rowsAffected > 0;
@@ -272,7 +272,7 @@ public class BudgetDao extends BaseDao {
         }
         
         budget.setNotifyPercent(cursor.getInt(cursor.getColumnIndex("notify_percent")));
-        budget.setNotifyEnabled(cursor.getInt(cursor.getColumnIndex("notify_enabled")) == 1);
+        budget.setNotifyEnable(cursor.getInt(cursor.getColumnIndex("notify_enabled")) == 1);
         
         return budget;
     }

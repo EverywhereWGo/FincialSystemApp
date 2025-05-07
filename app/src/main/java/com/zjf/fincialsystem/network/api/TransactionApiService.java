@@ -105,7 +105,7 @@ public interface TransactionApiService {
      * 删除交易记录
      */
     @DELETE("finance/transaction/{ids}")
-    Call<ApiResponse<String>> deleteTransaction(@Path("id") String ids);
+    Call<ApiResponse<String>> deleteTransaction(@Path("ids") String ids);
 
     /**
      * 获取交易分类

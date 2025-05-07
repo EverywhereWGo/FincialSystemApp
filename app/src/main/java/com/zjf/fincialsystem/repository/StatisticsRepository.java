@@ -518,9 +518,9 @@ public class StatisticsRepository {
                             List<Map<String, Object>> listData = apiResponse.getData();
                             
                             // 检查API返回的数据是否为空
-                            if (listData == null) {
-                                LogUtils.d(TAG, "API返回的分类统计数据为空，返回空列表");
-                                listData = new ArrayList<>();
+                            if (listData == null || listData.isEmpty()) {
+                                LogUtils.d(TAG, "API返回的分类统计数据为空，处理为空分类");
+                                listData = new ArrayList<>(); // 返回空列表，不使用默认分类数据
                             } else {
                                 LogUtils.d(TAG, "API返回的分类统计数据: " + listData.size() + "条");
                                 for (Map<String, Object> item : listData) {
@@ -543,14 +543,28 @@ public class StatisticsRepository {
                                 double amount = getDoubleValue(item, "amount", 0);
                                 total += amount;
                                 
-                                // 确保分类有名称字段
+                                // 确保分类有名称字段 (将categoryName复制到name字段)
                                 if (!item.containsKey("name") && item.containsKey("categoryName")) {
                                     item.put("name", item.get("categoryName"));
+                                } else if (!item.containsKey("categoryName") && item.containsKey("name")) {
+                                    item.put("categoryName", item.get("name"));
                                 }
                                 
                                 // 如果没有分类名称，设置为"未知"
                                 if (!item.containsKey("name") || item.get("name") == null) {
                                     item.put("name", "未知");
+                                    if (!item.containsKey("categoryName") || item.get("categoryName") == null) {
+                                        item.put("categoryName", "未知");
+                                    }
+                                }
+
+                                // 确保每个分类项目都有percentage字段
+                                if (!item.containsKey("percentage") || item.get("percentage") == null) {
+                                    if (total > 0) {
+                                        item.put("percentage", (amount / total) * 100.0);
+                                    } else {
+                                        item.put("percentage", 0.0);
+                                    }
                                 }
                             }
                             data.put("total", total);
@@ -584,10 +598,20 @@ public class StatisticsRepository {
                             // 标记为从缓存获取
                             callback.isCacheData(true);
                         } else {
-                            callback.onError("获取支出分类统计失败: " + t.getMessage());
+                            // 缓存无效或不存在，也返回空列表而不是默认分类
+                            Map<String, Object> emptyData = new HashMap<>();
+                            emptyData.put("categories", new ArrayList<>());
+                            emptyData.put("total", 0.0);
+                            emptyData.put("totalExpense", 0.0);
+                            callback.onSuccess(emptyData);
                         }
                     } else {
-                        callback.onError("获取支出分类统计失败: " + t.getMessage());
+                        // 缓存无效或不存在，返回空列表而不是默认分类
+                        Map<String, Object> emptyData = new HashMap<>();
+                        emptyData.put("categories", new ArrayList<>());
+                        emptyData.put("total", 0.0);
+                        emptyData.put("totalExpense", 0.0);
+                        callback.onSuccess(emptyData);
                     }
                 }
             });
@@ -601,10 +625,20 @@ public class StatisticsRepository {
                     // 标记为从缓存获取
                     callback.isCacheData(true);
                 } else {
-                    callback.onError("无网络连接且无缓存数据");
+                    // 缓存无效或不存在，返回空列表而不是默认分类
+                    Map<String, Object> emptyData = new HashMap<>();
+                    emptyData.put("categories", new ArrayList<>());
+                    emptyData.put("total", 0.0);
+                    emptyData.put("totalExpense", 0.0);
+                    callback.onSuccess(emptyData);
                 }
             } else {
-                callback.onError("无网络连接且无缓存数据");
+                // 缓存无效或不存在，返回空列表而不是默认分类
+                Map<String, Object> emptyData = new HashMap<>();
+                emptyData.put("categories", new ArrayList<>());
+                emptyData.put("total", 0.0);
+                emptyData.put("totalExpense", 0.0);
+                callback.onSuccess(emptyData);
             }
         }
     }

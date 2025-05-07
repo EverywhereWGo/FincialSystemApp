@@ -211,7 +211,7 @@ public class BudgetAdapter extends RecyclerView.Adapter<BudgetAdapter.BudgetView
             tvBudgetAmount.setText(NumberUtils.formatAmountWithCurrency(budget.getAmount()));
 
             // 设置进度条
-            int progress = budget.getUsedPercentage();
+            int progress = (int) budget.getUsedPercentage();
             progressBar.setProgress(progress);
 
             // 根据进度设置不同样式

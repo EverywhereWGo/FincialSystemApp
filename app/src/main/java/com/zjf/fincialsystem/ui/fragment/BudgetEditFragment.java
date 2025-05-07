@@ -21,7 +21,6 @@ import com.zjf.fincialsystem.network.model.AddBudgetRequest;
 import com.zjf.fincialsystem.repository.BudgetRepository;
 import com.zjf.fincialsystem.repository.CategoryRepository;
 import com.zjf.fincialsystem.repository.RepositoryCallback;
-import com.zjf.fincialsystem.utils.DateUtils;
 import com.zjf.fincialsystem.utils.LogUtils;
 import com.zjf.fincialsystem.utils.StatusBarUtils;
 import com.zjf.fincialsystem.utils.TokenManager;
@@ -432,7 +431,7 @@ public class BudgetEditFragment extends Fragment {
         binding.etMonth.setText(String.valueOf(existingBudget.getMonth()));
 
         // 设置通知开关
-        binding.switchNotify.setChecked(existingBudget.isNotifyEnabled());
+        binding.switchNotify.setChecked(existingBudget.isNotifyEnable());
 
         // 设置通知阈值 - 优先使用warningThreshold，如果没有则使用notifyPercent
         int threshold;
@@ -566,7 +565,7 @@ public class BudgetEditFragment extends Fragment {
                 existingBudget.setCategoryId(selectedCategory.getId());
                 existingBudget.setNotifyPercent(notifyPercent);
                 existingBudget.setWarningThreshold(notifyPercent);
-                existingBudget.setNotifyEnabled(notifyEnabled);
+                existingBudget.setNotifyEnable(notifyEnabled);
 
                 // 添加调试日志
                 LogUtils.d(TAG, "更新预算: ID=" + existingBudget.getId() 
@@ -622,7 +621,7 @@ public class BudgetEditFragment extends Fragment {
                 request.setYear(year);
                 request.setMonth(month);
                 request.setWarningThreshold(notifyPercent);
-                request.setNotifyEnabled(notifyEnabled);
+                request.setNotifyEnable(notifyEnabled);
                 request.setRemark(""); // 使用空字符串，因为布局中不存在etRemark控件
 
                 LogUtils.d(TAG, "创建预算请求: 用户ID=" + userId 

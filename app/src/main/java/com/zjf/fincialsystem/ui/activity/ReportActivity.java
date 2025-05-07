@@ -55,6 +55,7 @@ import java.util.HashMap;
 import java.util.Collections;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
+import java.lang.StringBuilder;
 
 /**
  * 报表Activity
@@ -552,7 +553,7 @@ public class ReportActivity extends AppCompatActivity {
                         }
                         
                         // 创建饼图条目
-                            List<PieEntry> entries = new ArrayList<>();
+                        List<PieEntry> entries = new ArrayList<>();
                         for (Map<String, Object> category : categories) {
                             // 尝试从不同的键获取分类名称
                             String name = null;
@@ -566,6 +567,13 @@ public class ReportActivity extends AppCompatActivity {
                             if (name == null || name.isEmpty()) {
                                 name = getString(R.string.unknown);
                             }
+                            
+                            // 记录分类键值，以便调试
+                            StringBuilder keysInfo = new StringBuilder("分类键值: ");
+                            for (String key : category.keySet()) {
+                                keysInfo.append(key).append("=").append(category.get(key)).append(", ");
+                            }
+                            LogUtils.d(TAG, keysInfo.toString());
                             
                             double amount = statisticsRepository.getDoubleValue(category, "amount", 0.0);
                             float percentage = (float) (amount / totalExpense * 100);

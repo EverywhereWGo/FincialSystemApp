@@ -772,7 +772,7 @@ public class MockInterceptor implements Interceptor {
                 calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH));
                 budget1.setEndDate(calendar.getTime());
                 budget1.setNotifyPercent(80);
-                budget1.setNotifyEnabled(true);
+                budget1.setNotifyEnable(true);
                 // 设置已使用金额为2400
                 budget1.setUsedAmount(2400.0);
                 budgets.add(budget1);
@@ -786,7 +786,7 @@ public class MockInterceptor implements Interceptor {
                 budget2.setStartDate(budget1.getStartDate());
                 budget2.setEndDate(budget1.getEndDate());
                 budget2.setNotifyPercent(80);
-                budget2.setNotifyEnabled(true);
+                budget2.setNotifyEnable(true);
                 // 设置已使用金额为1200
                 budget2.setUsedAmount(1200.0);
                 budgets.add(budget2);
@@ -800,7 +800,7 @@ public class MockInterceptor implements Interceptor {
                 budget3.setStartDate(budget1.getStartDate());
                 budget3.setEndDate(budget1.getEndDate());
                 budget3.setNotifyPercent(90);
-                budget3.setNotifyEnabled(true);
+                budget3.setNotifyEnable(true);
                 // 设置已使用金额为850
                 budget3.setUsedAmount(850.0);
                 budgets.add(budget3);
@@ -814,7 +814,7 @@ public class MockInterceptor implements Interceptor {
                 budget4.setStartDate(budget1.getStartDate());
                 budget4.setEndDate(budget1.getEndDate());
                 budget4.setNotifyPercent(80);
-                budget4.setNotifyEnabled(true);
+                budget4.setNotifyEnable(true);
                 // 设置已使用金额为320
                 budget4.setUsedAmount(320.0);
                 budgets.add(budget4);
@@ -838,7 +838,7 @@ public class MockInterceptor implements Interceptor {
                 calendar.set(Calendar.DAY_OF_YEAR, calendar.getActualMaximum(Calendar.DAY_OF_YEAR));
                 budget1.setEndDate(calendar.getTime());
                 budget1.setNotifyPercent(80);
-                budget1.setNotifyEnabled(true);
+                budget1.setNotifyEnable(true);
                 // 设置已使用金额为25000
                 budget1.setUsedAmount(25000.0);
                 budgets.add(budget1);
@@ -852,7 +852,7 @@ public class MockInterceptor implements Interceptor {
                 budget2.setStartDate(budget1.getStartDate());
                 budget2.setEndDate(budget1.getEndDate());
                 budget2.setNotifyPercent(80);
-                budget2.setNotifyEnabled(true);
+                budget2.setNotifyEnable(true);
                 // 设置已使用金额为18000
                 budget2.setUsedAmount(18000.0);
                 budgets.add(budget2);

@@ -5,8 +5,6 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
-import android.widget.AutoCompleteTextView;
 import android.widget.NumberPicker;
 import android.widget.Toast;
 
@@ -14,28 +12,22 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentTransaction;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.zjf.fincialsystem.R;
-import com.zjf.fincialsystem.databinding.DialogBudgetEditBinding;
 import com.zjf.fincialsystem.databinding.FragmentBudgetBinding;
 import com.zjf.fincialsystem.model.Budget;
 import com.zjf.fincialsystem.model.Category;
-import com.zjf.fincialsystem.network.model.AddBudgetRequest;
 import com.zjf.fincialsystem.repository.BudgetRepository;
 import com.zjf.fincialsystem.repository.CategoryRepository;
 import com.zjf.fincialsystem.repository.RepositoryCallback;
 import com.zjf.fincialsystem.ui.adapter.BudgetAdapter;
-import com.zjf.fincialsystem.utils.DateUtils;
 import com.zjf.fincialsystem.utils.LogUtils;
 import com.zjf.fincialsystem.utils.StatusBarUtils;
-import com.zjf.fincialsystem.utils.TokenManager;
 
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
 
 /**
@@ -321,7 +313,7 @@ public class BudgetFragment extends Fragment implements BudgetAdapter.OnBudgetCl
                             + ", 月份=" + budget.getMonth()
                             + ", warningThreshold=" + budget.getWarningThreshold()
                             + ", notifyPercent=" + budget.getNotifyPercent()
-                            + ", 通知启用=" + budget.isNotifyEnabled());
+                            + ", 通知启用=" + budget.isNotifyEnable());
                 }
                 
                 getParentFragmentManager().beginTransaction()

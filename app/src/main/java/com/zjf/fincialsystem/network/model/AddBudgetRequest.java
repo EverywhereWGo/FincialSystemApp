@@ -24,8 +24,8 @@ public class AddBudgetRequest {
     @SerializedName("warningThreshold")
     private int warningThreshold;
     
-    @SerializedName("notifyEnabled")
-    private boolean notifyEnabled;
+    @SerializedName("notifyEnable")
+    private boolean notifyEnable;
     
     @SerializedName("remark")
     private String remark;
@@ -34,14 +34,14 @@ public class AddBudgetRequest {
         // 默认构造函数
     }
     
-    public AddBudgetRequest(long userId, long categoryId, double amount, int year, int month, int warningThreshold, boolean notifyEnabled, String remark) {
+    public AddBudgetRequest(long userId, long categoryId, double amount, int year, int month, int warningThreshold, boolean notifyEnable, String remark) {
         this.userId = userId;
         this.categoryId = categoryId;
         this.amount = amount;
         this.year = year;
         this.month = month;
         this.warningThreshold = warningThreshold;
-        this.notifyEnabled = notifyEnabled;
+        this.notifyEnable = notifyEnable;
         this.remark = remark;
     }
     
@@ -93,12 +93,12 @@ public class AddBudgetRequest {
         this.warningThreshold = warningThreshold;
     }
     
-    public boolean isNotifyEnabled() {
-        return notifyEnabled;
+    public boolean isNotifyEnable() {
+        return notifyEnable;
     }
     
-    public void setNotifyEnabled(boolean notifyEnabled) {
-        this.notifyEnabled = notifyEnabled;
+    public void setNotifyEnable(boolean notifyEnable) {
+        this.notifyEnable = notifyEnable;
     }
     
     public String getRemark() {

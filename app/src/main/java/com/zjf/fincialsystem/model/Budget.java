@@ -47,7 +47,7 @@ public class Budget implements Serializable {
     private Double usedAmount;
     
     @SerializedName("usedPercentage")
-    private Integer usedPercentage;
+    private Double usedPercentage;
     
     @SerializedName("createBy")
     private String createBy;
@@ -68,7 +68,7 @@ public class Budget implements Serializable {
     private Date startDate;
     private Date endDate;
     private int notifyPercent;
-    private boolean notifyEnabled;
+    private boolean notifyEnable;
     
     // 非数据库字段，用于UI显示
     private Category category;
@@ -85,7 +85,7 @@ public class Budget implements Serializable {
         this.amount = amount;
         this.period = period;
         this.notifyPercent = 80;
-        this.notifyEnabled = true;
+        this.notifyEnable = true;
     }
     
     public long getId() {
@@ -152,12 +152,12 @@ public class Budget implements Serializable {
         this.notifyPercent = notifyPercent;
     }
     
-    public boolean isNotifyEnabled() {
-        return notifyEnabled;
+    public boolean isNotifyEnable() {
+        return notifyEnable;
     }
     
-    public void setNotifyEnabled(boolean notifyEnabled) {
-        this.notifyEnabled = notifyEnabled;
+    public void setNotifyEnable(boolean notifyEnable) {
+        this.notifyEnable = notifyEnable;
     }
     
     public Category getCategory() {
@@ -275,25 +275,25 @@ public class Budget implements Serializable {
      * 获取预算使用百分比
      * @return 使用百分比
      */
-    public int getUsedPercentage() {
+    public double getUsedPercentage() {
         return usedPercentage != null ? usedPercentage : calculateUsedPercentage();
     }
     
     /**
      * 设置预算使用百分比
      */
-    public void setUsedPercentage(Integer usedPercentage) {
+    public void setUsedPercentage(Double usedPercentage) {
         this.usedPercentage = usedPercentage;
     }
     
     /**
      * 计算预算使用百分比
      */
-    private int calculateUsedPercentage() {
+    private double calculateUsedPercentage() {
         if (amount <= 0) {
             return 0;
         }
-        return (int) ((getUsedAmount() * 100) / amount);
+        return (getUsedAmount() * 100) / amount;
     }
     
     /**
@@ -336,6 +336,6 @@ public class Budget implements Serializable {
      * 判断是否需要发送通知
      */
     public boolean shouldNotify() {
-        return notifyEnabled && (isOverBudget() || isNearLimit());
+        return notifyEnable && (isOverBudget() || isNearLimit());
     }
 } 
