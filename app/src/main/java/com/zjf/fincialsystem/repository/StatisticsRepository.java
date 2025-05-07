@@ -505,7 +505,7 @@ public class StatisticsRepository {
             // 调试日志
             LogUtils.d(TAG, "请求支出分类数据: userId=" + userId + ", startTime=" + startDate + ", endTime=" + endDate + ", type=2(支出)");
             
-            apiService.getCategoryStatistics(userId, startDate, endDate, 2).enqueue(new Callback<ApiResponse<List<Map<String, Object>>>>() {
+            apiService.getCategoryStatistics(userId, startDate, endDate, 1).enqueue(new Callback<ApiResponse<List<Map<String, Object>>>>() {
                 @Override
                 public void onResponse(Call<ApiResponse<List<Map<String, Object>>>> call, Response<ApiResponse<List<Map<String, Object>>>> response) {
                     if (response.isSuccessful() && response.body() != null) {
