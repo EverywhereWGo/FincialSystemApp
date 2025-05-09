@@ -41,6 +41,9 @@ import java.io.StringWriter;
 
 import com.bumptech.glide.Glide;
 
+import java.util.Map;
+import java.util.HashMap;
+
 /**
  * 添加交易记录Activity
  */
@@ -195,10 +198,18 @@ public class AddTransactionActivity extends AppCompatActivity {
         viewModel.getExpenseCategories().observe(this, expenseCategories -> {
             if (expenseCategories != null && !expenseCategories.isEmpty()) {
                 LogUtils.d(TAG, "观察到支出分类数据更新，数量: " + expenseCategories.size());
-                // 可以使用这些分类数据来更新UI
+                // 无论当前是否显示支出界面，都保存最新的分类数据
                 if (binding.rbExpense.isChecked()) {
-                    // 如果当前显示的是支出界面，则更新分类
-                    categories = expenseCategories;
+                    // 更新全局分类列表
+                    categories.clear();
+                    categories.addAll(expenseCategories);
+                    LogUtils.d(TAG, "已更新全局分类列表(支出)，当前大小: " + categories.size());
+                    
+                    // 打印所有分类ID和名称，方便调试
+                    for (Category category : categories) {
+                        LogUtils.d(TAG, "支出分类: " + category.getName() + ", ID: " + category.getId());
+                    }
+                    
                     // 更新UI显示这些分类
                     loadCategories(Transaction.TYPE_EXPENSE);
                 }
@@ -211,10 +222,18 @@ public class AddTransactionActivity extends AppCompatActivity {
         viewModel.getIncomeCategories().observe(this, incomeCategories -> {
             if (incomeCategories != null && !incomeCategories.isEmpty()) {
                 LogUtils.d(TAG, "观察到收入分类数据更新，数量: " + incomeCategories.size());
-                // 可以使用这些分类数据来更新UI
+                // 无论当前是否显示收入界面，都保存最新的分类数据
                 if (binding.rbIncome.isChecked()) {
-                    // 如果当前显示的是收入界面，则更新分类
-                    categories = incomeCategories;
+                    // 更新全局分类列表
+                    categories.clear();
+                    categories.addAll(incomeCategories);
+                    LogUtils.d(TAG, "已更新全局分类列表(收入)，当前大小: " + categories.size());
+                    
+                    // 打印所有分类ID和名称，方便调试
+                    for (Category category : categories) {
+                        LogUtils.d(TAG, "收入分类: " + category.getName() + ", ID: " + category.getId());
+                    }
+                    
                     // 更新UI显示这些分类
                     loadCategories(Transaction.TYPE_INCOME);
                 }
@@ -277,109 +296,11 @@ public class AddTransactionActivity extends AppCompatActivity {
      */
     private void initCategorySpinner() {
         try {
-            // 初始化分类卡片点击事件
-            setupCategoryCardClickListeners();
-            
             // 加载分类
             int type = binding.rbIncome.isChecked() ? Transaction.TYPE_INCOME : Transaction.TYPE_EXPENSE;
             loadCategories(type);
         } catch (Exception e) {
             LogUtils.e(TAG, "初始化分类选择器失败: " + e.getMessage());
-        }
-    }
-
-    /**
-     * 设置分类卡片点击事件
-     */
-    private void setupCategoryCardClickListeners() {
-        // 设置所有分类卡片的点击事件
-        binding.cardFood.setOnClickListener(v -> {
-            // 根据当前类型设置不同ID
-            if (binding.rbIncome.isChecked()) {
-                selectCategory(v, "工资", 6); // 收入-工资
-            } else {
-                selectCategory(v, "餐饮", 1); // 支出-餐饮 (正确ID为1)
-            }
-        });
-        binding.cardShopping.setOnClickListener(v -> {
-            // 根据当前类型设置不同ID
-            if (binding.rbIncome.isChecked()) {
-                selectCategory(v, "奖金", 7); // 收入-奖金
-            } else {
-                selectCategory(v, "购物", 2); // 支出-购物 (正确ID为2)
-            }
-        });
-        binding.cardHousing.setOnClickListener(v -> {
-            // 根据当前类型设置不同ID
-            if (binding.rbIncome.isChecked()) {
-                selectCategory(v, "投资收益", 8); // 收入-投资收益
-            } else {
-                selectCategory(v, "住房", 4); // 支出-住房 (正确ID为4)
-            }
-        });
-        binding.cardTransport.setOnClickListener(v -> {
-            // 根据当前类型设置不同ID
-            if (binding.rbIncome.isChecked()) {
-                selectCategory(v, "兼职", 9); // 收入-兼职
-            } else {
-                selectCategory(v, "交通", 3); // 支出-交通 (正确ID为3)
-            }
-        });
-        binding.cardMedical.setOnClickListener(v -> {
-            // 根据当前类型设置不同ID
-            if (binding.rbIncome.isChecked()) {
-                selectCategory(v, "退款", 10); // 收入-退款
-            } else {
-                selectCategory(v, "医疗", 5); // 支出-医疗(假设ID为5)
-            }
-        });
-        binding.cardEducation.setOnClickListener(v -> {
-            // 根据当前类型设置不同ID
-            if (binding.rbIncome.isChecked()) {
-                selectCategory(v, "红包", 11); // 收入-红包
-            } else {
-                selectCategory(v, "教育", 6); // 支出-教育(假设ID为6)
-            }
-        });
-        binding.cardEntertainment.setOnClickListener(v -> {
-            // 根据当前类型设置不同ID
-            if (binding.rbIncome.isChecked()) {
-                selectCategory(v, "其他收入", 12); // 收入-其他收入
-            } else {
-                selectCategory(v, "娱乐", 7); // 支出-娱乐(假设ID为7)
-            }
-        });
-        binding.cardMore.setOnClickListener(v -> selectCategory(v, "其他", 8)); // 支出-其他(假设ID为8)
-    }
-
-    /**
-     * 选择分类
-     */
-    private void selectCategory(View view, String categoryName, long categoryId) {
-        if (view instanceof androidx.cardview.widget.CardView) {
-            androidx.cardview.widget.CardView cardView = (androidx.cardview.widget.CardView) view;
-            
-            // 如果当前点击的是已选中的卡片，则取消选中
-            if (view == selectedCategoryView) {
-                cardView.setCardBackgroundColor(Color.WHITE);
-                selectedCategoryView = null;
-                selectedCategory = null;
-                selectedCategoryId = -1;
-                return;
-            }
-            
-            // 重置之前选中的卡片
-            if (selectedCategoryView instanceof androidx.cardview.widget.CardView) {
-                ((androidx.cardview.widget.CardView) selectedCategoryView).setCardBackgroundColor(Color.WHITE);
-            }
-            
-            // 设置当前选中的卡片
-            cardView.setCardBackgroundColor(getResources().getColor(R.color.colorPrimary));
-            selectedCategoryView = view;
-            selectedCategory = categoryName;
-            selectedCategoryId = categoryId;
-            
-            LogUtils.d(TAG, "选择了分类: " + categoryName + ", ID: " + categoryId);
         }
     }
 
@@ -406,14 +327,40 @@ public class AddTransactionActivity extends AppCompatActivity {
             if (binding.cardEntertainment != null) binding.cardEntertainment.setVisibility(View.GONE);
             if (binding.cardMore != null) binding.cardMore.setVisibility(View.GONE);
             
+            LogUtils.d(TAG, "加载分类开始，类型: " + (type == Transaction.TYPE_INCOME ? "收入" : "支出"));
+            
             // 根据类型获取对应的分类数据
             List<Category> currentCategories = new ArrayList<>();
             if (type == Transaction.TYPE_INCOME) {
                 currentCategories = viewModel.getIncomeCategories().getValue();
-                LogUtils.d(TAG, "加载收入分类数据: " + (currentCategories != null ? currentCategories.size() : 0) + "个");
+                LogUtils.d(TAG, "获取收入分类数据: " + (currentCategories != null ? currentCategories.size() : 0) + "个");
+                
+                // 重要：确保全局categories变量更新为当前类型的分类列表
+                if (currentCategories != null && !currentCategories.isEmpty()) {
+                    categories.clear();
+                    categories.addAll(currentCategories);
+                    LogUtils.d(TAG, "全局分类列表已更新为收入分类，大小: " + categories.size());
+                    
+                    // 打印分类列表，便于调试
+                    for (Category category : categories) {
+                        LogUtils.d(TAG, "收入分类: " + category.getName() + ", ID: " + category.getId());
+                    }
+                }
             } else {
                 currentCategories = viewModel.getExpenseCategories().getValue();
-                LogUtils.d(TAG, "加载支出分类数据: " + (currentCategories != null ? currentCategories.size() : 0) + "个");
+                LogUtils.d(TAG, "获取支出分类数据: " + (currentCategories != null ? currentCategories.size() : 0) + "个");
+                
+                // 重要：确保全局categories变量更新为当前类型的分类列表
+                if (currentCategories != null && !currentCategories.isEmpty()) {
+                    categories.clear();
+                    categories.addAll(currentCategories);
+                    LogUtils.d(TAG, "全局分类列表已更新为支出分类，大小: " + categories.size());
+                    
+                    // 打印分类列表，便于调试
+                    for (Category category : categories) {
+                        LogUtils.d(TAG, "支出分类: " + category.getName() + ", ID: " + category.getId());
+                    }
+                }
             }
             
             // 如果分类数据不为空，则动态显示分类卡片
@@ -437,291 +384,231 @@ public class AddTransactionActivity extends AppCompatActivity {
         try {
             // 设置可见卡片的数量，最多显示8个卡片
             int visibleCardCount = Math.min(categories.size(), 8);
+            LogUtils.d(TAG, "准备显示分类卡片，总数: " + visibleCardCount);
             
-            for (int i = 0; i < visibleCardCount; i++) {
-                Category category = categories.get(i);
+            // 获取所有可用的卡片视图
+            List<androidx.cardview.widget.CardView> cardViews = new ArrayList<>();
+            if (binding.cardFood != null) cardViews.add(binding.cardFood);
+            if (binding.cardShopping != null) cardViews.add(binding.cardShopping);
+            if (binding.cardHousing != null) cardViews.add(binding.cardHousing);
+            if (binding.cardTransport != null) cardViews.add(binding.cardTransport);
+            if (binding.cardMedical != null) cardViews.add(binding.cardMedical);
+            if (binding.cardEducation != null) cardViews.add(binding.cardEducation);
+            if (binding.cardEntertainment != null) cardViews.add(binding.cardEntertainment);
+            if (binding.cardMore != null) cardViews.add(binding.cardMore);
+            
+            // 隐藏所有卡片
+            for (androidx.cardview.widget.CardView cardView : cardViews) {
+                cardView.setVisibility(View.GONE);
+            }
+            
+            // 记录分类ID与卡片的映射关系
+            StringBuilder mappingLog = new StringBuilder("分类ID与卡片的映射关系: \n");
+            
+            // 准备卡片与预期分类名称的映射
+            Map<androidx.cardview.widget.CardView, String> cardToExpectedName = new HashMap<>();
+            if (binding.cardFood != null) cardToExpectedName.put(binding.cardFood, "餐饮");
+            if (binding.cardShopping != null) cardToExpectedName.put(binding.cardShopping, "购物");
+            if (binding.cardHousing != null) cardToExpectedName.put(binding.cardHousing, "住房");
+            if (binding.cardTransport != null) cardToExpectedName.put(binding.cardTransport, "交通");
+            if (binding.cardMedical != null) cardToExpectedName.put(binding.cardMedical, "医疗");
+            if (binding.cardEducation != null) cardToExpectedName.put(binding.cardEducation, "教育");
+            if (binding.cardEntertainment != null) cardToExpectedName.put(binding.cardEntertainment, "娱乐");
+            if (binding.cardMore != null) cardToExpectedName.put(binding.cardMore, "其他");
+            
+            // 为每个卡片寻找最匹配的分类
+            Map<androidx.cardview.widget.CardView, Category> cardToCategoryMap = new HashMap<>();
+            
+            // 先处理特殊卡片（住房和交通）
+            for (androidx.cardview.widget.CardView cardView : cardViews) {
+                String expectedName = cardToExpectedName.get(cardView);
+                if (expectedName == null) continue;
                 
-                // 根据索引选择对应的卡片
-                androidx.cardview.widget.CardView cardView = null;
-                switch (i) {
-                    case 0:
-                        cardView = binding.cardFood;
+                // 寻找完全匹配的分类
+                Category matchedCategory = null;
+                for (Category category : categories) {
+                    if (category.getName().equals(expectedName)) {
+                        matchedCategory = category;
                         break;
-                    case 1:
-                        cardView = binding.cardShopping;
-                        break;
-                    case 2:
-                        cardView = binding.cardHousing;
-                        break;
-                    case 3:
-                        cardView = binding.cardTransport;
-                        break;
-                    case 4:
-                        cardView = binding.cardMedical;
-                        break;
-                    case 5:
-                        cardView = binding.cardEducation;
-                        break;
-                    case 6:
-                        cardView = binding.cardEntertainment;
-                        break;
-                    case 7:
-                        cardView = binding.cardMore;
-                        break;
+                    }
                 }
                 
-                if (cardView != null) {
-                    cardView.setVisibility(View.VISIBLE);
-                    
-                    // 设置卡片文本
-                    View tvName = cardView.findViewById(R.id.tv_category_name);
-                    View ivIcon = cardView.findViewById(R.id.iv_category_icon);
-                    
-                    if (tvName != null) {
-                        tvName.setVisibility(View.VISIBLE);
-                        if (tvName instanceof android.widget.TextView) {
-                            ((android.widget.TextView) tvName).setText(category.getName());
+                // 如果没有完全匹配，寻找包含的分类
+                if (matchedCategory == null) {
+                    for (Category category : categories) {
+                        if (category.getName().contains(expectedName) || 
+                            expectedName.contains(category.getName())) {
+                            matchedCategory = category;
+                            break;
                         }
                     }
-                    
-                    if (ivIcon != null) {
-                        ivIcon.setVisibility(View.VISIBLE);
-                    }
-                    
-                    // 设置卡片点击事件 - 使用分类对象的实际ID和名称
-                    final long categoryId = category.getId();
-                    final String categoryName = category.getName();
-                    
-                    // 重要：移除之前的所有点击监听器，避免重复添加
-                    cardView.setOnClickListener(null);
-                    
-                    // 设置新的点击监听器，使用分类对象的真实信息
-                    cardView.setOnClickListener(v -> selectCategory(v, categoryName, categoryId));
-                    
-                    LogUtils.d(TAG, "设置分类卡片: " + categoryName + ", ID: " + categoryId);
+                }
+                
+                if (matchedCategory != null) {
+                    cardToCategoryMap.put(cardView, matchedCategory);
                 }
             }
             
-            LogUtils.d(TAG, "成功显示" + visibleCardCount + "个分类卡片");
+            // 处理剩余未匹配的卡片和分类
+            List<Category> remainingCategories = new ArrayList<>(categories);
+            remainingCategories.removeAll(cardToCategoryMap.values());
+            
+            List<androidx.cardview.widget.CardView> unmappedCards = new ArrayList<>(cardViews);
+            unmappedCards.removeAll(cardToCategoryMap.keySet());
+            
+            // 将剩余分类分配给未映射的卡片
+            int index = 0;
+            for (androidx.cardview.widget.CardView cardView : unmappedCards) {
+                if (index < remainingCategories.size()) {
+                    cardToCategoryMap.put(cardView, remainingCategories.get(index));
+                    index++;
+                }
+            }
+            
+            // 显示卡片和设置监听器
+            for (Map.Entry<androidx.cardview.widget.CardView, Category> entry : cardToCategoryMap.entrySet()) {
+                androidx.cardview.widget.CardView cardView = entry.getKey();
+                Category category = entry.getValue();
+                
+                // 获取卡片预期的分类名称
+                String expectedName = cardToExpectedName.get(cardView);
+                
+                // 设置卡片
+                setupCategoryCard(cardView, category, expectedName);
+                
+                // 记录映射关系
+                String cardName = getCardName(cardView);
+                mappingLog.append("  ").append(cardName).append(" -> ")
+                         .append(category.getName()).append("(ID:").append(category.getId()).append(")\n");
+            }
+            
+            // 打印映射日志
+            LogUtils.d(TAG, mappingLog.toString());
+            int visibleCount = (int) cardToCategoryMap.keySet().stream()
+                    .filter(cardView -> cardView.getVisibility() == View.VISIBLE)
+                    .count();
+            LogUtils.d(TAG, "成功显示" + visibleCount + "个分类卡片");
         } catch (Exception e) {
             LogUtils.e(TAG, "显示分类卡片时出错: " + e.getMessage(), e);
         }
+    }
+    
+    /**
+     * 获取卡片名称（用于日志）
+     */
+    private String getCardName(View cardView) {
+        if (cardView == binding.cardFood) return "食物卡片";
+        if (cardView == binding.cardShopping) return "购物卡片";
+        if (cardView == binding.cardHousing) return "住房卡片";
+        if (cardView == binding.cardTransport) return "交通卡片";
+        if (cardView == binding.cardMedical) return "医疗卡片";
+        if (cardView == binding.cardEducation) return "教育卡片";
+        if (cardView == binding.cardEntertainment) return "娱乐卡片";
+        if (cardView == binding.cardMore) return "更多卡片";
+        return "未知卡片";
+    }
+    
+    /**
+     * 设置单个分类卡片
+     */
+    private void setupCategoryCard(androidx.cardview.widget.CardView cardView, Category category, String expectedName) {
+        if (cardView == null || category == null) {
+            return;
+        }
+        
+        cardView.setVisibility(View.VISIBLE);
+        
+        // 设置卡片文本
+        View tvName = cardView.findViewById(R.id.tv_category_name);
+        View ivIcon = cardView.findViewById(R.id.iv_category_icon);
+        
+        if (tvName != null) {
+            tvName.setVisibility(View.VISIBLE);
+            if (tvName instanceof android.widget.TextView) {
+                // 如果存在预期名称，使用预期名称作为显示文本
+                String displayText = (expectedName != null) ? expectedName : category.getName();
+                ((android.widget.TextView) tvName).setText(displayText);
+                
+                // 如果卡片期望的名称与分类实际名称不同，记录日志
+                if (expectedName != null && !expectedName.equals(category.getName())) {
+                    LogUtils.w(TAG, "卡片显示名称 '" + expectedName + 
+                            "' 与分类实际名称 '" + category.getName() + "' 不同");
+                }
+            }
+        }
+        
+        if (ivIcon != null) {
+            ivIcon.setVisibility(View.VISIBLE);
+        }
+        
+        // 获取分类信息
+        final long categoryId = category.getId();
+        final String categoryName = category.getName();
+        
+        // 卡片日志信息
+        String cardType = getCardName(cardView);
+        LogUtils.d(TAG, "设置" + cardType + ": " + categoryName + ", ID: " + categoryId);
+        
+        // 重要：移除之前的所有点击监听器，避免重复添加
+        cardView.setOnClickListener(null);
+        
+        // 设置新的点击监听器，使用分类对象的真实信息
+        cardView.setOnClickListener(v -> {
+            String displayName = expectedName != null ? expectedName : categoryName;
+            LogUtils.d(TAG, "点击了" + cardType + "，选择分类: " + displayName + ", ID: " + categoryId);
+            selectCategory(v, displayName, categoryId);
+        });
+    }
+    
+    /**
+     * 重载原方法以兼容已有代码
+     */
+    private void setupCategoryCard(androidx.cardview.widget.CardView cardView, Category category) {
+        setupCategoryCard(cardView, category, null);
     }
 
     /**
      * 显示默认分类（当API数据为空时的备用方案）
      */
     private void displayDefaultCategories(int type) {
+        LogUtils.d(TAG, "使用默认分类显示 - 类型: " + (type == Transaction.TYPE_INCOME ? "收入" : "支出"));
+        
+        // 创建默认分类列表
+        List<Category> defaultCategories = new ArrayList<>();
+        
         if (type == Transaction.TYPE_INCOME) {
-            // 收入类别的卡片可见性设置
-            if (binding.cardFood != null) binding.cardFood.setVisibility(View.VISIBLE);
-            if (binding.cardShopping != null) binding.cardShopping.setVisibility(View.VISIBLE);
-            if (binding.cardHousing != null) binding.cardHousing.setVisibility(View.VISIBLE);
-            if (binding.cardTransport != null) binding.cardTransport.setVisibility(View.VISIBLE);
-            if (binding.cardMedical != null) binding.cardMedical.setVisibility(View.VISIBLE);
-            if (binding.cardEducation != null) binding.cardEducation.setVisibility(View.VISIBLE);
-            if (binding.cardEntertainment != null) binding.cardEntertainment.setVisibility(View.VISIBLE);
-            
-            // 设置收入类别的文本
-            try {
-                // 工资
-                if (binding.cardFood != null) {
-                    View tvName = binding.cardFood.findViewById(R.id.tv_category_name);
-                    View ivIcon = binding.cardFood.findViewById(R.id.iv_category_icon);
-                    if (tvName != null) tvName.setVisibility(View.VISIBLE);
-                    if (ivIcon != null) ivIcon.setVisibility(View.VISIBLE);
-                    if (tvName instanceof android.widget.TextView) {
-                        ((android.widget.TextView) tvName).setText("工资");
-                    }
-                    binding.cardFood.setOnClickListener(v -> selectCategory(v, "工资", 6));
-                }
-                
-                // 奖金
-                if (binding.cardShopping != null) {
-                    View tvName = binding.cardShopping.findViewById(R.id.tv_category_name);
-                    View ivIcon = binding.cardShopping.findViewById(R.id.iv_category_icon);
-                    if (tvName != null) tvName.setVisibility(View.VISIBLE);
-                    if (ivIcon != null) ivIcon.setVisibility(View.VISIBLE);
-                    if (tvName instanceof android.widget.TextView) {
-                        ((android.widget.TextView) tvName).setText("奖金");
-                    }
-                    binding.cardShopping.setOnClickListener(v -> selectCategory(v, "奖金", 7));
-                }
-                
-                // 投资收益
-                if (binding.cardHousing != null) {
-                    View tvName = binding.cardHousing.findViewById(R.id.tv_category_name);
-                    View ivIcon = binding.cardHousing.findViewById(R.id.iv_category_icon);
-                    if (tvName != null) tvName.setVisibility(View.VISIBLE);
-                    if (ivIcon != null) ivIcon.setVisibility(View.VISIBLE);
-                    if (tvName instanceof android.widget.TextView) {
-                        ((android.widget.TextView) tvName).setText("投资收益");
-                    }
-                    binding.cardHousing.setOnClickListener(v -> selectCategory(v, "投资收益", 8));
-                }
-                
-                // 兼职
-                if (binding.cardTransport != null) {
-                    View tvName = binding.cardTransport.findViewById(R.id.tv_category_name);
-                    View ivIcon = binding.cardTransport.findViewById(R.id.iv_category_icon);
-                    if (tvName != null) tvName.setVisibility(View.VISIBLE);
-                    if (ivIcon != null) ivIcon.setVisibility(View.VISIBLE);
-                    if (tvName instanceof android.widget.TextView) {
-                        ((android.widget.TextView) tvName).setText("兼职");
-                    }
-                    binding.cardTransport.setOnClickListener(v -> selectCategory(v, "兼职", 9));
-                }
-                
-                // 退款
-                if (binding.cardMedical != null) {
-                    View tvName = binding.cardMedical.findViewById(R.id.tv_category_name);
-                    View ivIcon = binding.cardMedical.findViewById(R.id.iv_category_icon);
-                    if (tvName != null) tvName.setVisibility(View.VISIBLE);
-                    if (ivIcon != null) ivIcon.setVisibility(View.VISIBLE);
-                    if (tvName instanceof android.widget.TextView) {
-                        ((android.widget.TextView) tvName).setText("退款");
-                    }
-                    binding.cardMedical.setOnClickListener(v -> selectCategory(v, "退款", 10));
-                }
-                
-                // 红包
-                if (binding.cardEducation != null) {
-                    View tvName = binding.cardEducation.findViewById(R.id.tv_category_name);
-                    View ivIcon = binding.cardEducation.findViewById(R.id.iv_category_icon);
-                    if (tvName != null) tvName.setVisibility(View.VISIBLE);
-                    if (ivIcon != null) ivIcon.setVisibility(View.VISIBLE);
-                    if (tvName instanceof android.widget.TextView) {
-                        ((android.widget.TextView) tvName).setText("红包");
-                    }
-                    binding.cardEducation.setOnClickListener(v -> selectCategory(v, "红包", 11));
-                }
-                
-                // 其他收入
-                if (binding.cardEntertainment != null) {
-                    View tvName = binding.cardEntertainment.findViewById(R.id.tv_category_name);
-                    View ivIcon = binding.cardEntertainment.findViewById(R.id.iv_category_icon);
-                    if (tvName != null) tvName.setVisibility(View.VISIBLE);
-                    if (ivIcon != null) ivIcon.setVisibility(View.VISIBLE);
-                    if (tvName instanceof android.widget.TextView) {
-                        ((android.widget.TextView) tvName).setText("其他收入");
-                    }
-                    binding.cardEntertainment.setOnClickListener(v -> selectCategory(v, "其他收入", 12));
-                }
-            } catch (Exception e) {
-                LogUtils.e(TAG, "设置收入类别文本出错: " + e.getMessage(), e);
-            }
+            // 默认收入分类
+            defaultCategories.add(createDefaultCategory(6, "工资"));
+            defaultCategories.add(createDefaultCategory(7, "奖金"));
+            defaultCategories.add(createDefaultCategory(8, "投资收益"));
+            defaultCategories.add(createDefaultCategory(9, "兼职"));
+            defaultCategories.add(createDefaultCategory(10, "退款"));
+            defaultCategories.add(createDefaultCategory(11, "红包"));
+            defaultCategories.add(createDefaultCategory(12, "其他收入"));
         } else {
-            // 支出类别的卡片可见性设置
-            if (binding.cardFood != null) binding.cardFood.setVisibility(View.VISIBLE);
-            if (binding.cardShopping != null) binding.cardShopping.setVisibility(View.VISIBLE);
-            if (binding.cardHousing != null) binding.cardHousing.setVisibility(View.VISIBLE);
-            if (binding.cardTransport != null) binding.cardTransport.setVisibility(View.VISIBLE);
-            if (binding.cardMedical != null) binding.cardMedical.setVisibility(View.VISIBLE);
-            if (binding.cardEducation != null) binding.cardEducation.setVisibility(View.VISIBLE);
-            if (binding.cardEntertainment != null) binding.cardEntertainment.setVisibility(View.VISIBLE);
-            if (binding.cardMore != null) binding.cardMore.setVisibility(View.VISIBLE);
-            
-            // 设置支出类别的文本和点击事件
-            try {
-                // 餐饮
-                if (binding.cardFood != null) {
-                    View tvName = binding.cardFood.findViewById(R.id.tv_category_name);
-                    View ivIcon = binding.cardFood.findViewById(R.id.iv_category_icon);
-                    if (tvName != null) tvName.setVisibility(View.VISIBLE);
-                    if (ivIcon != null) ivIcon.setVisibility(View.VISIBLE);
-                    if (tvName instanceof android.widget.TextView) {
-                        ((android.widget.TextView) tvName).setText("餐饮");
-                    }
-                    binding.cardFood.setOnClickListener(v -> selectCategory(v, "餐饮", 1));
-                }
-                
-                // 购物
-                if (binding.cardShopping != null) {
-                    View tvName = binding.cardShopping.findViewById(R.id.tv_category_name);
-                    View ivIcon = binding.cardShopping.findViewById(R.id.iv_category_icon);
-                    if (tvName != null) tvName.setVisibility(View.VISIBLE);
-                    if (ivIcon != null) ivIcon.setVisibility(View.VISIBLE);
-                    if (tvName instanceof android.widget.TextView) {
-                        ((android.widget.TextView) tvName).setText("购物");
-                    }
-                    binding.cardShopping.setOnClickListener(v -> selectCategory(v, "购物", 2));
-                }
-                
-                // 住房
-                if (binding.cardHousing != null) {
-                    View tvName = binding.cardHousing.findViewById(R.id.tv_category_name);
-                    View ivIcon = binding.cardHousing.findViewById(R.id.iv_category_icon);
-                    if (tvName != null) tvName.setVisibility(View.VISIBLE);
-                    if (ivIcon != null) ivIcon.setVisibility(View.VISIBLE);
-                    if (tvName instanceof android.widget.TextView) {
-                        ((android.widget.TextView) tvName).setText("住房");
-                    }
-                    binding.cardHousing.setOnClickListener(v -> selectCategory(v, "住房", 4));
-                }
-                
-                // 交通
-                if (binding.cardTransport != null) {
-                    View tvName = binding.cardTransport.findViewById(R.id.tv_category_name);
-                    View ivIcon = binding.cardTransport.findViewById(R.id.iv_category_icon);
-                    if (tvName != null) tvName.setVisibility(View.VISIBLE);
-                    if (ivIcon != null) ivIcon.setVisibility(View.VISIBLE);
-                    if (tvName instanceof android.widget.TextView) {
-                        ((android.widget.TextView) tvName).setText("交通");
-                    }
-                    binding.cardTransport.setOnClickListener(v -> selectCategory(v, "交通", 3));
-                }
-                
-                // 医疗
-                if (binding.cardMedical != null) {
-                    View tvName = binding.cardMedical.findViewById(R.id.tv_category_name);
-                    View ivIcon = binding.cardMedical.findViewById(R.id.iv_category_icon);
-                    if (tvName != null) tvName.setVisibility(View.VISIBLE);
-                    if (ivIcon != null) ivIcon.setVisibility(View.VISIBLE);
-                    if (tvName instanceof android.widget.TextView) {
-                        ((android.widget.TextView) tvName).setText("医疗");
-                    }
-                    binding.cardMedical.setOnClickListener(v -> selectCategory(v, "医疗", 5));
-                }
-                
-                // 教育
-                if (binding.cardEducation != null) {
-                    View tvName = binding.cardEducation.findViewById(R.id.tv_category_name);
-                    View ivIcon = binding.cardEducation.findViewById(R.id.iv_category_icon);
-                    if (tvName != null) tvName.setVisibility(View.VISIBLE);
-                    if (ivIcon != null) ivIcon.setVisibility(View.VISIBLE);
-                    if (tvName instanceof android.widget.TextView) {
-                        ((android.widget.TextView) tvName).setText("教育");
-                    }
-                    binding.cardEducation.setOnClickListener(v -> selectCategory(v, "教育", 6));
-                }
-                
-                // 娱乐
-                if (binding.cardEntertainment != null) {
-                    View tvName = binding.cardEntertainment.findViewById(R.id.tv_category_name);
-                    View ivIcon = binding.cardEntertainment.findViewById(R.id.iv_category_icon);
-                    if (tvName != null) tvName.setVisibility(View.VISIBLE);
-                    if (ivIcon != null) ivIcon.setVisibility(View.VISIBLE);
-                    if (tvName instanceof android.widget.TextView) {
-                        ((android.widget.TextView) tvName).setText("娱乐");
-                    }
-                    binding.cardEntertainment.setOnClickListener(v -> selectCategory(v, "娱乐", 7));
-                }
-                
-                // 其他
-                if (binding.cardMore != null) {
-                    View tvName = binding.cardMore.findViewById(R.id.tv_category_name);
-                    View ivIcon = binding.cardMore.findViewById(R.id.iv_category_icon);
-                    if (tvName != null) tvName.setVisibility(View.VISIBLE);
-                    if (ivIcon != null) ivIcon.setVisibility(View.VISIBLE);
-                    if (tvName instanceof android.widget.TextView) {
-                        ((android.widget.TextView) tvName).setText("其他");
-                    }
-                    binding.cardMore.setOnClickListener(v -> selectCategory(v, "其他", 8));
-                }
-            } catch (Exception e) {
-                LogUtils.e(TAG, "设置支出类别文本出错: " + e.getMessage(), e);
-            }
+            // 默认支出分类
+            defaultCategories.add(createDefaultCategory(1, "餐饮"));
+            defaultCategories.add(createDefaultCategory(2, "购物"));
+            defaultCategories.add(createDefaultCategory(3, "交通"));
+            defaultCategories.add(createDefaultCategory(4, "住房"));
+            defaultCategories.add(createDefaultCategory(5, "医疗"));
+            defaultCategories.add(createDefaultCategory(6, "教育"));
+            defaultCategories.add(createDefaultCategory(7, "娱乐"));
+            defaultCategories.add(createDefaultCategory(8, "其他"));
         }
+        
+        // 使用与普通分类相同的逻辑显示默认分类
+        displayCategoriesOnCards(defaultCategories, type);
+    }
+    
+    /**
+     * 创建默认分类对象
+     */
+    private Category createDefaultCategory(long id, String name) {
+        Category category = new Category();
+        category.setId(id);
+        category.setName(name);
+        return category;
     }
     
     /**
@@ -1310,119 +1197,267 @@ public class AddTransactionActivity extends AppCompatActivity {
      */
     private void selectCategoryCardById(long categoryId) {
         try {
+            LogUtils.d(TAG, "尝试根据ID选择分类卡片: " + categoryId);
+            
+            // 先从分类列表中查找对应的分类名称
+            String categoryName = null;
+            for (Category category : categories) {
+                if (category.getId() == categoryId) {
+                    categoryName = category.getName();
+                    LogUtils.d(TAG, "在categories列表中找到对应的分类名称: " + categoryName + ", ID: " + categoryId);
+                    break;
+                }
+            }
+            
+            // 如果在categories中找不到，尝试从硬编码映射中查找
+            if (categoryName == null) {
+                categoryName = getCategoryNameById(categoryId);
+                if (categoryName != null) {
+                    LogUtils.d(TAG, "在硬编码映射中找到对应的分类名称: " + categoryName + ", ID: " + categoryId);
+                } else {
+                    LogUtils.w(TAG, "无法找到ID为" + categoryId + "的分类名称，无法选中对应的卡片");
+                    return;
+                }
+            }
+            
             // 查找合适的卡片
             View cardView = null;
-            String categoryName = "";
-
-            // 遍历所有可能的卡片
+            
+            // 遍历所有当前可见的卡片，查找分类名称匹配的卡片
             if (binding.cardFood.getVisibility() == View.VISIBLE) {
                 View tvName = binding.cardFood.findViewById(R.id.tv_category_name);
                 if (tvName instanceof android.widget.TextView) {
-                    String name = ((android.widget.TextView) tvName).getText().toString();
-                    // 根据实际情况判断是否是要找的分类
-                    if (findCategoryIdByName(name) == categoryId) {
+                    String text = ((android.widget.TextView) tvName).getText().toString();
+                    if (categoryName.equals(text)) {
                         cardView = binding.cardFood;
-                        categoryName = name;
+                        LogUtils.d(TAG, "在cardFood中找到匹配的分类名称: " + text);
                     }
                 }
             }
-
+            
             if (cardView == null && binding.cardShopping.getVisibility() == View.VISIBLE) {
                 View tvName = binding.cardShopping.findViewById(R.id.tv_category_name);
                 if (tvName instanceof android.widget.TextView) {
-                    String name = ((android.widget.TextView) tvName).getText().toString();
-                    if (findCategoryIdByName(name) == categoryId) {
+                    String text = ((android.widget.TextView) tvName).getText().toString();
+                    if (categoryName.equals(text)) {
                         cardView = binding.cardShopping;
-                        categoryName = name;
+                        LogUtils.d(TAG, "在cardShopping中找到匹配的分类名称: " + text);
                     }
                 }
             }
-
+            
             if (cardView == null && binding.cardHousing.getVisibility() == View.VISIBLE) {
                 View tvName = binding.cardHousing.findViewById(R.id.tv_category_name);
                 if (tvName instanceof android.widget.TextView) {
-                    String name = ((android.widget.TextView) tvName).getText().toString();
-                    if (findCategoryIdByName(name) == categoryId) {
+                    String text = ((android.widget.TextView) tvName).getText().toString();
+                    if (categoryName.equals(text)) {
                         cardView = binding.cardHousing;
-                        categoryName = name;
+                        LogUtils.d(TAG, "在cardHousing中找到匹配的分类名称: " + text);
                     }
                 }
             }
-
+            
             if (cardView == null && binding.cardTransport.getVisibility() == View.VISIBLE) {
                 View tvName = binding.cardTransport.findViewById(R.id.tv_category_name);
                 if (tvName instanceof android.widget.TextView) {
-                    String name = ((android.widget.TextView) tvName).getText().toString();
-                    if (findCategoryIdByName(name) == categoryId) {
+                    String text = ((android.widget.TextView) tvName).getText().toString();
+                    if (categoryName.equals(text)) {
                         cardView = binding.cardTransport;
-                        categoryName = name;
+                        LogUtils.d(TAG, "在cardTransport中找到匹配的分类名称: " + text);
                     }
                 }
             }
-
+            
             if (cardView == null && binding.cardMedical.getVisibility() == View.VISIBLE) {
                 View tvName = binding.cardMedical.findViewById(R.id.tv_category_name);
                 if (tvName instanceof android.widget.TextView) {
-                    String name = ((android.widget.TextView) tvName).getText().toString();
-                    if (findCategoryIdByName(name) == categoryId) {
+                    String text = ((android.widget.TextView) tvName).getText().toString();
+                    if (categoryName.equals(text)) {
                         cardView = binding.cardMedical;
-                        categoryName = name;
+                        LogUtils.d(TAG, "在cardMedical中找到匹配的分类名称: " + text);
                     }
                 }
             }
-
+            
             if (cardView == null && binding.cardEducation.getVisibility() == View.VISIBLE) {
                 View tvName = binding.cardEducation.findViewById(R.id.tv_category_name);
                 if (tvName instanceof android.widget.TextView) {
-                    String name = ((android.widget.TextView) tvName).getText().toString();
-                    if (findCategoryIdByName(name) == categoryId) {
+                    String text = ((android.widget.TextView) tvName).getText().toString();
+                    if (categoryName.equals(text)) {
                         cardView = binding.cardEducation;
-                        categoryName = name;
+                        LogUtils.d(TAG, "在cardEducation中找到匹配的分类名称: " + text);
                     }
                 }
             }
-
+            
             if (cardView == null && binding.cardEntertainment.getVisibility() == View.VISIBLE) {
                 View tvName = binding.cardEntertainment.findViewById(R.id.tv_category_name);
                 if (tvName instanceof android.widget.TextView) {
-                    String name = ((android.widget.TextView) tvName).getText().toString();
-                    if (findCategoryIdByName(name) == categoryId) {
+                    String text = ((android.widget.TextView) tvName).getText().toString();
+                    if (categoryName.equals(text)) {
                         cardView = binding.cardEntertainment;
-                        categoryName = name;
+                        LogUtils.d(TAG, "在cardEntertainment中找到匹配的分类名称: " + text);
                     }
                 }
             }
-
+            
             if (cardView == null && binding.cardMore.getVisibility() == View.VISIBLE) {
                 View tvName = binding.cardMore.findViewById(R.id.tv_category_name);
                 if (tvName instanceof android.widget.TextView) {
-                    String name = ((android.widget.TextView) tvName).getText().toString();
-                    if (findCategoryIdByName(name) == categoryId) {
+                    String text = ((android.widget.TextView) tvName).getText().toString();
+                    if (categoryName.equals(text)) {
                         cardView = binding.cardMore;
-                        categoryName = name;
+                        LogUtils.d(TAG, "在cardMore中找到匹配的分类名称: " + text);
                     }
                 }
             }
-
+            
             // 如果找到了对应的卡片，选中它
             if (cardView != null) {
+                LogUtils.d(TAG, "找到并选中分类卡片: " + categoryName + ", ID: " + categoryId);
                 selectCategory(cardView, categoryName, categoryId);
+            } else {
+                LogUtils.w(TAG, "未找到匹配的分类卡片: " + categoryName);
+                
+                // 当找不到匹配的卡片时，直接设置选中状态（不涉及UI变化）
+                selectedCategory = categoryName;
+                selectedCategoryId = categoryId;
+                LogUtils.d(TAG, "尽管未找到UI卡片，但已设置选中的分类: " + categoryName + ", ID: " + categoryId);
             }
         } catch (Exception e) {
             LogUtils.e(TAG, "根据ID选择分类卡片失败: " + e.getMessage(), e);
         }
     }
-
+    
+    /**
+     * 根据分类ID获取分类名称（硬编码映射）
+     */
+    private String getCategoryNameById(long categoryId) {
+        // 支出分类
+        if (categoryId == 1) return "餐饮";
+        if (categoryId == 2) return "购物";
+        if (categoryId == 3) return "交通";
+        if (categoryId == 4) return "住房";
+        if (categoryId == 5) return "医疗";
+        if (categoryId == 6) return "教育";
+        if (categoryId == 7) return "娱乐";
+        if (categoryId == 8) return "其他";
+        
+        // 收入分类
+        if (categoryId == 6) return "工资";
+        if (categoryId == 7) return "奖金";
+        if (categoryId == 8) return "投资收益";
+        if (categoryId == 9) return "兼职";
+        if (categoryId == 10) return "退款";
+        if (categoryId == 11) return "红包";
+        if (categoryId == 12) return "其他收入";
+        
+        LogUtils.w(TAG, "在硬编码映射中未找到ID: " + categoryId + " 对应的分类名称");
+        return null;
+    }
+    
     /**
      * 根据分类名称查找分类ID
      */
     private long findCategoryIdByName(String name) {
-        // 在当前加载的分类中查找
+        if (TextUtils.isEmpty(name)) {
+            LogUtils.w(TAG, "查找分类ID时名称为空");
+            return -1;
+        }
+        
+        LogUtils.d(TAG, "尝试查找分类: " + name + ", 当前分类列表大小: " + categories.size());
+        
+        // 避免在后面的代码中出现NPE
+        if (categories == null) {
+            LogUtils.w(TAG, "categories列表为null，无法查找分类");
+            return getHardcodedCategoryId(name);
+        }
+        
+        // 精确匹配：在当前加载的分类中查找
         for (Category category : categories) {
             if (category.getName().equals(name)) {
+                LogUtils.d(TAG, "找到精确匹配的分类: " + name + ", ID: " + category.getId());
                 return category.getId();
             }
         }
+        
+        // 如果没有精确匹配，尝试模糊匹配（包含或被包含关系）
+        for (Category category : categories) {
+            if (category.getName().contains(name) || name.contains(category.getName())) {
+                LogUtils.d(TAG, "找到模糊匹配的分类: " + name + " <-> " + category.getName() + ", ID: " + category.getId());
+                return category.getId();
+            }
+        }
+        
+        // 如果在categories中找不到，使用硬编码的映射
+        long hardcodedId = getHardcodedCategoryId(name);
+        if (hardcodedId != -1) {
+            LogUtils.d(TAG, "在内置映射中找到分类: " + name + ", ID: " + hardcodedId);
+            return hardcodedId;
+        }
+        
+        // 打印所有可用分类，便于调试
+        StringBuilder availableCategories = new StringBuilder("可用分类列表: ");
+        for (Category category : categories) {
+            availableCategories.append(category.getName()).append("(ID:").append(category.getId()).append("), ");
+        }
+        LogUtils.w(TAG, "未找到匹配的分类: " + name + ", " + availableCategories.toString());
+        
+        return -1;
+    }
+    
+    /**
+     * 基于分类名称获取硬编码的分类ID
+     * 该方法作为备选方案，用于在无法通过API获取分类ID时使用
+     */
+    private long getHardcodedCategoryId(String categoryName) {
+        if (TextUtils.isEmpty(categoryName)) {
+            LogUtils.w(TAG, "分类名称为空，无法获取ID");
+            return -1;
+        }
+        
+        LogUtils.d(TAG, "尝试为分类名称获取硬编码ID: " + categoryName);
+        
+        // 支出类别ID映射
+        if (categoryName.contains("餐饮") || categoryName.contains("食品") || categoryName.contains("吃")) {
+            return 1;
+        } else if (categoryName.contains("购物") || categoryName.contains("消费") || categoryName.contains("买")) {
+            return 2;
+        } else if (categoryName.contains("交通") || categoryName.contains("车") || categoryName.contains("地铁") || categoryName.contains("公交")) {
+            return 3;
+        } else if (categoryName.contains("住房") || categoryName.contains("房租") || categoryName.contains("水电") || categoryName.contains("物业")) {
+            return 4;
+        } else if (categoryName.contains("医疗") || categoryName.contains("健康") || categoryName.contains("药") || categoryName.contains("医院")) {
+            return 5;
+        } else if (categoryName.contains("教育") || categoryName.contains("学习") || categoryName.contains("书") || categoryName.contains("课程")) {
+            return 6;
+        } else if (categoryName.contains("娱乐") || categoryName.contains("游戏") || categoryName.contains("电影")) {
+            return 7;
+        } 
+        
+        // 收入类别ID映射
+        else if (categoryName.contains("工资") || categoryName.contains("薪资") || categoryName.contains("薪水")) {
+            return 6;
+        } else if (categoryName.contains("奖金") || categoryName.contains("奖励") || categoryName.contains("奖项")) {
+            return 7;
+        } else if (categoryName.contains("投资") || categoryName.contains("股票") || categoryName.contains("基金")) {
+            return 8;
+        } else if (categoryName.contains("兼职") || categoryName.contains("副业") || categoryName.contains("打工")) {
+            return 9; 
+        } else if (categoryName.contains("退款") || categoryName.contains("报销")) {
+            return 10;
+        } else if (categoryName.contains("红包") || categoryName.contains("礼金")) {
+            return 11;
+        } else if (categoryName.contains("其他收入")) {
+            return 12;
+        }
+        
+        // 通用的"其他"分类
+        else if (categoryName.contains("其他")) {
+            return 8;
+        }
+        
+        LogUtils.w(TAG, "未能找到分类名称 '" + categoryName + "' 的硬编码ID");
         return -1;
     }
     
@@ -1437,5 +1472,36 @@ public class AddTransactionActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         binding = null;
+    }
+
+    /**
+     * 选择分类
+     */
+    private void selectCategory(View view, String categoryName, long categoryId) {
+        if (view instanceof androidx.cardview.widget.CardView) {
+            androidx.cardview.widget.CardView cardView = (androidx.cardview.widget.CardView) view;
+            
+            // 如果当前点击的是已选中的卡片，则取消选中
+            if (view == selectedCategoryView) {
+                cardView.setCardBackgroundColor(Color.WHITE);
+                selectedCategoryView = null;
+                selectedCategory = null;
+                selectedCategoryId = -1;
+                return;
+            }
+            
+            // 重置之前选中的卡片
+            if (selectedCategoryView instanceof androidx.cardview.widget.CardView) {
+                ((androidx.cardview.widget.CardView) selectedCategoryView).setCardBackgroundColor(Color.WHITE);
+            }
+            
+            // 设置当前选中的卡片
+            cardView.setCardBackgroundColor(Color.parseColor("#F5F5F5")); // 浅灰色背景
+            selectedCategoryView = view;
+            selectedCategory = categoryName;
+            selectedCategoryId = categoryId;
+            
+            LogUtils.d(TAG, "选择了分类: " + categoryName + ", ID: " + categoryId);
+        }
     }
 } 
