@@ -210,6 +210,12 @@
     <string name="confirm_clear_data">确认清除数据</string>
     <string name="confirm_clear_data_message">确定要清除所有数据吗？此操作不可恢复。</string>
     <string name="data_cleared">数据已清除</string>
+    <string name="no_notifications">暂无通知</string>
+    <string name="clear_all_notifications">清除所有通知</string>
+    <string name="show_history">显示历史</string>
+    <string name="no_all_notifications">暂无任何通知消息</string>
+    <string name="no_unread_notifications">暂无未读通知消息</string>
+    <string name="mark_all_as_read">标记所有未读为已读</string>
     
     <!-- 个人中心 -->
     <string name="edit_profile">编辑个人资料</string>

@@ -43,20 +43,45 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
-            <!-- 清空按钮 -->
-            <Button
+            <!-- 历史通知开关 -->
+            <LinearLayout
+                android:id="@+id/layout_history_switch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="@id/tv_title"
+                app:layout_constraintBottom_toBottomOf="@id/tv_title">
+
+                <TextView
+                    android:id="@+id/tv_show_history"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/show_history"
+                    android:textSize="14sp"
+                    android:textColor="@color/text_secondary"
+                    android:layout_marginEnd="8dp"/>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switch_show_history"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="false" />
+            </LinearLayout>
+
+            <!-- 清空按钮 - 重新定位到列表底部 -->
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_clear_all"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="?attr/selectableItemBackground"
-                android:minWidth="0dp"
-                android:text="清空"
-                android:textColor="@color/colorPrimary"
-                android:textSize="14sp"
+                android:text="@string/clear_all_notifications"
+                android:layout_marginBottom="16dp"
+                style="@style/Widget.MaterialComponents.Button"
                 android:visibility="gone"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="@id/tv_title"
-                app:layout_constraintBottom_toBottomOf="@id/tv_title"
                 tools:visibility="visible" />
 
             <!-- 下拉刷新布局 -->
@@ -105,18 +130,18 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="暂无通知消息"
+                    android:text="@string/no_notifications"
                     android:textColor="@color/text_secondary"
                     android:textSize="16sp" />
 
                 <TextView
+                    android:id="@+id/tv_empty_message"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="您的消息通知将会显示在这里"
-                    android:textColor="@color/textHint"
-                    android:textSize="14sp"
-                    android:gravity="center" />
+                    android:text="@string/no_unread_notifications"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="14sp" />
 
             </LinearLayout>
 

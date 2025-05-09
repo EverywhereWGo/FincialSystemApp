@@ -6,6 +6,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -37,8 +38,10 @@ public class NotificationFragment extends Fragment {
     private FragmentNotificationBinding binding;
     private NotificationAdapter adapter;
     private List<Notification> notifications = new ArrayList<>();
+    private List<Notification> allNotifications = new ArrayList<>(); // 存储所有通知
     private NotificationDao notificationDao;
     private NotificationRepository notificationRepository;
+    private boolean showAllNotifications = false; // 是否显示所有通知（包括已读）
 
     @Nullable
     @Override
@@ -63,6 +66,9 @@ public class NotificationFragment extends Fragment {
         
         // 初始化视图
         initViews();
+        
+        // 创建测试通知数据
+        createTestNotifications();
         
         // 加载通知数据
         loadNotifications();
@@ -95,6 +101,13 @@ public class NotificationFragment extends Fragment {
                     R.color.colorPrimaryDark
             );
             
+            // 设置历史通知开关
+            binding.switchShowHistory.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                showAllNotifications = isChecked;
+                updateNotificationsList();
+                LogUtils.d(TAG, "显示历史通知开关状态: " + (isChecked ? "开启" : "关闭"));
+            });
+            
             // 设置清除所有通知按钮
             binding.btnClearAll.setOnClickListener(v -> clearAllNotifications());
             
@@ -126,16 +139,21 @@ public class NotificationFragment extends Fragment {
                 return;
             }
             
-            // 查询是否已有通知数据
+            // 确保测试通知数据存在
             List<Notification> existingNotifications = notificationDao.queryByUserId(userId);
-            if (existingNotifications != null && !existingNotifications.isEmpty()) {
-                LogUtils.d(TAG, "已有" + existingNotifications.size() + "条通知数据，不再创建测试数据");
-                return;
-            }
             
+            // 强制创建测试数据用于演示，无论是否已存在
             LogUtils.d(TAG, "开始创建测试通知数据");
             
-            // 预算警告通知
+            // 清除旧的测试数据
+            if (existingNotifications != null && !existingNotifications.isEmpty()) {
+                for (Notification notification : existingNotifications) {
+                    notificationDao.delete(notification.getId());
+                }
+                LogUtils.d(TAG, "已清除 " + existingNotifications.size() + " 条旧通知数据");
+            }
+            
+            // 预算警告通知 - 未读
             Notification budgetWarning = new Notification(
                     userId,
                     "预算警告提醒",
@@ -143,9 +161,10 @@ public class NotificationFragment extends Fragment {
                     Notification.TYPE_BUDGET_WARNING
             );
             budgetWarning.setCreateTime(new Date(System.currentTimeMillis() - 3600000)); // 1小时前
+            budgetWarning.setRead(0); // 未读
             notificationDao.insert(budgetWarning);
             
-            // 预算超支通知
+            // 预算超支通知 - 未读
             Notification budgetExceed = new Notification(
                     userId,
                     "预算超支提醒",
@@ -153,9 +172,10 @@ public class NotificationFragment extends Fragment {
                     Notification.TYPE_BUDGET_EXCEED
             );
             budgetExceed.setCreateTime(new Date(System.currentTimeMillis() - 7200000)); // 2小时前
+            budgetExceed.setRead(0); // 未读
             notificationDao.insert(budgetExceed);
             
-            // 账单提醒通知
+            // 账单提醒通知 - 未读
             Notification billReminder = new Notification(
                     userId,
                     "账单到期提醒",
@@ -163,9 +183,10 @@ public class NotificationFragment extends Fragment {
                     Notification.TYPE_BILL_REMINDER
             );
             billReminder.setCreateTime(new Date(System.currentTimeMillis() - 86400000)); // 1天前
+            billReminder.setRead(0); // 未读
             notificationDao.insert(billReminder);
             
-            // 大额支出通知
+            // 大额支出通知 - 已读
             Notification largeExpense = new Notification(
                     userId,
                     "大额支出提醒",
@@ -176,7 +197,7 @@ public class NotificationFragment extends Fragment {
             largeExpense.setRead(1); // 已读
             notificationDao.insert(largeExpense);
             
-            // 收入到账通知
+            // 收入到账通知 - 已读
             Notification incomeReceived = new Notification(
                     userId,
                     "收入到账提醒",
@@ -187,7 +208,18 @@ public class NotificationFragment extends Fragment {
             incomeReceived.setRead(1); // 已读
             notificationDao.insert(incomeReceived);
             
-            LogUtils.d(TAG, "已创建5条测试通知数据");
+            // 另一条已读通知
+            Notification otherNotification = new Notification(
+                    userId,
+                    "新功能上线通知",
+                    "我们的APP已更新，新增了预算管理功能，快来体验吧！",
+                    Notification.TYPE_BUDGET_WARNING
+            );
+            otherNotification.setCreateTime(new Date(System.currentTimeMillis() - 432000000)); // 5天前
+            otherNotification.setRead(1); // 已读
+            notificationDao.insert(otherNotification);
+            
+            LogUtils.d(TAG, "已创建6条测试通知数据，其中3条未读，3条已读");
             
         } catch (Exception e) {
             LogUtils.e(TAG, "创建测试通知失败: " + e.getMessage(), e);
@@ -210,122 +242,182 @@ public class NotificationFragment extends Fragment {
                 return;
             }
             
+            LogUtils.d(TAG, "开始从网络加载通知数据，用户ID: " + userId);
+            
             // 从API获取通知列表
             notificationRepository.getNotifications(new RepositoryCallback<List<Notification>>() {
                 @Override
                 public void onSuccess(List<Notification> result) {
-                    // 更新列表数据
-                    notifications.clear();
-                    notifications.addAll(result);
-                    adapter.notifyDataSetChanged();
+                    // 存储所有通知
+                    allNotifications.clear();
+                    allNotifications.addAll(result);
                     
-                    // 更新空列表状态
-                    updateEmptyState();
+                    LogUtils.d(TAG, "网络请求成功，获取到 " + result.size() + " 条通知");
+                    
+                    // 记录已读和未读数量（用于调试）
+                    int readCount = 0;
+                    int unreadCount = 0;
+                    for (Notification notification : result) {
+                        if (notification.isRead() != null && notification.isRead() == 1) {
+                            readCount++;
+                        } else {
+                            unreadCount++;
+                        }
+                    }
+                    LogUtils.d(TAG, "其中已读通知: " + readCount + " 条，未读通知: " + unreadCount + " 条");
+                    
+                    // 更新列表显示
+                    updateNotificationsList();
                     
                     // 完成刷新
                     binding.swipeRefreshLayout.setRefreshing(false);
                     
-                    LogUtils.d(TAG, "成功加载 " + result.size() + " 条通知");
+                    LogUtils.d(TAG, "成功加载 " + result.size() + " 条通知，其中未读 " 
+                            + countUnreadNotifications() + " 条");
                 }
-                
+
                 @Override
                 public void onError(String errorMsg) {
-                    LogUtils.e(TAG, "加载通知失败: " + errorMsg);
+                    LogUtils.e(TAG, "网络加载通知失败: " + errorMsg);
+                    Toast.makeText(getContext(), "加载通知失败: " + errorMsg, Toast.LENGTH_SHORT).show();
                     
-                    // 尝试从本地数据库加载
+                    // 网络加载失败，尝试从本地数据库加载
+                    LogUtils.d(TAG, "尝试从本地数据库加载通知数据");
                     loadNotificationsFromDatabase(userId);
                     
-                    // 完成刷新
                     binding.swipeRefreshLayout.setRefreshing(false);
-                    
-                    // 只有在网络错误且非"无数据"错误时才显示Toast
-                    if (!errorMsg.contains("返回数据为空") && !errorMsg.contains("无数据")) {
-                        Toast.makeText(requireContext(), "网络连接异常，已加载本地数据", Toast.LENGTH_SHORT).show();
-                    }
                 }
-                
+
                 @Override
                 public void isCacheData(boolean isCache) {
                     if (isCache) {
-                        LogUtils.d(TAG, "显示的是缓存通知数据");
-                        // 可以在UI上显示缓存标记
+                        LogUtils.d(TAG, "使用缓存数据");
                     }
                 }
             });
         } catch (Exception e) {
-            LogUtils.e(TAG, "加载通知数据失败: " + e.getMessage(), e);
-            binding.swipeRefreshLayout.setRefreshing(false);
+            LogUtils.e(TAG, "加载通知时出错: " + e.getMessage(), e);
             
-            // 发生异常，尝试从本地数据库加载
+            // 异常情况下尝试从本地数据库加载
             long userId = TokenManager.getInstance().getUserId();
             if (userId > 0) {
                 loadNotificationsFromDatabase(userId);
             }
+            
+            binding.swipeRefreshLayout.setRefreshing(false);
         }
     }
     
     /**
-     * 从本地数据库加载通知数据
+     * 从本地数据库加载通知
      */
     private void loadNotificationsFromDatabase(long userId) {
         try {
-            // 从本地数据库加载通知数据
             List<Notification> dbNotifications = notificationDao.queryByUserId(userId);
-            
             if (dbNotifications != null && !dbNotifications.isEmpty()) {
-                LogUtils.d(TAG, "从本地数据库加载 " + dbNotifications.size() + " 条通知");
-                notifications.clear();
-                notifications.addAll(dbNotifications);
-                adapter.notifyDataSetChanged();
+                LogUtils.d(TAG, "从本地数据库加载到 " + dbNotifications.size() + " 条通知");
+                
+                // 记录已读和未读数量（用于调试）
+                int readCount = 0;
+                int unreadCount = 0;
+                for (Notification notification : dbNotifications) {
+                    if (notification.isRead() != null && notification.isRead() == 1) {
+                        readCount++;
+                    } else {
+                        unreadCount++;
+                    }
+                }
+                LogUtils.d(TAG, "其中已读通知: " + readCount + " 条，未读通知: " + unreadCount + " 条");
+                
+                // 存储所有通知
+                allNotifications.clear();
+                allNotifications.addAll(dbNotifications);
+                
+                // 更新列表显示
+                updateNotificationsList();
             } else {
                 LogUtils.d(TAG, "本地数据库中没有通知数据");
-                // 清空当前列表并显示空状态
-                notifications.clear();
-                adapter.notifyDataSetChanged();
             }
-            
-            // 更新空列表状态
-            updateEmptyState();
         } catch (Exception e) {
             LogUtils.e(TAG, "从本地数据库加载通知失败: " + e.getMessage(), e);
         }
     }
     
     /**
+     * 更新通知列表显示
+     * 根据开关状态过滤通知
+     */
+    private void updateNotificationsList() {
+        notifications.clear();
+        
+        if (showAllNotifications) {
+            // 显示所有通知
+            notifications.addAll(allNotifications);
+            LogUtils.d(TAG, "显示所有通知: " + notifications.size() + " 条");
+        } else {
+            // 只显示未读通知
+            for (Notification notification : allNotifications) {
+                if (notification.isRead() == null || notification.isRead() == 0) {
+                    notifications.add(notification);
+                }
+            }
+            LogUtils.d(TAG, "只显示未读通知: " + notifications.size() + " 条");
+        }
+        
+        adapter.notifyDataSetChanged();
+        updateEmptyState();
+    }
+    
+    /**
+     * 统计未读通知数量
+     */
+    private int countUnreadNotifications() {
+        int count = 0;
+        for (Notification notification : allNotifications) {
+            if (notification.isRead() == null || notification.isRead() == 0) {
+                count++;
+            }
+        }
+        return count;
+    }
+    
+    /**
      * 标记通知为已读
      */
     private void markAsRead(Notification notification) {
-        if (notification == null) {
+        if (notification == null || notification.isRead() != null && notification.isRead() == 1) {
             return;
         }
         
-        // 如果已经是已读状态，不需要操作
-        if (notification.isRead() == 1) {
-            return;
+        try {
+            notificationRepository.markAsRead(notification.getId(), new RepositoryCallback<Boolean>() {
+                @Override
+                public void onSuccess(Boolean result) {
+                    LogUtils.d(TAG, "成功标记通知为已读: ID = " + notification.getId());
+                    
+                    // 更新本地通知状态
+                    notification.setRead(1);
+                    
+                    // 如果当前是只显示未读，需要更新界面
+                    if (!showAllNotifications) {
+                        updateNotificationsList();
+                    } else {
+                        // 更新已读状态的UI显示
+                        int position = notifications.indexOf(notification);
+                        if (position >= 0) {
+                            adapter.notifyItemChanged(position);
+                        }
+                    }
+                }
+
+                @Override
+                public void onError(String errorMsg) {
+                    LogUtils.e(TAG, "标记通知为已读失败: " + errorMsg);
+                }
+            });
+        } catch (Exception e) {
+            LogUtils.e(TAG, "标记通知为已读时出错: " + e.getMessage(), e);
         }
-        
-        // 先在UI上标记为已读
-        notification.setRead(1);
-        adapter.notifyDataSetChanged();
-        
-        // 调用API标记为已读
-        notificationRepository.markAsRead(notification.getId(), new RepositoryCallback<Boolean>() {
-            @Override
-            public void onSuccess(Boolean result) {
-                LogUtils.d(TAG, "成功标记通知为已读: " + notification.getId());
-                
-                // 更新本地数据库
-                notificationDao.markAsRead(notification.getId());
-            }
-            
-            @Override
-            public void onError(String errorMsg) {
-                LogUtils.e(TAG, "标记通知为已读失败: " + errorMsg);
-                
-                // 即使API调用失败，也更新本地数据库
-                notificationDao.markAsRead(notification.getId());
-            }
-        });
     }
     
     /**
@@ -368,71 +460,65 @@ public class NotificationFragment extends Fragment {
      */
     private void clearAllNotifications() {
         if (notifications.isEmpty()) {
-            Toast.makeText(requireContext(), "没有通知可清除", Toast.LENGTH_SHORT).show();
             return;
         }
         
-        new AlertDialog.Builder(requireContext())
-            .setTitle("清除所有通知")
-            .setMessage("确定要清除所有通知吗？此操作不可撤销。")
-            .setPositiveButton("确定", (dialog, which) -> {
-                // 获取当前用户ID
-                long userId = TokenManager.getInstance().getUserId();
-                if (userId <= 0) {
-                    Toast.makeText(requireContext(), "用户未登录，无法清除通知", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                
-                // 显示加载中
-                binding.swipeRefreshLayout.setRefreshing(true);
-                ArrayList<Long> ids = new ArrayList<>();
-                for (Notification notification : adapter.getDataList()){
-                    ids.add(notification.getId());
-                }
-                // 调用API批量标记为已读
-                notificationRepository.markAllAsRead(userId, ids, new RepositoryCallback<Boolean>() {
-                    @Override
-                    public void onSuccess(Boolean result) {
-                        LogUtils.d(TAG, "成功标记所有通知为已读");
-                        
-                        // 在本地数据库中标记所有通知为已读
-                        notificationDao.markAllAsRead(userId);
-                        
-                        // 清空当前通知列表
-                        notifications.clear();
-                        adapter.notifyDataSetChanged();
-                        
-                        // 更新空列表状态
-                        updateEmptyState();
-                        
-                        // 完成刷新
-                        binding.swipeRefreshLayout.setRefreshing(false);
-                        
-                        Toast.makeText(requireContext(), "已清除所有通知", Toast.LENGTH_SHORT).show();
+        try {
+            // 根据当前是否显示历史通知设置不同的对话框标题和内容
+            String title = showAllNotifications ? 
+                    getString(R.string.confirm_delete) : 
+                    "确认操作";
+                    
+            String message = showAllNotifications ? 
+                    "是否将所有通知标记为已读？此操作将影响所有通知状态。" : 
+                    "是否将所有未读通知标记为已读？";
+                    
+            String positiveButton = getString(R.string.confirm);
+            
+            new AlertDialog.Builder(requireContext())
+                .setTitle(title)
+                .setMessage(message)
+                .setPositiveButton(positiveButton, (dialog, which) -> {
+                    // 获取要清除的通知ID列表
+                    ArrayList<Long> notificationIds = new ArrayList<>();
+                    for (Notification notification : notifications) {
+                        notificationIds.add(notification.getId());
                     }
                     
-                    @Override
-                    public void onError(String errorMsg) {
-                        LogUtils.e(TAG, "标记所有通知为已读失败: " + errorMsg);
-                        Toast.makeText(requireContext(), "清除通知失败: " + errorMsg, Toast.LENGTH_SHORT).show();
+                    // 获取当前用户ID
+                    long userId = TokenManager.getInstance().getUserId();
+                    
+                    // 调用API批量删除通知
+                    notificationRepository.markAllAsRead(userId, notificationIds, new RepositoryCallback<Boolean>() {
+                        @Override
+                        public void onSuccess(Boolean result) {
+                            LogUtils.d(TAG, "成功标记所有通知为已读");
+                            
+                            // 更新本地数据
+                            for (Notification notification : allNotifications) {
+                                if (notificationIds.contains(notification.getId())) {
+                                    notification.setRead(1);
+                                }
+                            }
+                            
+                            // 更新界面
+                            updateNotificationsList();
+                            
+                            Toast.makeText(getContext(), "已将所有通知标记为已读", Toast.LENGTH_SHORT).show();
+                        }
                         
-                        // 即使API调用失败，也在本地清除
-                        notificationDao.markAllAsRead(userId);
-                        
-                        // 清空当前通知列表
-                        notifications.clear();
-                        adapter.notifyDataSetChanged();
-                        
-                        // 更新空列表状态
-                        updateEmptyState();
-                        
-                        // 完成刷新
-                        binding.swipeRefreshLayout.setRefreshing(false);
-                    }
-                });
-            })
-            .setNegativeButton("取消", null)
-            .show();
+                        @Override
+                        public void onError(String errorMsg) {
+                            LogUtils.e(TAG, "批量标记通知为已读失败: " + errorMsg);
+                            Toast.makeText(getContext(), "操作失败: " + errorMsg, Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                })
+                .setNegativeButton(getString(R.string.cancel), null)
+                .show();
+        } catch (Exception e) {
+            LogUtils.e(TAG, "处理清除所有通知操作时出错: " + e.getMessage(), e);
+        }
     }
     
     /**
@@ -445,10 +531,33 @@ public class NotificationFragment extends Fragment {
             // 更新视图可见性
             binding.emptyView.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
             binding.recyclerView.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
-            binding.btnClearAll.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
+            
+            // 只有当列表有内容且当前显示的是当前模式下的所有通知时才显示清除按钮
+            boolean showClearButton = !isEmpty && 
+                    (showAllNotifications || countUnreadNotifications() > 0);
+            
+            binding.btnClearAll.setVisibility(showClearButton ? View.VISIBLE : View.GONE);
+            
+            // 更新清除按钮文字
+            if (showClearButton) {
+                String buttonText = showAllNotifications ? 
+                        getString(R.string.clear_all_notifications) : 
+                        getString(R.string.mark_all_as_read);
+                binding.btnClearAll.setText(buttonText);
+            }
             
             if (isEmpty) {
-                LogUtils.d(TAG, "显示空状态视图 - 暂无通知消息");
+                String message = showAllNotifications ? 
+                        getString(R.string.no_all_notifications) : 
+                        getString(R.string.no_unread_notifications);
+                
+                // 更新空状态文本
+                TextView emptyText = binding.emptyView.findViewById(R.id.tv_empty_message);
+                if (emptyText != null) {
+                    emptyText.setText(message);
+                }
+                
+                LogUtils.d(TAG, "显示空状态视图 - " + message);
             }
         }
     }

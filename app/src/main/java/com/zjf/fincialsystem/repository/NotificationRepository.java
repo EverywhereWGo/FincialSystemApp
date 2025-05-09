@@ -46,7 +46,7 @@ public class NotificationRepository {
         // 检查网络状态
         if (NetworkUtils.isNetworkAvailable(context)) {
             // 有网络连接，从网络获取数据
-            apiService.getNotifications(1, 100, null, null, 0, TokenManager.getInstance().getUserId()).enqueue(new Callback<ApiResponse<Notification>>() {
+            apiService.getNotifications(1, 100, null, null, null, TokenManager.getInstance().getUserId()).enqueue(new Callback<ApiResponse<Notification>>() {
                 @Override
                 public void onResponse(Call<ApiResponse<Notification>> call, Response<ApiResponse<Notification>> response) {
                     if (response.isSuccessful() && response.body() != null) {
