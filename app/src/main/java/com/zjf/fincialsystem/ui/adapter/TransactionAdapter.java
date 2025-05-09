@@ -12,15 +12,23 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DataSource;
+import com.bumptech.glide.load.engine.GlideException;
+import com.bumptech.glide.request.RequestListener;
+import com.bumptech.glide.request.target.Target;
 import com.zjf.fincialsystem.R;
 import com.zjf.fincialsystem.model.Category;
 import com.zjf.fincialsystem.model.Transaction;
+import com.zjf.fincialsystem.network.NetworkManager;
 import com.zjf.fincialsystem.repository.CategoryRepository;
 import com.zjf.fincialsystem.repository.RepositoryCallback;
 import com.zjf.fincialsystem.utils.IconUtil;
+import com.zjf.fincialsystem.utils.LogUtils;
 import com.zjf.fincialsystem.utils.NumberUtils;
 
 import net.lucode.hackware.magicindicator.buildins.UIUtil;
@@ -33,12 +41,14 @@ import java.util.List;
  */
 public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.ViewHolder> {
 
+    private static final String TAG = "TransactionAdapter";
     private List<Transaction> transactions;
     private OnItemClickListener listener;
     private Context context;
     private CategoryRepository categoryRepository;
 
     public TransactionAdapter(Context context) {
+        this.context = context;
         categoryRepository = new CategoryRepository(context);
         this.transactions = new ArrayList<>();
     }
@@ -119,10 +129,8 @@ public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.
                     if (category != null) {
                         tvCategory.setText(category.getName());
 
-                        int iconResId = IconUtil.getIconResourceId(category.getIcon());
-                        if (iconResId != 0) {
-                            ivIcon.setImageResource(iconResId);
-                        }
+                        // 优先加载网络图片
+                        loadCategoryIcon(category, ivIcon);
 
                         // 设置图标背景颜色
                         if (!TextUtils.isEmpty(category.getColor())) {
@@ -153,6 +161,69 @@ public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.
                     viewIcon.setBackgroundResource(R.drawable.bg_circle_primary);
                 }
             });
+        }
+        
+        /**
+         * 加载分类图标
+         */
+        private void loadCategoryIcon(Category category, ImageView imageView) {
+            try {
+                String iconUrl = category.getIcon();
+                
+                // 如果没有图标URL，使用默认图标
+                if (TextUtils.isEmpty(iconUrl)) {
+                    int iconResId = IconUtil.getIconResourceId(category.getIcon());
+                    if (iconResId != 0) {
+                        imageView.setImageResource(iconResId);
+                    } else {
+                        imageView.setImageResource(R.drawable.ic_category_default);
+                    }
+                    return;
+                }
+                
+                // 如果是服务器URL，需要添加BaseUrl
+                if (iconUrl.startsWith("/") && !iconUrl.startsWith("//")) {
+                    // 获取基础URL
+                    String baseUrl = NetworkManager.getInstance().getBaseUrl();
+                    iconUrl = baseUrl + iconUrl;
+                    LogUtils.d(TAG, "完整分类图标URL: " + iconUrl);
+                }
+                
+                // 先显示一个本地占位图，防止闪烁或空白
+                imageView.setImageResource(R.drawable.ic_category_default);
+                
+                final String finalIconUrl = iconUrl;
+                // 使用Glide加载图片
+                Glide.with(context)
+                        .load(finalIconUrl)
+                        .placeholder(R.drawable.ic_category_default)
+                        .error(R.drawable.ic_category_default)
+                        .centerCrop()
+                        .listener(new RequestListener<android.graphics.drawable.Drawable>() {
+                            @Override
+                            public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<android.graphics.drawable.Drawable> target, boolean isFirstResource) {
+                                LogUtils.e(TAG, "分类图标加载失败: " + finalIconUrl + ", 错误: " + (e != null ? e.getMessage() : "未知错误"));
+                                
+                                // 加载失败时使用本地图标
+                                int iconResId = IconUtil.getIconResourceId(category.getIcon());
+                                if (iconResId != 0) {
+                                    imageView.setImageResource(iconResId);
+                                }
+                                return false;
+                            }
+                            
+                            @Override
+                            public boolean onResourceReady(android.graphics.drawable.Drawable resource, Object model, Target<android.graphics.drawable.Drawable> target, DataSource dataSource, boolean isFirstResource) {
+                                LogUtils.d(TAG, "分类图标加载成功: " + finalIconUrl);
+                                return false;
+                            }
+                        })
+                        .into(imageView);
+            } catch (Exception e) {
+                LogUtils.e(TAG, "加载分类图标异常: " + e.getMessage(), e);
+                // 异常时使用默认图标
+                imageView.setImageResource(R.drawable.ic_category_default);
+            }
         }
     }
 

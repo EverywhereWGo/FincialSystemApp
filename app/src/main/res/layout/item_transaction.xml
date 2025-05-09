@@ -18,12 +18,13 @@
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:background="@color/colorPrimaryLight"
-            android:padding="8dp"
-            android:scaleType="centerInside"
+            android:scaleType="centerCrop"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:shapeAppearanceOverlay="@style/ShapeAppearance.App.CircleImageView"
+            app:strokeColor="@color/gray"
+            app:strokeWidth="0.5dp"
             tools:src="@drawable/ic_transaction" />
 
         <TextView

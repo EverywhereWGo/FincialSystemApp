@@ -29,7 +29,7 @@
                     android:id="@+id/img_category"
                     android:layout_width="32dp"
                     android:layout_height="32dp"
-                    android:padding="4dp"
+                    android:scaleType="centerCrop"
                     android:background="@drawable/circle_background"
                     android:contentDescription="@string/category_icon"
                     tools:src="@drawable/ic_food" />

@@ -1,6 +1,7 @@
 package com.zjf.fincialsystem.ui.adapter;
 
 import android.content.Context;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,15 +11,24 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DataSource;
+import com.bumptech.glide.load.engine.GlideException;
+import com.bumptech.glide.request.RequestListener;
+import com.bumptech.glide.request.RequestOptions;
+import com.bumptech.glide.request.target.Target;
 import com.zjf.fincialsystem.R;
 import com.zjf.fincialsystem.model.Budget;
 import com.zjf.fincialsystem.model.Category;
+import com.zjf.fincialsystem.network.NetworkManager;
 import com.zjf.fincialsystem.repository.CategoryRepository;
 import com.zjf.fincialsystem.repository.RepositoryCallback;
 import com.zjf.fincialsystem.utils.IconUtil;
+import com.zjf.fincialsystem.utils.LogUtils;
 import com.zjf.fincialsystem.utils.NumberUtils;
 
 import java.util.ArrayList;
@@ -29,12 +39,14 @@ import java.util.List;
  */
 public class BudgetAdapter extends RecyclerView.Adapter<BudgetAdapter.BudgetViewHolder> {
 
+    private static final String TAG = "BudgetAdapter";
     private final List<Budget> budgetList;
     private OnBudgetClickListener listener;
     private Context context;
     private CategoryRepository categoryRepository;
 
     public BudgetAdapter(Context context) {
+        this.context = context;
         categoryRepository = new CategoryRepository(context);
         this.budgetList = new ArrayList<>();
     }
@@ -178,10 +190,8 @@ public class BudgetAdapter extends RecyclerView.Adapter<BudgetAdapter.BudgetView
                 @Override
                 public void onSuccess(Category category) {
                     if (category != null) {
-                        if (category.getIcon() != null) {
-                            int iconResId = IconUtil.getIconResourceId(category.getIcon());
-                            imgCategory.setImageResource(iconResId);
-                        }
+                        // 加载分类图标
+                        loadCategoryIcon(category, imgCategory);
 
                         // 设置图标背景颜色
                         if (category.getColor() != null) {
@@ -202,7 +212,8 @@ public class BudgetAdapter extends RecyclerView.Adapter<BudgetAdapter.BudgetView
 
                 @Override
                 public void onError(String error) {
-
+                    imgCategory.setImageResource(R.drawable.ic_category);
+                    tvCategoryName.setText(R.string.unknown);
                 }
             });
 
@@ -227,6 +238,70 @@ public class BudgetAdapter extends RecyclerView.Adapter<BudgetAdapter.BudgetView
                 progressBar.setProgressDrawable(ContextCompat.getDrawable(context, R.drawable.progress_success));
                 tvStatus.setTextColor(ContextCompat.getColor(context, R.color.success));
                 tvStatus.setText(R.string.budget_status_safe);
+            }
+        }
+        
+        /**
+         * 加载分类图标
+         */
+        private void loadCategoryIcon(Category category, ImageView imageView) {
+            try {
+                String iconUrl = category.getIcon();
+                
+                // 如果没有图标URL，使用默认图标
+                if (TextUtils.isEmpty(iconUrl)) {
+                    int iconResId = IconUtil.getIconResourceId(category.getIcon());
+                    if (iconResId != 0) {
+                        imageView.setImageResource(iconResId);
+                    } else {
+                        imageView.setImageResource(R.drawable.ic_category);
+                    }
+                    return;
+                }
+                
+                // 如果是服务器URL，需要添加BaseUrl
+                if (iconUrl.startsWith("/") && !iconUrl.startsWith("//")) {
+                    // 获取基础URL
+                    String baseUrl = NetworkManager.getInstance().getBaseUrl();
+                    iconUrl = baseUrl + iconUrl;
+                    LogUtils.d(TAG, "完整分类图标URL: " + iconUrl);
+                }
+                
+                // 先显示一个本地占位图，防止闪烁或空白
+                imageView.setImageResource(R.drawable.ic_category);
+                
+                final String finalIconUrl = iconUrl;
+                // 使用Glide加载图片
+                Glide.with(context)
+                        .load(finalIconUrl)
+                        .placeholder(R.drawable.ic_category)
+                        .error(R.drawable.ic_category)
+                        .centerCrop()
+                        .circleCrop()
+                        .listener(new RequestListener<android.graphics.drawable.Drawable>() {
+                            @Override
+                            public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<android.graphics.drawable.Drawable> target, boolean isFirstResource) {
+                                LogUtils.e(TAG, "分类图标加载失败: " + finalIconUrl + ", 错误: " + (e != null ? e.getMessage() : "未知错误"));
+                                
+                                // 加载失败时使用本地图标
+                                int iconResId = IconUtil.getIconResourceId(category.getIcon());
+                                if (iconResId != 0) {
+                                    imageView.setImageResource(iconResId);
+                                }
+                                return false;
+                            }
+                            
+                            @Override
+                            public boolean onResourceReady(android.graphics.drawable.Drawable resource, Object model, Target<android.graphics.drawable.Drawable> target, DataSource dataSource, boolean isFirstResource) {
+                                LogUtils.d(TAG, "分类图标加载成功: " + finalIconUrl);
+                                return false;
+                            }
+                        })
+                        .into(imageView);
+            } catch (Exception e) {
+                LogUtils.e(TAG, "加载分类图标异常: " + e.getMessage(), e);
+                // 异常时使用默认图标
+                imageView.setImageResource(R.drawable.ic_category);
             }
         }
     }

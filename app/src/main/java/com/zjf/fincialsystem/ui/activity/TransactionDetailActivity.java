@@ -4,7 +4,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -24,8 +26,10 @@ import com.zjf.fincialsystem.model.Transaction;
 import com.zjf.fincialsystem.repository.CategoryRepository;
 import com.zjf.fincialsystem.repository.RepositoryCallback;
 import com.zjf.fincialsystem.repository.TransactionRepository;
+import com.zjf.fincialsystem.utils.IconUtil;
 import com.zjf.fincialsystem.utils.LogUtils;
 import com.zjf.fincialsystem.utils.StatusBarUtils;
+import com.zjf.fincialsystem.network.NetworkManager;
 
 import java.text.DecimalFormat;
 
@@ -191,22 +195,16 @@ public class TransactionDetailActivity extends AppCompatActivity {
                             if (category != null) {
                                 binding.tvCategoryName.setText(category.getName());
                                 // 设置分类图标
-                                try {
-                                    String iconName = category.getIconName();
-                                    if (iconName != null && !iconName.isEmpty()) {
-                                        int iconResId = getResources().getIdentifier(iconName, "drawable", getPackageName());
-                                        // 设置背景颜色
-                                        if (category.getColor() != null && !category.getColor().isEmpty()) {
-                                            int color = android.graphics.Color.parseColor(category.getColor());
-                                            binding.ivCategoryIcon.getBackground().setTint(color);
-                                        }
-                                        if (iconResId != 0) {
-                                            Drawable iconDrawable = ContextCompat.getDrawable(TransactionDetailActivity.this, iconResId);
-                                            binding.ivCategoryIcon.setImageDrawable(iconDrawable);
-                                        }
+                                loadCategoryIcon(category, binding.ivCategoryIcon);
+                                
+                                // 设置背景颜色
+                                if (category.getColor() != null && !category.getColor().isEmpty()) {
+                                    try {
+                                        int color = android.graphics.Color.parseColor(category.getColor());
+                                        binding.ivCategoryIcon.getBackground().setTint(color);
+                                    } catch (Exception e) {
+                                        LogUtils.e(TAG, "设置分类图标背景颜色失败：" + e.getMessage(), e);
                                     }
-                                } catch (Exception e) {
-                                    LogUtils.e(TAG, "设置分类图标失败：" + e.getMessage(), e);
                                 }
                             }
                         }
@@ -215,6 +213,7 @@ public class TransactionDetailActivity extends AppCompatActivity {
 
                 @Override
                 public void onError(String error) {
+                    LogUtils.e(TAG, "获取分类信息失败：" + error);
                 }
             });
 
@@ -326,7 +325,7 @@ public class TransactionDetailActivity extends AppCompatActivity {
                 
                 // 如果不是完整URL，需要添加BaseUrl
                 if (!isNetworkImage && !imagePath.startsWith("file://") && !imagePath.startsWith("/storage/")) {
-                    String baseUrl = com.zjf.fincialsystem.network.NetworkManager.getInstance().getBaseUrl();
+                    String baseUrl = NetworkManager.getInstance().getBaseUrl();
                     imagePath = baseUrl + imagePath;
                     LogUtils.d(TAG, "处理后的完整图片URL: " + imagePath);
                 }
@@ -366,6 +365,70 @@ public class TransactionDetailActivity extends AppCompatActivity {
 
         } catch (Exception e) {
             LogUtils.e(TAG, "更新UI异常：" + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 加载分类图标
+     */
+    private void loadCategoryIcon(Category category, ImageView imageView) {
+        try {
+            String iconUrl = category.getIcon();
+            
+            // 如果没有图标URL，使用默认图标
+            if (TextUtils.isEmpty(iconUrl)) {
+                int iconResId = IconUtil.getIconResourceId(category.getIcon());
+                if (iconResId != 0) {
+                    imageView.setImageResource(iconResId);
+                } else {
+                    imageView.setImageResource(R.drawable.ic_category_default);
+                }
+                return;
+            }
+            
+            // 如果是服务器URL，需要添加BaseUrl
+            if (iconUrl.startsWith("/") && !iconUrl.startsWith("//")) {
+                // 获取基础URL
+                String baseUrl = NetworkManager.getInstance().getBaseUrl();
+                iconUrl = baseUrl + iconUrl;
+                LogUtils.d(TAG, "完整分类图标URL: " + iconUrl);
+            }
+            
+            // 先显示一个本地占位图，防止闪烁或空白
+            imageView.setImageResource(R.drawable.ic_category_default);
+            
+            final String finalIconUrl = iconUrl;
+            // 使用Glide加载图片
+            Glide.with(this)
+                    .load(finalIconUrl)
+                    .placeholder(R.drawable.ic_category_default)
+                    .error(R.drawable.ic_category_default)
+                    .centerCrop()
+                    .circleCrop()
+                    .listener(new RequestListener<Drawable>() {
+                        @Override
+                        public boolean onLoadFailed(GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {
+                            LogUtils.e(TAG, "分类图标加载失败: " + finalIconUrl + ", 错误: " + (e != null ? e.getMessage() : "未知错误"));
+                            
+                            // 加载失败时使用本地图标
+                            int iconResId = IconUtil.getIconResourceId(category.getIcon());
+                            if (iconResId != 0) {
+                                imageView.setImageResource(iconResId);
+                            }
+                            return false;
+                        }
+                        
+                        @Override
+                        public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource dataSource, boolean isFirstResource) {
+                            LogUtils.d(TAG, "分类图标加载成功: " + finalIconUrl);
+                            return false;
+                        }
+                    })
+                    .into(imageView);
+        } catch (Exception e) {
+            LogUtils.e(TAG, "加载分类图标异常: " + e.getMessage(), e);
+            // 异常时使用默认图标
+            imageView.setImageResource(R.drawable.ic_category_default);
         }
     }
 
